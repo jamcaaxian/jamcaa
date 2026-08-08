@@ -1,0 +1,47 @@
+# Third-party agent skills: local tooling, not part of this project.
+# They carry no explicit redistribution terms, so they stay out of version control (see docs/adr/0012).
+.github/skills/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+out/
+dist/
+build/
+.open-next/
+.turbo/
+*.tsbuildinfo
+
+# Cloudflare
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Tests and coverage
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/

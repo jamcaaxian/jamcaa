@@ -1,0 +1,66 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "jamcaa-docs",
+    "main": ".open-next/worker.js",
+    "compatibility_date": "2026-08-08",
+    "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+    "assets": { "binding": "ASSETS", "directory": ".open-next/assets" },
+    "images": {
+        // Enable image optimization
+        // see https://opennext.js.org/cloudflare/howtos/image
+        "binding": "IMAGES"
+    },
+    "services": [
+        {
+            // Self-reference service binding, the service name must match the worker name
+            // see https://opennext.js.org/cloudflare/caching
+            "binding": "WORKER_SELF_REFERENCE",
+            "service": "jamcaa-docs"
+        }
+    ],
+    // ISR caching. Rationale in docs/adr/0004-r2-with-regional-cache-for-isr.md
+    // The binding names below are fixed by @opennextjs/cloudflare and must not be renamed.
+    "r2_buckets": [{ "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "jamcaa-docs-inc-cache" }],
+    "durable_objects": {
+        "bindings": [
+            {
+                // Deduplicates and dispatches time-based revalidations
+                "name": "NEXT_CACHE_DO_QUEUE",
+                "class_name": "DOQueueHandler"
+            }
+        ]
+    },
+    "d1_databases": [
+        {
+            // Tracks tags and revalidation times for revalidateTag / revalidatePath
+            "binding": "NEXT_TAG_CACHE_D1",
+            "database_name": "jamcaa-docs-tag-cache",
+            "database_id": "6ed1190b-780a-4c1e-80da-fd67dfe072d6"
+        }
+    ],
+    "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler"] }],
+    "observability": { "enabled": true },
+    "upload_source_maps": true
+    /**
+     * Smart Placement
+     * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
+     */
+    // "placement": {  "mode": "smart" }
+    /**
+     * Bindings
+     * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
+     * databases, object storage, AI inference, real-time communication and more.
+     * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+     */
+    /**
+     * Environment Variables
+     * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
+     * Note: Use secrets to store sensitive data.
+     * https://developers.cloudflare.com/workers/configuration/secrets/
+     */
+    // "vars": {  "MY_VARIABLE": "production_value" }
+}

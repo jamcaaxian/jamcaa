@@ -1,0 +1,30 @@
+{
+    "name": "jamcaa",
+    "version": "0.0.0",
+    "private": true,
+    "description": "A schema-driven content platform for the edge",
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jamcaaxian/jamcaa.git"
+    },
+    "packageManager": "pnpm@10.34.5",
+    "engines": {
+        "node": ">=20.9.0"
+    },
+    "scripts": {
+        "dev": "turbo run dev",
+        "build": "turbo run build",
+        "preview": "turbo run preview",
+        "deploy": "turbo run deploy",
+        "lint": "turbo run lint",
+        "typecheck": "turbo run typecheck",
+        "test": "turbo run test",
+        "cf-typegen": "turbo run cf-typegen"
+    },
+    "devDependencies": {
+        "turbo": "^2.10.9",
+        "@typescript/native": "npm:typescript@^7.0.2",
+        "typescript": "npm:@typescript/typescript6@^6.0.2"
+    }
+}

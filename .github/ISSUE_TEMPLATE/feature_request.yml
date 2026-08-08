@@ -1,0 +1,49 @@
+name: Feature request
+description: Propose a capability the framework does not currently have
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem before the solution. Requests grounded in a concrete situation are much easier to evaluate than ones that describe a desired API.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: What were you building when you hit this? What did you have to do instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Is there a workaround today?
+      description: If you solved it some other way, describe how. This helps gauge severity.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which part of the framework would this touch?
+      multiple: true
+      options:
+        - Content model / schema
+        - Admin interface
+        - Media and storage
+        - Authentication and permissions
+        - Rendering and caching
+        - Plugin extension points
+        - Tooling and developer experience
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Optional. If you have an API in mind, sketch it here.
+    validations:
+      required: false

@@ -1,0 +1,15 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    "ui": "tui",
+    "globalDependencies": ["**/.env.*local"],
+    "tasks": {
+        "build": { "dependsOn": ["^build"], "outputs": [".next/**", "!.next/cache/**", "dist/**"] },
+        "dev": { "cache": false, "persistent": true },
+        "preview": { "dependsOn": ["^build"], "cache": false, "persistent": true },
+        "deploy": { "dependsOn": ["^build", "lint", "typecheck"], "cache": false },
+        "lint": { "dependsOn": ["^build"] },
+        "typecheck": { "dependsOn": ["^build"] },
+        "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] },
+        "cf-typegen": { "cache": false, "outputs": ["cloudflare-env.d.ts"] }
+    }
+}

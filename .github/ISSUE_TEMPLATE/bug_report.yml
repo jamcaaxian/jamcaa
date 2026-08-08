@@ -1,0 +1,55 @@
+name: Bug report
+description: Something behaves differently from what the documentation describes
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Behaviour in this framework depends heavily on the runtime it executes in. A bug that only appears after deployment is common and expected — please say which environment you saw it in.
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Include the full error message and stack trace if there is one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: The smallest content model and code path that triggers this. A link to a repository is ideal.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where does this occur?
+      options:
+        - Only with the dev server
+        - Only in the Workers runtime (preview or deployed)
+        - Both
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: Package versions, Node version, and Wrangler version.
+      placeholder: |
+        @jamcaa/core:
+        node:
+        wrangler:
+    validations:
+      required: true

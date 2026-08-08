@@ -1,0 +1,37 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "command": "pnpm dev",
+            "label": "dev",
+            "detail": "Next.js dev server (Node runtime, fast reload)",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "command": "pnpm preview",
+            "label": "preview",
+            "detail": "Build and run in the Workers runtime",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "command": "pnpm typecheck",
+            "label": "typecheck",
+            "detail": "tsc --noEmit across the workspace",
+            "problemMatcher": ["$tsc"],
+            "group": { "kind": "test", "isDefault": true }
+        },
+        {
+            "type": "shell",
+            "command": "pnpm build",
+            "label": "build",
+            "detail": "turbo run build",
+            "problemMatcher": [],
+            "group": { "kind": "build", "isDefault": true }
+        }
+    ]
+}
