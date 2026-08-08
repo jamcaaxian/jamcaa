@@ -1,0 +1,30 @@
+{
+    "name": "@jamcaa/core",
+    "version": "0.0.0",
+    "private": true,
+    "description": "The jamcaa publishing core",
+    "license": "Apache-2.0",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./db": "./src/db/index.ts",
+        "./db/schema": "./src/db/schema/index.ts"
+    },
+    "scripts": {
+        "lint": "eslint",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "drizzle-orm": "^0.45.2"
+    },
+    "devDependencies": {
+        "@cloudflare/vitest-pool-workers": "^0.20.3",
+        "@cloudflare/workers-types": "^5.20260808.1",
+        "@typescript/native": "npm:typescript@^7.0.2",
+        "eslint": "^9",
+        "typescript": "npm:@typescript/typescript6@^6.0.2",
+        "typescript-eslint": "^8.66.0",
+        "vitest": "^4.1.10"
+    }
+}

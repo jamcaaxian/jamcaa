@@ -36,6 +36,13 @@
     },
     "d1_databases": [
         {
+            // Application data. Kept separate from the adapter-managed tag cache so that
+            // generated migrations never touch tables the adapter owns.
+            "binding": "DB",
+            "database_name": "jamcaa-docs",
+            "database_id": "TODO: npx wrangler d1 create jamcaa-docs, then paste the id here"
+        },
+        {
             // Tracks tags and revalidation times for revalidateTag / revalidatePath
             "binding": "NEXT_TAG_CACHE_D1",
             "database_name": "jamcaa-docs-tag-cache",

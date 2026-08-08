@@ -12,10 +12,14 @@
         "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
         "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
         "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-        "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
+        "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
+        "db:generate": "drizzle-kit generate",
+        "db:migrate": "wrangler d1 migrations apply jamcaa-docs --local",
+        "db:migrate:remote": "wrangler d1 migrations apply jamcaa-docs --remote"
     },
     "//": "next and eslint-config-next are pinned to exact versions on purpose. The Cloudflare adapter patches Next's server to stop it pulling in sharp, whose native binaries cannot be bundled for Workers. That patch is version-specific: on 16.3.0 it silently fails to apply and the build dies on .node files. Only bump this together with @opennextjs/cloudflare, and verify `pnpm preview` afterwards.",
     "dependencies": {
+        "@jamcaa/core": "workspace:*",
         "@opennextjs/cloudflare": "^1.20.2",
         "next": "16.2.11",
         "react": "^19.2.8",
@@ -26,6 +30,7 @@
         "@types/node": "^24.10.1",
         "@types/react": "^19.2.7",
         "@types/react-dom": "^19.2.4",
+        "drizzle-kit": "^0.31.10",
         "eslint": "^9",
         "eslint-config-next": "16.2.11",
         "tailwindcss": "^4.3.3",
