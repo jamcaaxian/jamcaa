@@ -9,7 +9,8 @@
         ".": "./src/index.ts",
         "./auth": "./src/auth/index.ts",
         "./db": "./src/db/index.ts",
-        "./db/schema": "./src/db/schema/index.ts"
+        "./db/schema": "./src/db/schema/index.ts",
+        "./theme": "./src/theme/index.ts"
     },
     "scripts": {
         "lint": "eslint",
@@ -19,11 +20,13 @@
     },
     "dependencies": {
         "better-auth": "^1.6.26",
+        "culori": "^4.0.2",
         "drizzle-orm": "^0.45.2"
     },
     "devDependencies": {
         "@cloudflare/vitest-pool-workers": "^0.20.3",
         "@cloudflare/workers-types": "^5.20260808.1",
+        "@types/culori": "^4.0.1",
         "@typescript/native": "npm:typescript@^7.0.2",
         "auth": "^1.6.26",
         "eslint": "^9",
