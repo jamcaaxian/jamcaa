@@ -1,0 +1,10 @@
+# Copy to .dev.vars and fill in. .dev.vars is gitignored.
+
+# Load .env.development* files when running `wrangler dev`
+NEXTJS_ENV=development
+
+# At least 32 characters, high entropy. Generate with: openssl rand -base64 32
+BETTER_AUTH_SECRET=
+
+# Base URL this app is served from.
+BETTER_AUTH_URL=http://localhost:3000

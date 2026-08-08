@@ -14,6 +14,6 @@
         "noUncheckedIndexedAccess": true,
         "types": ["@cloudflare/workers-types"]
     },
-    "include": ["src/**/*.ts", "vitest.config.ts"],
+    "include": ["src/**/*.ts", "auth.ts", "vitest.config.ts"],
     "exclude": ["node_modules"]
 }

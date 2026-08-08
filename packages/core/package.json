@@ -7,15 +7,18 @@
     "type": "module",
     "exports": {
         ".": "./src/index.ts",
+        "./auth": "./src/auth/index.ts",
         "./db": "./src/db/index.ts",
         "./db/schema": "./src/db/schema/index.ts"
     },
     "scripts": {
         "lint": "eslint",
         "typecheck": "tsc --noEmit",
-        "test": "vitest run"
+        "test": "vitest run",
+        "auth:generate": "auth generate --config ./auth.ts --output ./src/db/schema/auth.ts --yes"
     },
     "dependencies": {
+        "better-auth": "^1.6.26",
         "drizzle-orm": "^0.45.2"
     },
     "devDependencies": {

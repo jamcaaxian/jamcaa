@@ -40,7 +40,7 @@
             // generated migrations never touch tables the adapter owns.
             "binding": "DB",
             "database_name": "jamcaa-docs",
-            "database_id": "TODO: npx wrangler d1 create jamcaa-docs, then paste the id here"
+            "database_id": "82276698-7055-4351-b55e-bc7d42410c63"
         },
         {
             // Tracks tags and revalidation times for revalidateTag / revalidatePath
