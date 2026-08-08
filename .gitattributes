@@ -1,0 +1,22 @@
+# Normalise line endings so contributors on different platforms do not
+# produce spurious diffs. Text files are stored as LF in the repository.
+* text=auto eol=lf
+
+# Lockfiles are generated; keep them out of diffs and language stats.
+pnpm-lock.yaml linguist-generated=true -diff
+
+# Generated Workers runtime types.
+apps/*/cloudflare-env.d.ts linguist-generated=true -diff
+
+# Binary files must never be normalised.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.mp4 binary
+*.webm binary
