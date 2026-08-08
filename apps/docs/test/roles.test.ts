@@ -1,0 +1,154 @@
+import { createDatabase } from "@jamcaa/core";
+import {
+    buildAccessControl,
+    coreCapabilities,
+    forgetCachedRoleGrants,
+    getRoleGrants,
+    loadRoleGrants,
+    ROLE_CACHE_TTL_MS,
+    seedSystemRoles,
+    systemRoles
+} from "@jamcaa/core/auth";
+import { env } from "cloudflare:test";
+import { beforeEach, describe, expect, it } from "vitest";
+
+function database() {
+    return createDatabase(env.DB);
+}
+
+async function seededRoles() {
+    const grants = await loadRoleGrants(database());
+    return buildAccessControl(coreCapabilities, grants).roles;
+}
+
+describe("system roles", () => {
+    beforeEach(async () => {
+        await env.DB.exec("DELETE FROM role_capability");
+        await env.DB.exec("DELETE FROM role");
+        await seedSystemRoles(database(), coreCapabilities);
+    });
+
+    it("seeds every system role", async () => {
+        const rows = await env.DB.prepare("SELECT name FROM role ORDER BY name").all<{ name: string }>();
+
+        expect(rows.results.map((row) => row.name).sort()).toEqual(
+            systemRoles.map((role) => role.name).sort()
+        );
+    });
+
+    it("leaves an edited role alone when seeding runs again", async () => {
+        await env.DB.exec("DELETE FROM role_capability WHERE role_name = 'editor'");
+
+        await seedSystemRoles(database(), coreCapabilities);
+
+        const grants = await loadRoleGrants(database());
+        expect(grants.editor).toBeUndefined();
+    });
+
+    it("grants the administrator the whole catalogue", async () => {
+        const grants = await loadRoleGrants(database());
+
+        for (const [resource, actions] of Object.entries(coreCapabilities)) {
+            expect(grants.admin?.[resource]?.sort()).toEqual([...actions].sort());
+        }
+    });
+});
+
+describe("authorization from database-defined roles", () => {
+    beforeEach(async () => {
+        await env.DB.exec("DELETE FROM role_capability");
+        await env.DB.exec("DELETE FROM role");
+        await seedSystemRoles(database(), coreCapabilities);
+    });
+
+    it("lets an author publish their own post", async () => {
+        const roles = await seededRoles();
+
+        expect(roles.author?.authorize({ post: ["publish-own"] }).success).toBe(true);
+    });
+
+    it("stops a contributor publishing anything", async () => {
+        const roles = await seededRoles();
+
+        expect(roles.contributor?.authorize({ post: ["publish-own"] }).success).toBe(false);
+        expect(roles.contributor?.authorize({ post: ["publish-any"] }).success).toBe(false);
+    });
+
+    it("separates editing your own post from editing anyone's", async () => {
+        const roles = await seededRoles();
+
+        expect(roles.author?.authorize({ post: ["update-own"] }).success).toBe(true);
+        expect(roles.author?.authorize({ post: ["update-any"] }).success).toBe(false);
+        expect(roles.editor?.authorize({ post: ["update-any"] }).success).toBe(true);
+    });
+
+    it("keeps user management away from everyone but the administrator", async () => {
+        const roles = await seededRoles();
+
+        expect(roles.admin?.authorize({ user: ["ban"] }).success).toBe(true);
+        expect(roles.editor?.authorize({ user: ["ban"] }).success).toBe(false);
+        expect(roles.subscriber?.authorize({ user: ["list"] }).success).toBe(false);
+    });
+
+    it("reflects a grant added in the database without redeploying", async () => {
+        const before = await seededRoles();
+        expect(before.contributor?.authorize({ post: ["publish-own"] }).success).toBe(false);
+
+        await env.DB.exec(
+            "INSERT INTO role_capability (role_name, resource, action) VALUES ('contributor', 'post', 'publish-own')"
+        );
+
+        const after = await seededRoles();
+        expect(after.contributor?.authorize({ post: ["publish-own"] }).success).toBe(true);
+    });
+});
+
+describe("role grant cache", () => {
+    beforeEach(async () => {
+        forgetCachedRoleGrants();
+        await env.DB.exec("DELETE FROM role_capability");
+        await env.DB.exec("DELETE FROM role");
+    });
+
+    it("reports nothing for an unseeded database so the core uses its own defaults", async () => {
+        await expect(getRoleGrants(database())).resolves.toBeUndefined();
+    });
+
+    it("returns the seeded grants", async () => {
+        await seedSystemRoles(database(), coreCapabilities);
+
+        const grants = await getRoleGrants(database());
+
+        expect(grants?.contributor).toBeDefined();
+    });
+
+    it("keeps serving the previous grants until the entry expires", async () => {
+        await seedSystemRoles(database(), coreCapabilities);
+        const start = Date.now();
+        await getRoleGrants(database(), start);
+
+        await env.DB.exec(
+            "INSERT INTO role_capability (role_name, resource, action) VALUES ('contributor', 'post', 'publish-own')"
+        );
+
+        const stale = await getRoleGrants(database(), start + ROLE_CACHE_TTL_MS - 1);
+        expect(stale?.contributor?.post).not.toContain("publish-own");
+
+        const fresh = await getRoleGrants(database(), start + ROLE_CACHE_TTL_MS + 1);
+        expect(fresh?.contributor?.post).toContain("publish-own");
+    });
+
+    it("drops the entry on request", async () => {
+        await seedSystemRoles(database(), coreCapabilities);
+        const start = Date.now();
+        await getRoleGrants(database(), start);
+
+        await env.DB.exec(
+            "INSERT INTO role_capability (role_name, resource, action) VALUES ('subscriber', 'post', 'create')"
+        );
+        forgetCachedRoleGrants();
+
+        const grants = await getRoleGrants(database(), start);
+        expect(grants?.subscriber?.post).toContain("create");
+    });
+});
