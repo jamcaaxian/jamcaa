@@ -9,8 +9,10 @@
         ".": "./src/index.ts",
         "./auth": "./src/auth/index.ts",
         "./content": "./src/content/index.ts",
+        "./dates": "./src/dates/index.ts",
         "./db": "./src/db/index.ts",
         "./db/schema": "./src/db/schema/index.ts",
+        "./settings": "./src/settings/index.ts",
         "./theme": "./src/theme/index.ts"
     },
     "scripts": {
@@ -22,6 +24,7 @@
     "dependencies": {
         "better-auth": "^1.6.26",
         "culori": "^4.0.2",
+        "date-fns": "^4.4.0",
         "drizzle-orm": "^0.45.2"
     },
     "devDependencies": {

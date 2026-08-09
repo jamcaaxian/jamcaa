@@ -2,3 +2,4 @@
 // Regenerate it rather than editing by hand: pnpm --filter @jamcaa/core auth:generate
 export * from "./auth";
 export * from "./roles";
+export * from "./settings";
