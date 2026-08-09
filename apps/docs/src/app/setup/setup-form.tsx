@@ -35,7 +35,9 @@ export function SetupForm() {
                     <FieldDescription>At least eight characters.</FieldDescription>
                 </Field>
 
-                {state.error ? <FieldError errors={[{ message: state.error }]} /> : null}
+                {state.error ?
+                    <FieldError errors={[{ message: state.error }]} />
+                :   null}
 
                 <Button type="submit" disabled={pending}>
                     {pending ? "Creating…" : "Create administrator"}

@@ -4,18 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getSession, isInstalled, safeNextPath } from "@/lib/session";
 import { SignInForm } from "./sign-in-form";
 
-export const metadata: Metadata = {
-    title: "Sign in"
-};
+export const metadata: Metadata = { title: "Sign in" };
 
 // Reads the session and the installation state, neither of which exists at build time.
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage({
-    searchParams
-}: {
-    searchParams: Promise<{ next?: string }>;
-}) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
     if (!(await isInstalled())) {
         redirect("/setup");
     }

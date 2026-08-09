@@ -28,16 +28,12 @@ export function SignInForm({ next }: { next: string }) {
 
                 <Field>
                     <FieldLabel htmlFor="password">Password</FieldLabel>
-                    <Input
-                        id="password"
-                        name="password"
-                        type="password"
-                        autoComplete="current-password"
-                        required
-                    />
+                    <Input id="password" name="password" type="password" autoComplete="current-password" required />
                 </Field>
 
-                {state.error ? <FieldError errors={[{ message: state.error }]} /> : null}
+                {state.error ?
+                    <FieldError errors={[{ message: state.error }]} />
+                :   null}
 
                 <Button type="submit" disabled={pending}>
                     {pending ? "Signing in…" : "Sign in"}

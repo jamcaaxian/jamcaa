@@ -9,18 +9,10 @@ function database() {
 }
 
 function auth() {
-    return createAuth({
-        database: database(),
-        secret: env.BETTER_AUTH_SECRET,
-        baseURL: env.BETTER_AUTH_URL
-    });
+    return createAuth({ database: database(), secret: env.BETTER_AUTH_SECRET, baseURL: env.BETTER_AUTH_URL });
 }
 
-const founder = {
-    name: "Founder",
-    email: "founder@example.com",
-    password: "correct-horse-battery-staple"
-};
+const founder = { name: "Founder", email: "founder@example.com", password: "correct-horse-battery-staple" };
 
 describe("first-run installation", () => {
     beforeEach(async () => {
@@ -48,7 +40,7 @@ describe("first-run installation", () => {
         await claimFirstAdministrator({ auth: auth(), database: database(), ...founder });
 
         const roles = await env.DB.prepare("SELECT name FROM role").all<{ name: string }>();
-        expect(roles.results.map((row) => row.name)).toContain("admin");
+        expect(roles.results.map(row => row.name)).toContain("admin");
     });
 
     it("refuses once any account exists", async () => {

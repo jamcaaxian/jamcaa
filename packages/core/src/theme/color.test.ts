@@ -19,7 +19,7 @@ describe("parseColor", () => {
     });
 
     it("normalises equivalent notations to the same colour", () => {
-        const [first, ...rest] = equivalents.map((input) => parseColor(input)!);
+        const [first, ...rest] = equivalents.map(input => parseColor(input)!);
 
         for (const other of rest) {
             expect(other.l).toBeCloseTo(first!.l, 5);
@@ -145,7 +145,7 @@ describe("resolveTheme", () => {
     it("says when it had to move the accent to keep the label legible", () => {
         const resolved = resolveTheme({ primary: DEFAULT_ACCENT });
 
-        expect(resolved.adjustments.map((entry) => entry.token)).toContain("primary");
+        expect(resolved.adjustments.map(entry => entry.token)).toContain("primary");
     });
 
     it("stays quiet when the accent needed no help", () => {

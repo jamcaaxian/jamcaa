@@ -4,9 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { isInstalled } from "@/lib/session";
 import { SetupForm } from "./setup-form";
 
-export const metadata: Metadata = {
-    title: "Set up"
-};
+export const metadata: Metadata = { title: "Set up" };
 
 // Whether the site has an account is a runtime question, not a build-time one.
 export const dynamic = "force-dynamic";

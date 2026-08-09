@@ -17,7 +17,7 @@ function initials(name: string) {
         .split(/\s+/)
         .filter(Boolean)
         .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase() ?? "")
+        .map(part => part[0]?.toUpperCase() ?? "")
         .join("");
 }
 
@@ -32,7 +32,9 @@ export function UserMenu({
                 render={
                     <Button variant="ghost" size="icon" className="size-8 rounded-full">
                         <Avatar className="size-8">
-                            {user.image ? <AvatarImage src={user.image} alt="" /> : null}
+                            {user.image ?
+                                <AvatarImage src={user.image} alt="" />
+                            :   null}
                             <AvatarFallback className="text-xs">{initials(user.name)}</AvatarFallback>
                         </Avatar>
                         <span className="sr-only">Account</span>
@@ -45,9 +47,9 @@ export function UserMenu({
                     <DropdownMenuLabel className="font-normal">
                         <div className="truncate text-sm font-medium">{user.name}</div>
                         <div className="text-muted-foreground truncate text-xs">{user.email}</div>
-                        {user.role ? (
+                        {user.role ?
                             <div className="text-muted-foreground mt-1 text-xs capitalize">{user.role}</div>
-                        ) : null}
+                        :   null}
                     </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />

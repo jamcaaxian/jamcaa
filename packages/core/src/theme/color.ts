@@ -47,7 +47,7 @@ export function readableForegroundOn(
     const candidates = [DARK_FOREGROUND, LIGHT_FOREGROUND];
 
     const best = candidates
-        .map((color) => ({ color, ratio: contrastRatio(color, background) }))
+        .map(color => ({ color, ratio: contrastRatio(color, background) }))
         .sort((a, b) => b.ratio - a.ratio)[0]!;
 
     return { ...best, meetsTarget: best.ratio >= target.minimum };

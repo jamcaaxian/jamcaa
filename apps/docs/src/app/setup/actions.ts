@@ -8,10 +8,7 @@ import { getAuth } from "@/lib/auth";
 
 export type SetupState = { error?: string };
 
-export async function createFirstAdministrator(
-    _previous: SetupState,
-    formData: FormData
-): Promise<SetupState> {
+export async function createFirstAdministrator(_previous: SetupState, formData: FormData): Promise<SetupState> {
     const name = String(formData.get("name") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");

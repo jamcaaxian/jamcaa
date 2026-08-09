@@ -31,9 +31,7 @@ describe("system roles", () => {
     it("seeds every system role", async () => {
         const rows = await env.DB.prepare("SELECT name FROM role ORDER BY name").all<{ name: string }>();
 
-        expect(rows.results.map((row) => row.name).sort()).toEqual(
-            systemRoles.map((role) => role.name).sort()
-        );
+        expect(rows.results.map(row => row.name).sort()).toEqual(systemRoles.map(role => role.name).sort());
     });
 
     it("leaves an edited role alone when seeding runs again", async () => {

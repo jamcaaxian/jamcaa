@@ -46,8 +46,7 @@ export function writeThemePreference(preference: ThemePreference) {
     }
 
     const dark =
-        preference === "dark" ||
-        (preference === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        preference === "dark" || (preference === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
     document.documentElement.classList.toggle("dark", dark);
     document.documentElement.style.colorScheme = dark ? "dark" : "light";

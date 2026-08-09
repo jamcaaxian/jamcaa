@@ -6,16 +6,7 @@
  * `-any` covers everyone's. A capability that omits the suffix is not scoped.
  */
 export const coreCapabilities = {
-    post: [
-        "create",
-        "read",
-        "update-own",
-        "delete-own",
-        "publish-own",
-        "update-any",
-        "delete-any",
-        "publish-any"
-    ],
+    post: ["create", "read", "update-own", "delete-own", "publish-own", "update-any", "delete-any", "publish-any"],
     media: ["upload", "read", "delete-own", "delete-any"],
     comment: ["create", "moderate", "delete-any"],
     // Names here mirror what the admin plugin expects for its own endpoints.

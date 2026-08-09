@@ -25,7 +25,7 @@ export interface AuthOptions {
 
 function defaultRoleGrants(catalogue: CapabilityCatalogue): Record<string, CapabilityGrants> {
     return Object.fromEntries(
-        systemRoles.map((systemRole) => [systemRole.name, systemRole.grants ?? grantEverything(catalogue)])
+        systemRoles.map(systemRole => [systemRole.name, systemRole.grants ?? grantEverything(catalogue)])
     );
 }
 
@@ -42,24 +42,14 @@ export function createAuth(options: AuthOptions) {
     );
 
     return betterAuth({
-        database: drizzleAdapter(options.database, {
-            provider: "sqlite",
-            schema
-        }),
+        database: drizzleAdapter(options.database, { provider: "sqlite", schema }),
         secret: options.secret,
         baseURL: options.baseURL,
-        emailAndPassword: {
-            enabled: true
-        },
+        emailAndPassword: { enabled: true },
         plugins: [
             // The catalogue declares no impersonation actions, so no role can be
             // granted them and the plugin's impersonation endpoints stay closed.
-            admin({
-                ac: accessControl,
-                roles,
-                defaultRole: "subscriber",
-                adminRoles: ["admin"]
-            }),
+            admin({ ac: accessControl, roles, defaultRole: "subscriber", adminRoles: ["admin"] }),
             ...(options.plugins ?? [])
         ]
     });

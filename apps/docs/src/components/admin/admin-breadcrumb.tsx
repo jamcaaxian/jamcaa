@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/breadcrumb";
 
 function toLabel(segment: string) {
-    return segment.replace(/-/g, " ").replace(/^\w/, (character) => character.toUpperCase());
+    return segment.replace(/-/g, " ").replace(/^\w/, character => character.toUpperCase());
 }
 
 export function AdminBreadcrumb() {
@@ -23,11 +23,9 @@ export function AdminBreadcrumb() {
         <Breadcrumb>
             <BreadcrumbList>
                 <BreadcrumbItem>
-                    {segments.length === 0 ? (
+                    {segments.length === 0 ?
                         <BreadcrumbPage>Overview</BreadcrumbPage>
-                    ) : (
-                        <BreadcrumbLink render={<Link href="/admin" />}>Overview</BreadcrumbLink>
-                    )}
+                    :   <BreadcrumbLink render={<Link href="/admin" />}>Overview</BreadcrumbLink>}
                 </BreadcrumbItem>
 
                 {segments.map((segment, index) => {
@@ -38,11 +36,9 @@ export function AdminBreadcrumb() {
                         <Fragment key={href}>
                             <BreadcrumbSeparator />
                             <BreadcrumbItem>
-                                {isLast ? (
+                                {isLast ?
                                     <BreadcrumbPage>{toLabel(segment)}</BreadcrumbPage>
-                                ) : (
-                                    <BreadcrumbLink render={<Link href={href} />}>{toLabel(segment)}</BreadcrumbLink>
-                                )}
+                                :   <BreadcrumbLink render={<Link href={href} />}>{toLabel(segment)}</BreadcrumbLink>}
                             </BreadcrumbItem>
                         </Fragment>
                     );

@@ -25,13 +25,9 @@ const options: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
 export function ThemeToggle() {
     // The server cannot know the preference, so it renders the neutral choice
     // and the real one takes over on hydration.
-    const preference = useSyncExternalStore(
-        subscribeToThemePreference,
-        readThemePreference,
-        () => "system" as const
-    );
+    const preference = useSyncExternalStore(subscribeToThemePreference, readThemePreference, () => "system" as const);
 
-    const Icon = options.find((option) => option.value === preference)?.icon ?? Monitor;
+    const Icon = options.find(option => option.value === preference)?.icon ?? Monitor;
 
     return (
         <DropdownMenu>
@@ -44,7 +40,7 @@ export function ThemeToggle() {
                 }
             />
             <DropdownMenuContent align="end">
-                {options.map((option) => (
+                {options.map(option => (
                     <DropdownMenuItem key={option.value} onClick={() => writeThemePreference(option.value)}>
                         <option.icon className="size-4" />
                         {option.label}

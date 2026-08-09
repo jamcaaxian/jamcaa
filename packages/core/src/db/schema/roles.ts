@@ -21,5 +21,5 @@ export const roleCapability = sqliteTable(
         resource: text("resource").notNull(),
         action: text("action").notNull()
     },
-    (table) => [primaryKey({ columns: [table.roleName, table.resource, table.action] })]
+    table => [primaryKey({ columns: [table.roleName, table.resource, table.action] })]
 );

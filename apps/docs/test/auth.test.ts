@@ -11,11 +11,7 @@ function auth() {
     });
 }
 
-const credentials = {
-    email: "editor@example.com",
-    password: "correct-horse-battery-staple",
-    name: "Editor"
-};
+const credentials = { email: "editor@example.com", password: "correct-horse-battery-staple", name: "Editor" };
 
 describe("email and password authentication", () => {
     beforeEach(async () => {
@@ -48,9 +44,7 @@ describe("email and password authentication", () => {
         await auth().api.signUpEmail({ body: credentials });
 
         await expect(
-            auth().api.signInEmail({
-                body: { email: credentials.email, password: "not-the-password" }
-            })
+            auth().api.signInEmail({ body: { email: credentials.email, password: "not-the-password" } })
         ).rejects.toThrow();
     });
 

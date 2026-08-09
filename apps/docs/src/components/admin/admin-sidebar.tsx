@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-    FileText,
-    HardDrive,
-    Image as ImageIcon,
-    MessageSquare,
-    Settings,
-    ShieldCheck,
-    Users
-} from "lucide-react";
+import { FileText, HardDrive, Image as ImageIcon, MessageSquare, Settings, ShieldCheck, Users } from "lucide-react";
 import {
     Sidebar,
     SidebarContent,
@@ -58,12 +50,12 @@ export function AdminSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                {sections.map((section) => (
+                {sections.map(section => (
                     <SidebarGroup key={section.label}>
                         <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
                         <SidebarGroupContent>
                             <SidebarMenu>
-                                {section.items.map((item) => (
+                                {section.items.map(item => (
                                     <SidebarMenuItem key={item.href}>
                                         <SidebarMenuButton
                                             render={<Link href={item.href} />}
