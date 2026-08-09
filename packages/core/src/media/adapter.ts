@@ -29,6 +29,18 @@ export interface StoredObjectMetadata {
     size: number;
 }
 
+export interface UploadedPart {
+    partNumber: number;
+    etag: string;
+}
+
+export interface MultipartStorage {
+    begin(key: string, mimeType: string): Promise<string>;
+    presignPart?(key: string, uploadId: string, partNumber: number, expiresInSeconds: number): Promise<string>;
+    complete(key: string, uploadId: string, parts: readonly UploadedPart[]): Promise<void>;
+    abort(key: string, uploadId: string): Promise<void>;
+}
+
 export interface StorageAdapter {
     put(key: string, body: ReadableStream | ArrayBuffer | Blob, mimeType: string): Promise<void>;
     /** Undefined when the bucket has no such object. */
@@ -40,6 +52,8 @@ export interface StorageAdapter {
     publicAddress(key: string): string | undefined;
     /** Undefined when this bucket cannot hand the browser an address to write to. */
     presignPut?(key: string, mimeType: string, expiresInSeconds: number): Promise<string>;
+    /** Undefined when this bucket cannot coordinate browser multipart uploads. */
+    multipart?: MultipartStorage;
 }
 
 function objectMetadata(object: Pick<R2Object, "httpMetadata" | "size">): StoredObjectMetadata {
@@ -90,6 +104,90 @@ function presignerFor(access: S3Access) {
     };
 }
 
+function uploadIdFrom(xml: string): string {
+    const match = xml.match(/<UploadId>([^<]+)<\/UploadId>/);
+
+    if (match?.[1] === undefined) {
+        throw new Error("The bucket did not return a multipart upload identifier.");
+    }
+
+    return match[1];
+}
+
+function escapeXml(value: string) {
+    return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function multipartFor(access: S3Access): MultipartStorage {
+    return {
+        begin: async (key, mimeType) => {
+            const url = new URL(access.addressOf(key));
+            url.searchParams.set("uploads", "");
+            const response = await access.client.fetch(url, { method: "POST", headers: { "content-type": mimeType } });
+
+            if (!response.ok) {
+                throw new Error(`The bucket refused to begin a multipart upload: ${response.status}.`);
+            }
+
+            return uploadIdFrom(await response.text());
+        },
+        presignPart: async (key, uploadId, partNumber, expiresInSeconds) => {
+            const url = new URL(access.addressOf(key));
+            url.searchParams.set("partNumber", String(partNumber));
+            url.searchParams.set("uploadId", uploadId);
+            url.searchParams.set("X-Amz-Expires", String(expiresInSeconds));
+
+            const signed = await access.client.sign(url.toString(), { method: "PUT", aws: { signQuery: true } });
+
+            return signed.url;
+        },
+        complete: async (key, uploadId, parts) => {
+            const url = new URL(access.addressOf(key));
+            url.searchParams.set("uploadId", uploadId);
+            const body = `<CompleteMultipartUpload>${parts
+                .map(
+                    part =>
+                        `<Part><PartNumber>${part.partNumber}</PartNumber><ETag>${escapeXml(part.etag)}</ETag></Part>`
+                )
+                .join("")}</CompleteMultipartUpload>`;
+            const response = await access.client.fetch(url, {
+                method: "POST",
+                headers: { "content-type": "application/xml" },
+                body
+            });
+
+            if (!response.ok) {
+                throw new Error(`The bucket refused to complete the multipart upload: ${response.status}.`);
+            }
+        },
+        abort: async (key, uploadId) => {
+            const url = new URL(access.addressOf(key));
+            url.searchParams.set("uploadId", uploadId);
+            const response = await access.client.fetch(url, { method: "DELETE" });
+
+            if (!response.ok && response.status !== 404) {
+                throw new Error(`The bucket refused to abort the multipart upload: ${response.status}.`);
+            }
+        }
+    };
+}
+
+function bindingMultipartFor(target: R2Bucket): Pick<MultipartStorage, "begin" | "complete" | "abort"> {
+    return {
+        begin: async (key, mimeType) => {
+            const upload = await target.createMultipartUpload(key, { httpMetadata: { contentType: mimeType } });
+
+            return upload.uploadId;
+        },
+        complete: async (key, uploadId, parts) => {
+            await target.resumeMultipartUpload(key, uploadId).complete([...parts]);
+        },
+        abort: async (key, uploadId) => {
+            await target.resumeMultipartUpload(key, uploadId).abort();
+        }
+    };
+}
+
 /**
  * One interface over both ways of reaching a bucket. Buckets in this account go
  * through the binding, which is faster and free of egress charges; anything added
@@ -105,6 +203,7 @@ export function createStorageAdapter(options: {
     const { record, bindings, credentials } = options;
     const access = s3AccessFor(record, credentials);
     const presignPut = access ? presignerFor(access) : undefined;
+    const multipart = access ? multipartFor(access) : undefined;
 
     const publicAddress = (key: string) =>
         record.publicUrl ? `${record.publicUrl.replace(/\/$/, "")}/${encodeURI(key)}` : undefined;
@@ -117,6 +216,11 @@ export function createStorageAdapter(options: {
                 `Bucket "${record.id}" expects a binding named "${record.binding}", which this Worker does not have.`
             );
         }
+
+        // Multipart creation, browser part PUTs, completion, and abort must use
+        // one API surface. Mixing a binding uploadId with S3 part URLs is not
+        // portable even when both surfaces address the same physical bucket.
+        const coordinatedMultipart = multipart ?? bindingMultipartFor(target);
 
         return {
             put: async (key, body, mimeType) => {
@@ -157,7 +261,8 @@ export function createStorageAdapter(options: {
                 await target.delete(key);
             },
             publicAddress,
-            ...(presignPut ? { presignPut } : {})
+            ...(presignPut ? { presignPut } : {}),
+            multipart: coordinatedMultipart
         };
     }
 
@@ -207,7 +312,8 @@ export function createStorageAdapter(options: {
                 :   undefined;
         },
         publicAddress,
-        presignPut
+        presignPut,
+        multipart
     };
 }
 
@@ -217,6 +323,8 @@ function isR2Bucket(value: unknown): value is R2Bucket {
         && value !== null
         && typeof (value as R2Bucket).put === "function"
         && typeof (value as R2Bucket).head === "function"
+        && typeof (value as R2Bucket).createMultipartUpload === "function"
+        && typeof (value as R2Bucket).resumeMultipartUpload === "function"
         && typeof (value as R2Bucket).delete === "function"
     );
 }

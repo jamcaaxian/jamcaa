@@ -7,6 +7,6 @@ describe("choosing the media transfer path", () => {
     });
 
     it("hands large files to the browser", () => {
-        expect(transferModeFor(5_000_000, 5_000_000)).toBe("direct");
+        expect(transferModeFor(5_000_000, 5_000_000)).toBe("multipart");
     });
 });

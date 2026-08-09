@@ -4,18 +4,18 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fileFingerprint, uploadMultipartWithFallback, type MultipartUploadPlan } from "@/lib/multipart-upload";
 
 interface Attempt {
+    key: string;
     filename: string;
     state: "preparing" | "sending" | "confirming" | "done" | "failed";
+    progress?: number;
     problem?: string;
 }
 
 interface DirectUploadAnswer {
-    mode?: "direct" | "server";
-    id?: string;
-    putUrl?: string;
-    contentType?: string;
+    mode?: "multipart" | "server";
     error?: string;
 }
 
@@ -32,14 +32,15 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
             return;
         }
 
-        setAttempts(chosen.map(file => ({ filename: file.name, state: "preparing" })));
+        setAttempts(chosen.map(file => ({ key: fileFingerprint(file), filename: file.name, state: "preparing" })));
 
         // One at a time: the database serves queries serially, and a burst of parallel
         // uploads competes with the reads each of them needs.
         for (const file of chosen) {
+            const attemptKey = fileFingerprint(file);
             const settle = (state: Attempt["state"], problem?: string) =>
                 setAttempts(current =>
-                    current.map(attempt => (attempt.filename === file.name ? { ...attempt, state, problem } : attempt))
+                    current.map(attempt => (attempt.key === attemptKey ? { ...attempt, state, problem } : attempt))
                 );
 
             try {
@@ -55,39 +56,114 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
                     continue;
                 }
 
-                if (plan.mode === "direct" && plan.id && plan.putUrl) {
+                if (plan.mode === "multipart") {
                     settle("sending");
                     try {
-                        const uploaded = await fetch(plan.putUrl, {
-                            method: "PUT",
-                            headers: { "content-type": plan.contentType ?? file.type ?? "application/octet-stream" },
-                            body: file
+                        let currentMultipartId = "";
+
+                        await uploadMultipartWithFallback({
+                            file,
+                            prepare: async () => {
+                                const response = await fetch("/api/media/multipart", {
+                                    method: "POST",
+                                    headers: { "content-type": "application/json" },
+                                    body: JSON.stringify({
+                                        name: file.name,
+                                        type: file.type,
+                                        size: file.size,
+                                        fingerprint: fileFingerprint(file)
+                                    })
+                                });
+                                const answer = (await response.json().catch(() => ({}))) as MultipartUploadPlan & {
+                                    error?: string;
+                                };
+
+                                if (!response.ok || !answer.id || !Array.isArray(answer.parts)) {
+                                    throw new Error(
+                                        answer.error ?? `Multipart preparation answered ${response.status}.`
+                                    );
+                                }
+
+                                currentMultipartId = answer.id;
+                                return answer;
+                            },
+                            uploadPart: async (part, body) => {
+                                const response = await fetch(part.putUrl, { method: "PUT", body });
+
+                                if (!response.ok) {
+                                    throw new Error(
+                                        `Part ${part.partNumber} answered ${response.status}. Check the connection and bucket CORS rules.`
+                                    );
+                                }
+
+                                const etag = response.headers.get("etag");
+
+                                if (!etag) {
+                                    throw new Error(`Part ${part.partNumber} did not return an ETag.`);
+                                }
+
+                                return etag;
+                            },
+                            recordPart: async part => {
+                                const multipartId = currentMultipartId;
+
+                                if (!multipartId) {
+                                    throw new Error("The multipart upload identifier is missing.");
+                                }
+
+                                const response = await fetch("/api/media/multipart", {
+                                    method: "PATCH",
+                                    headers: { "content-type": "application/json" },
+                                    body: JSON.stringify({ id: multipartId, ...part })
+                                });
+
+                                if (!response.ok) {
+                                    throw new Error(`Part ${part.partNumber} could not be recorded.`);
+                                }
+                            },
+                            onProgress: progress =>
+                                setAttempts(current =>
+                                    current.map(attempt =>
+                                        attempt.key === attemptKey ?
+                                            {
+                                                ...attempt,
+                                                state: "sending",
+                                                progress: Math.round(
+                                                    (progress.completedBytes / progress.totalBytes) * 100
+                                                )
+                                            }
+                                        :   attempt
+                                    )
+                                ),
+                            complete: async id => {
+                                settle("confirming");
+                                const response = await fetch("/api/media/multipart", {
+                                    method: "PUT",
+                                    headers: { "content-type": "application/json" },
+                                    body: JSON.stringify({ id })
+                                });
+
+                                if (!response.ok) {
+                                    const answer = (await response.json().catch(() => ({}))) as { error?: string };
+                                    throw new Error(answer.error ?? `Confirmation answered ${response.status}.`);
+                                }
+                            },
+                            uploadServer: async fallbackFile => {
+                                settle("sending");
+                                const body = new FormData();
+                                body.set("file", fallbackFile);
+                                const response = await fetch("/api/media", { method: "POST", body });
+
+                                if (!response.ok) {
+                                    const answer = (await response.json().catch(() => ({}))) as { error?: string };
+                                    throw new Error(answer.error ?? `Server fallback answered ${response.status}.`);
+                                }
+                            }
                         });
-
-                        if (!uploaded.ok) {
-                            throw new Error(`The bucket answered ${uploaded.status}. Check its browser CORS rules.`);
-                        }
-
-                        settle("confirming");
-                        const confirmation = await fetch("/api/media", {
-                            method: "PATCH",
-                            headers: { "content-type": "application/json" },
-                            body: JSON.stringify({ id: plan.id })
-                        });
-
-                        if (!confirmation.ok) {
-                            const answer = (await confirmation.json().catch(() => ({}))) as { error?: string };
-                            throw new Error(answer.error ?? `Confirmation answered ${confirmation.status}.`);
-                        }
 
                         settle("done");
                     } catch (error) {
-                        await fetch("/api/media", {
-                            method: "DELETE",
-                            headers: { "content-type": "application/json" },
-                            body: JSON.stringify({ id: plan.id })
-                        }).catch(() => undefined);
-                        settle("failed", error instanceof Error ? error.message : "The direct upload failed.");
+                        settle("failed", error instanceof Error ? error.message : "The upload failed.");
                     }
 
                     continue;
@@ -156,12 +232,14 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
             {attempts.length > 0 ?
                 <ul className="space-y-1 text-sm">
                     {attempts.map(attempt => (
-                        <li key={attempt.filename} className="flex flex-wrap items-baseline gap-2">
+                        <li key={attempt.key} className="flex flex-wrap items-baseline gap-2">
                             <span className="truncate font-medium">{attempt.filename}</span>
                             {attempt.state === "preparing" ?
                                 <span className="text-muted-foreground text-xs">preparing…</span>
                             : attempt.state === "sending" ?
-                                <span className="text-muted-foreground text-xs">sending…</span>
+                                <span className="text-muted-foreground text-xs">
+                                    sending{attempt.progress === undefined ? "…" : ` ${attempt.progress}%`}
+                                </span>
                             : attempt.state === "confirming" ?
                                 <span className="text-muted-foreground text-xs">confirming…</span>
                             : attempt.state === "done" ?

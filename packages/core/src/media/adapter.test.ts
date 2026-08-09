@@ -24,7 +24,16 @@ function bucketRow(partial: Partial<BucketRecord> = {}): BucketRecord {
 }
 
 function fakeBucket() {
-    return { put: vi.fn(async () => undefined), head: vi.fn(async () => null), delete: vi.fn(async () => undefined) };
+    return {
+        put: vi.fn(async () => undefined),
+        head: vi.fn(async () => null),
+        createMultipartUpload: vi.fn(async () => ({ uploadId: "upload-1" })),
+        resumeMultipartUpload: vi.fn(() => ({
+            complete: vi.fn(async () => undefined),
+            abort: vi.fn(async () => undefined)
+        })),
+        delete: vi.fn(async () => undefined)
+    };
 }
 
 describe("a bucket reached through a binding", () => {
@@ -67,6 +76,48 @@ describe("a bucket reached through a binding", () => {
         expect(url.searchParams.get("X-Amz-Signature")).toBeTruthy();
         // The secret must never travel in the address it signs.
         expect(address).not.toContain(credentials.secretAccessKey);
+    });
+
+    it("coordinates browser multipart uploads entirely through the S3 endpoint", async () => {
+        const target = fakeBucket();
+        const fetch = vi
+            .spyOn(AwsClient.prototype, "fetch")
+            .mockResolvedValueOnce(
+                new Response(
+                    "<InitiateMultipartUploadResult><UploadId>remote-upload</UploadId></InitiateMultipartUploadResult>"
+                )
+            )
+            .mockResolvedValueOnce(new Response(null, { status: 200 }));
+        const adapter = createStorageAdapter({ record: bucketRow(), bindings: { MEDIA_BUCKET: target }, credentials });
+
+        const uploadId = await adapter.multipart!.begin("2026/08/video.mp4", "video/mp4");
+        await adapter.multipart!.complete("2026/08/video.mp4", uploadId, [{ partNumber: 1, etag: '"etag-1"' }]);
+
+        expect(uploadId).toBe("remote-upload");
+        expect(target.createMultipartUpload).not.toHaveBeenCalled();
+        expect(target.resumeMultipartUpload).not.toHaveBeenCalled();
+        expect(fetch).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({ searchParams: expect.any(URLSearchParams) }),
+            expect.objectContaining({ method: "POST" })
+        );
+        expect(fetch).toHaveBeenNthCalledWith(
+            2,
+            expect.objectContaining({ searchParams: expect.any(URLSearchParams) }),
+            expect.objectContaining({ method: "POST", body: expect.stringContaining("etag-1") })
+        );
+
+        fetch.mockRestore();
+    });
+
+    it("uses binding multipart operations when no signing credentials exist", async () => {
+        const target = fakeBucket();
+        const adapter = createStorageAdapter({ record: bucketRow(), bindings: { MEDIA_BUCKET: target } });
+
+        await expect(adapter.multipart!.begin("2026/08/video.mp4", "video/mp4")).resolves.toBe("upload-1");
+
+        expect(target.createMultipartUpload).toHaveBeenCalledOnce();
+        expect(adapter.multipart!.presignPart).toBeUndefined();
     });
 
     it("checks the S3 endpoint when local bindings cannot see a direct upload", async () => {

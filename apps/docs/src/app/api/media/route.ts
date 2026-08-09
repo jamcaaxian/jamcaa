@@ -1,4 +1,4 @@
-import { acceptUpload, beginUpload, cancelUpload, confirmUpload } from "@jamcaa/core/media";
+import { acceptUpload, cancelUpload, confirmUpload } from "@jamcaa/core/media";
 import { coreSettings, loadSettings } from "@jamcaa/core/settings";
 import { mediaRuntime } from "@/lib/media";
 import { transferModeFor } from "@/lib/media-transfer";
@@ -6,8 +6,6 @@ import { may } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
-
-const DIRECT_UPLOAD_EXPIRES_IN_SECONDS = 5 * 60;
 
 function problem(status: number, message: string) {
     return Response.json({ error: message }, { status });
@@ -73,7 +71,7 @@ export async function PUT(request: Request) {
         return problem(400, "Describe the file before requesting a direct upload.");
     }
 
-    const { database, bindings, credentials } = mediaRuntime();
+    const { database } = mediaRuntime();
     const settings = await loadSettings(database, coreSettings);
     const maxMegabytes = settings.get("media.maxUploadMegabytes");
     const limit = maxMegabytes * 1024 * 1024;
@@ -86,33 +84,7 @@ export async function PUT(request: Request) {
         return Response.json({ mode: "server" });
     }
 
-    try {
-        const pending = await beginUpload({
-            database,
-            bindings,
-            credentials,
-            file,
-            context: uploadContext(access.actor, file),
-            uploaderId: access.actor.id,
-            expiresInSeconds: DIRECT_UPLOAD_EXPIRES_IN_SECONDS
-        });
-
-        return Response.json({
-            mode: "direct",
-            id: pending.id,
-            putUrl: pending.putUrl,
-            contentType: pending.mimeType,
-            expiresInSeconds: pending.expiresInSeconds
-        });
-    } catch (error) {
-        const message = error instanceof Error ? error.message : "A direct upload could not be prepared.";
-
-        if (/cannot accept a direct upload/.test(message)) {
-            return Response.json({ mode: "server" });
-        }
-
-        return problem(500, message);
-    }
+    return Response.json({ mode: "multipart" });
 }
 
 export async function PATCH(request: Request) {

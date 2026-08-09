@@ -75,3 +75,20 @@ export const media = sqliteTable("media", {
         .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
         .notNull()
 });
+
+export const multipartUpload = sqliteTable(
+    "multipart_upload",
+    {
+        mediaId: text("media_id")
+            .primaryKey()
+            .references(() => media.id, { onDelete: "cascade" }),
+        uploadId: text("upload_id").notNull(),
+        fingerprint: text("fingerprint").notNull(),
+        partSize: integer("part_size").notNull(),
+        completedParts: text("completed_parts").notNull().default("[]"),
+        updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+            .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+            .notNull()
+    },
+    table => [uniqueIndex("multipart_upload_fingerprint").on(table.fingerprint)]
+);

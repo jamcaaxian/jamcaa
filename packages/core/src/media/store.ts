@@ -1,7 +1,7 @@
 import { and, desc, eq, lt } from "drizzle-orm";
 import type { Database } from "../db/client";
-import { bucket, media, storageRule } from "../db/schema/media";
-import { createStorageAdapter, type SigningCredentials, type StorageAdapter } from "./adapter";
+import { bucket, media, multipartUpload, storageRule } from "../db/schema/media";
+import { createStorageAdapter, type SigningCredentials, type StorageAdapter, type UploadedPart } from "./adapter";
 import { objectKeyFor } from "./keys";
 import { chooseRule, parseConditions, type StorageRule, type UploadContext } from "./rules";
 
@@ -31,6 +31,27 @@ export interface PendingUpload {
     mimeType: string;
     size: number;
     putUrl: string;
+    expiresInSeconds: number;
+}
+
+export interface MultipartPart {
+    partNumber: number;
+    offset: number;
+    size: number;
+    putUrl: string;
+}
+
+export interface MultipartUploadPlan {
+    id: string;
+    bucketId: string;
+    objectKey: string;
+    filename: string;
+    mimeType: string;
+    size: number;
+    uploadId: string;
+    partSize: number;
+    completedParts: UploadedPart[];
+    parts: MultipartPart[];
     expiresInSeconds: number;
 }
 
@@ -69,6 +90,44 @@ export interface BeginUploadRequest {
     context: UploadContext;
     uploaderId: string;
     expiresInSeconds: number;
+}
+
+export interface PlanMultipartUploadRequest extends BeginUploadRequest {
+    fingerprint: string;
+    partSize: number;
+    partAddressFor?: (input: { objectKey: string; uploadId: string; partNumber: number }) => Promise<string> | string;
+}
+
+function validExpiry(expiresInSeconds: number) {
+    return Number.isSafeInteger(expiresInSeconds) && expiresInSeconds >= 1 && expiresInSeconds <= 604_800;
+}
+
+function validPartSize(partSize: number) {
+    return Number.isSafeInteger(partSize) && partSize >= 5 * 1024 * 1024 && partSize <= 5 * 1024 * 1024 * 1024;
+}
+
+function completedPartsFrom(value: string): UploadedPart[] {
+    try {
+        const parsed = JSON.parse(value) as unknown;
+
+        return Array.isArray(parsed) ?
+                parsed.flatMap(part => {
+                    if (
+                        typeof part === "object"
+                        && part !== null
+                        && Number.isSafeInteger((part as UploadedPart).partNumber)
+                        && (part as UploadedPart).partNumber > 0
+                        && typeof (part as UploadedPart).etag === "string"
+                    ) {
+                        return [part as UploadedPart];
+                    }
+
+                    return [];
+                })
+            :   [];
+    } catch {
+        return [];
+    }
 }
 
 async function uploadDestination(options: {
@@ -118,7 +177,7 @@ async function createPendingMedia(options: {
 export async function beginUpload(request: BeginUploadRequest): Promise<PendingUpload> {
     const { database, bindings, credentials, file, context, uploaderId, expiresInSeconds } = request;
 
-    if (!Number.isSafeInteger(expiresInSeconds) || expiresInSeconds < 1 || expiresInSeconds > 604_800) {
+    if (!validExpiry(expiresInSeconds)) {
         throw new Error("A direct upload address must expire between 1 second and 7 days.");
     }
 
@@ -146,6 +205,250 @@ export async function beginUpload(request: BeginUploadRequest): Promise<PendingU
         await database.delete(media).where(eq(media.id, pending.id));
         throw error;
     }
+}
+
+async function multipartPlan(options: {
+    adapter: StorageAdapter;
+    record: StoredMedia;
+    upload: typeof multipartUpload.$inferSelect;
+    expiresInSeconds: number;
+    partAddressFor?: PlanMultipartUploadRequest["partAddressFor"];
+}) {
+    const { adapter, record, upload, expiresInSeconds, partAddressFor } = options;
+
+    if (
+        adapter.multipart === undefined
+        || (adapter.multipart.presignPart === undefined && partAddressFor === undefined)
+    ) {
+        throw new Error(`Bucket "${record.bucketId}" cannot accept a multipart upload.`);
+    }
+    const presignPart =
+        partAddressFor
+        ?? ((input: { objectKey: string; uploadId: string; partNumber: number }) =>
+            adapter.multipart!.presignPart!(input.objectKey, input.uploadId, input.partNumber, expiresInSeconds));
+
+    const completedParts = completedPartsFrom(upload.completedParts).sort(
+        (left, right) => left.partNumber - right.partNumber
+    );
+    const completed = new Set(completedParts.map(part => part.partNumber));
+    const partCount = Math.ceil(record.size / upload.partSize);
+    const parts = await Promise.all(
+        Array.from({ length: partCount }, async (_, index) => {
+            const partNumber = index + 1;
+
+            if (completed.has(partNumber)) {
+                return undefined;
+            }
+
+            const offset = index * upload.partSize;
+
+            return {
+                partNumber,
+                offset,
+                size: Math.min(upload.partSize, record.size - offset),
+                putUrl: await presignPart({ objectKey: record.objectKey, uploadId: upload.uploadId, partNumber })
+            };
+        })
+    );
+
+    return {
+        id: record.id,
+        bucketId: record.bucketId,
+        objectKey: record.objectKey,
+        filename: record.filename,
+        mimeType: record.mimeType,
+        size: record.size,
+        uploadId: upload.uploadId,
+        partSize: upload.partSize,
+        completedParts,
+        parts: parts.filter((part): part is MultipartPart => part !== undefined),
+        expiresInSeconds
+    };
+}
+
+export async function planMultipartUpload(request: PlanMultipartUploadRequest): Promise<MultipartUploadPlan> {
+    const {
+        database,
+        bindings,
+        credentials,
+        file,
+        context,
+        uploaderId,
+        expiresInSeconds,
+        fingerprint,
+        partSize,
+        partAddressFor
+    } = request;
+    const scopedFingerprint = JSON.stringify([uploaderId, fingerprint]);
+
+    if (!validExpiry(expiresInSeconds)) {
+        throw new Error("A multipart upload address must expire between 1 second and 7 days.");
+    }
+
+    if (!validPartSize(partSize)) {
+        throw new Error("A multipart upload part must be between 5 MiB and 5 GiB.");
+    }
+
+    const [existing] = await database
+        .select({ record: media, upload: multipartUpload })
+        .from(multipartUpload)
+        .innerJoin(media, eq(media.id, multipartUpload.mediaId))
+        .where(eq(multipartUpload.fingerprint, scopedFingerprint))
+        .limit(1);
+
+    if (existing !== undefined) {
+        if (existing.record.uploaderId !== uploaderId) {
+            throw new Error("That multipart upload does not belong to this uploader.");
+        }
+
+        if (
+            existing.record.filename !== file.name
+            || existing.record.mimeType !== file.type
+            || existing.record.size !== file.size
+        ) {
+            throw new Error("That file fingerprint belongs to a different upload.");
+        }
+
+        const [where] = await database.select().from(bucket).where(eq(bucket.id, existing.record.bucketId)).limit(1);
+
+        if (where === undefined) {
+            throw new Error(`Bucket "${existing.record.bucketId}" is no longer configured.`);
+        }
+
+        return multipartPlan({
+            adapter: createStorageAdapter({ record: where, bindings, credentials }),
+            record: existing.record,
+            upload: existing.upload,
+            expiresInSeconds,
+            partAddressFor
+        });
+    }
+
+    const { record: destination, adapter } = await uploadDestination({ database, bindings, credentials, context });
+
+    if (adapter.multipart === undefined) {
+        throw new Error(`Bucket "${destination.id}" cannot accept a multipart upload.`);
+    }
+
+    const pending = await createPendingMedia({ database, bucketId: destination.id, file, at: context.at, uploaderId });
+
+    try {
+        const uploadId = await adapter.multipart.begin(pending.objectKey, file.type);
+        try {
+            await database
+                .insert(multipartUpload)
+                .values({
+                    mediaId: pending.id,
+                    uploadId,
+                    fingerprint: scopedFingerprint,
+                    partSize,
+                    completedParts: "[]"
+                });
+        } catch (error) {
+            await adapter.multipart.abort(pending.objectKey, uploadId).catch(() => undefined);
+            throw error;
+        }
+        const record = await mediaById(database, pending.id);
+        const [upload] = await database
+            .select()
+            .from(multipartUpload)
+            .where(eq(multipartUpload.mediaId, pending.id))
+            .limit(1);
+
+        if (record === undefined || upload === undefined) {
+            throw new Error("The multipart upload was created but could not be read back.");
+        }
+
+        return multipartPlan({ adapter, record, upload, expiresInSeconds, partAddressFor });
+    } catch (error) {
+        await database.delete(media).where(eq(media.id, pending.id));
+        throw error;
+    }
+}
+
+export async function recordMultipartPart(options: {
+    database: Database;
+    id: string;
+    uploaderId: string;
+    part: UploadedPart;
+}): Promise<void> {
+    const { database, id, uploaderId, part } = options;
+    const record = await mediaById(database, id);
+    const [upload] = await database.select().from(multipartUpload).where(eq(multipartUpload.mediaId, id)).limit(1);
+
+    if (record === undefined || upload === undefined) {
+        throw new Error("That multipart upload no longer exists.");
+    }
+
+    if (record.uploaderId !== uploaderId) {
+        throw new Error("That multipart upload does not belong to this uploader.");
+    }
+
+    if (!Number.isSafeInteger(part.partNumber) || part.partNumber < 1 || !part.etag) {
+        throw new Error("That multipart upload part is invalid.");
+    }
+
+    const parts = completedPartsFrom(upload.completedParts).filter(saved => saved.partNumber !== part.partNumber);
+    parts.push(part);
+    parts.sort((left, right) => left.partNumber - right.partNumber);
+
+    await database
+        .update(multipartUpload)
+        .set({ completedParts: JSON.stringify(parts), updatedAt: new Date() })
+        .where(eq(multipartUpload.mediaId, id));
+}
+
+export async function completeMultipartUpload(options: {
+    database: Database;
+    bindings: Record<string, unknown>;
+    credentials?: SigningCredentials;
+    id: string;
+    uploaderId: string;
+}): Promise<StoredMedia> {
+    const { database, bindings, credentials, id, uploaderId } = options;
+    const record = await mediaById(database, id);
+    const [upload] = await database.select().from(multipartUpload).where(eq(multipartUpload.mediaId, id)).limit(1);
+
+    if (record === undefined) {
+        throw new Error("That multipart upload no longer exists.");
+    }
+
+    if (record.uploaderId !== uploaderId) {
+        throw new Error("That multipart upload does not belong to this uploader.");
+    }
+
+    if (upload === undefined) {
+        if (record.state === "stored") {
+            return record;
+        }
+
+        throw new Error("That multipart upload no longer exists.");
+    }
+
+    const [where] = await database.select().from(bucket).where(eq(bucket.id, record.bucketId)).limit(1);
+
+    if (where === undefined) {
+        throw new Error(`Bucket "${record.bucketId}" is no longer configured.`);
+    }
+
+    const adapter = createStorageAdapter({ record: where, bindings, credentials });
+
+    if (adapter.multipart === undefined) {
+        throw new Error(`Bucket "${record.bucketId}" cannot complete a multipart upload.`);
+    }
+
+    const parts = completedPartsFrom(upload.completedParts).sort((left, right) => left.partNumber - right.partNumber);
+    const expected = Math.ceil(record.size / upload.partSize);
+
+    if (parts.length !== expected || parts.some((part, index) => part.partNumber !== index + 1)) {
+        throw new Error("The multipart upload still has unfinished parts.");
+    }
+
+    await adapter.multipart.complete(record.objectKey, upload.uploadId, parts);
+    const stored = await confirmUpload({ database, bindings, credentials, id, uploaderId });
+    await database.delete(multipartUpload).where(eq(multipartUpload.mediaId, id));
+
+    return stored;
 }
 
 export async function confirmUpload(options: {
@@ -310,10 +613,19 @@ export async function removeMedia(options: {
         return;
     }
 
+    const [upload] = await database.select().from(multipartUpload).where(eq(multipartUpload.mediaId, id)).limit(1);
     const [where] = await database.select().from(bucket).where(eq(bucket.id, record.bucketId)).limit(1);
 
     if (where !== undefined) {
         const adapter = createStorageAdapter({ record: where, bindings, credentials });
+
+        if (upload !== undefined) {
+            if (adapter.multipart === undefined) {
+                throw new Error(`Bucket "${record.bucketId}" cannot abort its multipart upload.`);
+            }
+
+            await adapter.multipart.abort(record.objectKey, upload.uploadId);
+        }
 
         await adapter.remove(record.objectKey);
     }

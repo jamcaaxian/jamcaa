@@ -4,11 +4,14 @@ import {
     acceptUpload,
     beginUpload,
     cancelUpload,
+    completeMultipartUpload,
     confirmUpload,
     listMedia,
     mediaById,
     objectKeyFor,
+    planMultipartUpload,
     reclaimAbandonedUploads,
+    recordMultipartPart,
     removeMedia,
     seedStorage
 } from "@jamcaa/core/media";
@@ -265,6 +268,110 @@ describe("taking an upload", () => {
 
         expect(await mediaById(database(), target.id)).toBeUndefined();
         expect(await env.MEDIA_BUCKET.get(target.objectKey)).toBeNull();
+    });
+
+    it("resumes a multipart upload without sending completed parts again", async () => {
+        const uploaderId = await anUploader();
+        const request = {
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            file: { name: "movie.mp4", type: "video/mp4", size: 11 * 1024 * 1024 },
+            context: context({ mimeType: "video/mp4", size: 11 * 1024 * 1024 }),
+            uploaderId,
+            fingerprint: "movie.mp4:11534336:video/mp4:1",
+            partSize: 5 * 1024 * 1024,
+            expiresInSeconds: 300,
+            partAddressFor: ({ partNumber }: { partNumber: number }) => `https://upload.test/part/${partNumber}`
+        };
+
+        const started = await planMultipartUpload(request);
+
+        expect(started.parts.map(part => part.partNumber)).toEqual([1, 2, 3]);
+
+        const multipart = env.MEDIA_BUCKET.resumeMultipartUpload(started.objectKey, started.uploadId);
+        const firstPart = await multipart.uploadPart(1, new Uint8Array(5 * 1024 * 1024));
+        await recordMultipartPart({ database: database(), id: started.id, uploaderId, part: firstPart });
+
+        const resumed = await planMultipartUpload(request);
+
+        expect(resumed.id).toBe(started.id);
+        expect(resumed.completedParts).toEqual([firstPart]);
+        expect(resumed.parts.map(part => part.partNumber)).toEqual([2, 3]);
+
+        const secondPart = await multipart.uploadPart(2, new Uint8Array(5 * 1024 * 1024));
+        const thirdPart = await multipart.uploadPart(3, new Uint8Array(1024 * 1024));
+        await recordMultipartPart({ database: database(), id: started.id, uploaderId, part: secondPart });
+        await recordMultipartPart({ database: database(), id: started.id, uploaderId, part: thirdPart });
+
+        const stored = await completeMultipartUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            id: started.id,
+            uploaderId
+        });
+
+        expect(stored).toMatchObject({ id: started.id, state: "stored", filename: "movie.mp4" });
+        expect((await env.MEDIA_BUCKET.head(started.objectKey))?.size).toBe(11 * 1024 * 1024);
+
+        const repeatedCompletion = await completeMultipartUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            id: started.id,
+            uploaderId
+        });
+
+        expect(repeatedCompletion).toMatchObject({ id: started.id, state: "stored" });
+
+        const repeated = await planMultipartUpload(request);
+
+        expect(repeated.id).not.toBe(started.id);
+        expect(repeated.parts.map(part => part.partNumber)).toEqual([1, 2, 3]);
+    });
+
+    it("aborts a multipart upload when its pending media is cancelled", async () => {
+        const uploaderId = await anUploader();
+        const started = await planMultipartUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            file: { name: "cancelled.mp4", type: "video/mp4", size: 6 * 1024 * 1024 },
+            context: context({ mimeType: "video/mp4", size: 6 * 1024 * 1024 }),
+            uploaderId,
+            fingerprint: "cancelled.mp4:6291456:video/mp4:1",
+            partSize: 5 * 1024 * 1024,
+            expiresInSeconds: 300,
+            partAddressFor: ({ partNumber }: { partNumber: number }) => `https://upload.test/part/${partNumber}`
+        });
+        const multipart = env.MEDIA_BUCKET.resumeMultipartUpload(started.objectKey, started.uploadId);
+
+        await cancelUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            id: started.id,
+            uploaderId
+        });
+
+        expect(await mediaById(database(), started.id)).toBeUndefined();
+        await expect(multipart.uploadPart(1, new Uint8Array(5 * 1024 * 1024))).rejects.toThrow();
+    });
+
+    it("lets two uploaders resume their own copies of the same file", async () => {
+        const firstUploaderId = await anUploader();
+        const secondUploaderId = await anUploader("second-uploader@example.com");
+        const common = {
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            file: { name: "shared.mp4", type: "video/mp4", size: 6 * 1024 * 1024 },
+            context: context({ mimeType: "video/mp4", size: 6 * 1024 * 1024 }),
+            fingerprint: "shared.mp4:6291456:video/mp4:1",
+            partSize: 5 * 1024 * 1024,
+            expiresInSeconds: 300,
+            partAddressFor: ({ partNumber }: { partNumber: number }) => `https://upload.test/part/${partNumber}`
+        };
+
+        const first = await planMultipartUpload({ ...common, uploaderId: firstUploaderId });
+        const second = await planMultipartUpload({ ...common, uploaderId: secondUploaderId });
+
+        expect(second.id).not.toBe(first.id);
     });
 });
 

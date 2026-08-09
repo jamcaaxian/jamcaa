@@ -221,6 +221,8 @@ function isR2Bucket(value: unknown): value is R2Bucket {
         && typeof (value as R2Bucket).put === "function"
         && typeof (value as R2Bucket).get === "function"
         && typeof (value as R2Bucket).head === "function"
+        && typeof (value as R2Bucket).createMultipartUpload === "function"
+        && typeof (value as R2Bucket).resumeMultipartUpload === "function"
         && typeof (value as R2Bucket).delete === "function"
     );
 }
