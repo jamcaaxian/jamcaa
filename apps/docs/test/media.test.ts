@@ -2,6 +2,9 @@ import { createDatabase } from "@jamcaa/core";
 import { createAuth } from "@jamcaa/core/auth";
 import {
     acceptUpload,
+    beginUpload,
+    cancelUpload,
+    confirmUpload,
     listMedia,
     mediaById,
     objectKeyFor,
@@ -12,7 +15,15 @@ import {
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 
-const buckets = [{ id: "media", label: "Site media", kind: "binding" as const, binding: "MEDIA_BUCKET" }];
+const buckets = [
+    {
+        id: "media",
+        label: "Site media",
+        kind: "binding" as const,
+        binding: "MEDIA_BUCKET",
+        bucketName: "jamcaa-docs-media"
+    }
+];
 
 function database() {
     return createDatabase(env.DB);
@@ -112,6 +123,148 @@ describe("taking an upload", () => {
         expect(await listMedia(database())).toEqual([]);
         const rows = await env.DB.prepare("SELECT COUNT(*) AS total FROM media").first<{ total: number }>();
         expect(rows?.total).toBe(0);
+    });
+
+    it("prepares a direct upload and only publishes it after the object is confirmed", async () => {
+        const uploaderId = await anUploader();
+        const target = await beginUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            credentials: {
+                accountId: "0123456789abcdef0123456789abcdef",
+                accessKeyId: "test-access-key",
+                secretAccessKey: "test-secret-key"
+            },
+            file: { name: "large-video.mp4", type: "video/mp4", size: 24 },
+            context: context({ mimeType: "video/mp4", size: 24 }),
+            uploaderId,
+            expiresInSeconds: 300
+        });
+
+        expect(target).toMatchObject({ filename: "large-video.mp4", mimeType: "video/mp4", size: 24 });
+        expect(new URL(target.putUrl).searchParams.get("X-Amz-Expires")).toBe("300");
+        expect(await listMedia(database())).toEqual([]);
+
+        await env.MEDIA_BUCKET.put(target.objectKey, "123456789012345678901234", {
+            httpMetadata: { contentType: "video/mp4" }
+        });
+
+        const stored = await confirmUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            id: target.id,
+            uploaderId
+        });
+
+        expect(stored).toMatchObject({ id: target.id, state: "stored", filename: "large-video.mp4" });
+        expect(await listMedia(database())).toHaveLength(1);
+    });
+
+    it("refuses to confirm a direct upload when the object metadata does not match", async () => {
+        const uploaderId = await anUploader();
+        const target = await beginUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            credentials: {
+                accountId: "0123456789abcdef0123456789abcdef",
+                accessKeyId: "test-access-key",
+                secretAccessKey: "test-secret-key"
+            },
+            file: { name: "cat.png", type: "image/png", size: 24 },
+            context: context(),
+            uploaderId,
+            expiresInSeconds: 300
+        });
+
+        await env.MEDIA_BUCKET.put(target.objectKey, "wrong", { httpMetadata: { contentType: "text/plain" } });
+
+        await expect(
+            confirmUpload({
+                database: database(),
+                bindings: env as unknown as Record<string, unknown>,
+                id: target.id,
+                uploaderId
+            })
+        ).rejects.toThrow(/does not match/);
+
+        expect((await mediaById(database(), target.id))?.state).toBe("pending");
+    });
+
+    it("does not let another uploader claim a pending upload", async () => {
+        const uploaderId = await anUploader();
+        const strangerId = await anUploader("stranger@example.com");
+        const target = await beginUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            credentials: {
+                accountId: "0123456789abcdef0123456789abcdef",
+                accessKeyId: "test-access-key",
+                secretAccessKey: "test-secret-key"
+            },
+            file: { name: "cat.png", type: "image/png", size: 24 },
+            context: context(),
+            uploaderId,
+            expiresInSeconds: 300
+        });
+
+        await env.MEDIA_BUCKET.put(target.objectKey, "pretend this is an image", {
+            httpMetadata: { contentType: "image/png" }
+        });
+
+        await expect(
+            confirmUpload({
+                database: database(),
+                bindings: env as unknown as Record<string, unknown>,
+                id: target.id,
+                uploaderId: strangerId
+            })
+        ).rejects.toThrow(/does not belong/);
+    });
+
+    it("falls back cleanly when the chosen bucket cannot issue a direct address", async () => {
+        const uploaderId = await anUploader();
+
+        await expect(
+            beginUpload({
+                database: database(),
+                bindings: env as unknown as Record<string, unknown>,
+                file: { name: "cat.png", type: "image/png", size: 24 },
+                context: context(),
+                uploaderId,
+                expiresInSeconds: 300
+            })
+        ).rejects.toThrow(/cannot accept a direct upload/);
+
+        const rows = await env.DB.prepare("SELECT COUNT(*) AS total FROM media").first<{ total: number }>();
+        expect(rows?.total).toBe(0);
+    });
+
+    it("cancels a direct attempt without leaving an object or pending record", async () => {
+        const uploaderId = await anUploader();
+        const target = await beginUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            credentials: {
+                accountId: "0123456789abcdef0123456789abcdef",
+                accessKeyId: "test-access-key",
+                secretAccessKey: "test-secret-key"
+            },
+            file: { name: "cat.png", type: "image/png", size: 24 },
+            context: context(),
+            uploaderId,
+            expiresInSeconds: 300
+        });
+
+        await env.MEDIA_BUCKET.put(target.objectKey, "partial");
+        await cancelUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            id: target.id,
+            uploaderId
+        });
+
+        expect(await mediaById(database(), target.id)).toBeUndefined();
+        expect(await env.MEDIA_BUCKET.get(target.objectKey)).toBeNull();
     });
 });
 

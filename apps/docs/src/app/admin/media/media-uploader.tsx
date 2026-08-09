@@ -7,8 +7,16 @@ import { Button } from "@/components/ui/button";
 
 interface Attempt {
     filename: string;
-    state: "sending" | "done" | "failed";
+    state: "preparing" | "sending" | "confirming" | "done" | "failed";
     problem?: string;
+}
+
+interface DirectUploadAnswer {
+    mode?: "direct" | "server";
+    id?: string;
+    putUrl?: string;
+    contentType?: string;
+    error?: string;
 }
 
 export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
@@ -24,21 +32,70 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
             return;
         }
 
-        setAttempts(chosen.map(file => ({ filename: file.name, state: "sending" })));
+        setAttempts(chosen.map(file => ({ filename: file.name, state: "preparing" })));
 
         // One at a time: the database serves queries serially, and a burst of parallel
         // uploads competes with the reads each of them needs.
         for (const file of chosen) {
-            const body = new FormData();
-
-            body.set("file", file);
-
             const settle = (state: Attempt["state"], problem?: string) =>
                 setAttempts(current =>
                     current.map(attempt => (attempt.filename === file.name ? { ...attempt, state, problem } : attempt))
                 );
 
             try {
+                const preparation = await fetch("/api/media", {
+                    method: "PUT",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ name: file.name, type: file.type, size: file.size })
+                });
+                const plan = (await preparation.json().catch(() => ({}))) as DirectUploadAnswer;
+
+                if (!preparation.ok) {
+                    settle("failed", plan.error ?? `The server answered ${preparation.status}.`);
+                    continue;
+                }
+
+                if (plan.mode === "direct" && plan.id && plan.putUrl) {
+                    settle("sending");
+                    try {
+                        const uploaded = await fetch(plan.putUrl, {
+                            method: "PUT",
+                            headers: { "content-type": plan.contentType ?? file.type ?? "application/octet-stream" },
+                            body: file
+                        });
+
+                        if (!uploaded.ok) {
+                            throw new Error(`The bucket answered ${uploaded.status}. Check its browser CORS rules.`);
+                        }
+
+                        settle("confirming");
+                        const confirmation = await fetch("/api/media", {
+                            method: "PATCH",
+                            headers: { "content-type": "application/json" },
+                            body: JSON.stringify({ id: plan.id })
+                        });
+
+                        if (!confirmation.ok) {
+                            const answer = (await confirmation.json().catch(() => ({}))) as { error?: string };
+                            throw new Error(answer.error ?? `Confirmation answered ${confirmation.status}.`);
+                        }
+
+                        settle("done");
+                    } catch (error) {
+                        await fetch("/api/media", {
+                            method: "DELETE",
+                            headers: { "content-type": "application/json" },
+                            body: JSON.stringify({ id: plan.id })
+                        }).catch(() => undefined);
+                        settle("failed", error instanceof Error ? error.message : "The direct upload failed.");
+                    }
+
+                    continue;
+                }
+
+                settle("sending");
+                const body = new FormData();
+                body.set("file", file);
                 const response = await fetch("/api/media", { method: "POST", body });
 
                 if (response.ok) {
@@ -101,8 +158,12 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
                     {attempts.map(attempt => (
                         <li key={attempt.filename} className="flex flex-wrap items-baseline gap-2">
                             <span className="truncate font-medium">{attempt.filename}</span>
-                            {attempt.state === "sending" ?
+                            {attempt.state === "preparing" ?
+                                <span className="text-muted-foreground text-xs">preparing…</span>
+                            : attempt.state === "sending" ?
                                 <span className="text-muted-foreground text-xs">sending…</span>
+                            : attempt.state === "confirming" ?
+                                <span className="text-muted-foreground text-xs">confirming…</span>
                             : attempt.state === "done" ?
                                 <span className="text-muted-foreground text-xs">stored</span>
                             :   <span className="text-destructive text-xs">{attempt.problem}</span>}

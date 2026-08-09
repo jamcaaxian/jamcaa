@@ -23,7 +23,7 @@ function bucketRow(partial: Partial<BucketRecord> = {}): BucketRecord {
 }
 
 function fakeBucket() {
-    return { put: vi.fn(async () => undefined), delete: vi.fn(async () => undefined) };
+    return { put: vi.fn(async () => undefined), head: vi.fn(async () => null), delete: vi.fn(async () => undefined) };
 }
 
 describe("a bucket reached through a binding", () => {
