@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { setAdminCrumb } from "@/lib/admin-crumb";
 import { savePost, type PostFormState } from "./actions";
 
 export interface PostDraft {
@@ -26,9 +27,18 @@ const allStatuses = [
 
 export function PostForm({ post, mayPublish }: { post?: PostDraft; mayPublish: boolean }) {
     const [state, action, pending] = useActionState<PostFormState, FormData>(savePost, {});
+    const [title, setTitle] = useState(post?.title ?? "");
     // Publishing is withheld from the form as well as the action, so it is not
     // offered as something to attempt and be refused.
     const statuses = allStatuses.filter(status => status.value !== "published" || mayPublish);
+
+    // The breadcrumb sits in the layout and only knows the address, which for a post
+    // is an identifier. Telling it the title as it is typed is the point.
+    useEffect(() => {
+        setAdminCrumb(title.trim() || "Untitled");
+
+        return () => setAdminCrumb(null);
+    }, [title]);
 
     return (
         <form action={action} className="max-w-3xl">
@@ -39,7 +49,14 @@ export function PostForm({ post, mayPublish }: { post?: PostDraft; mayPublish: b
             <FieldGroup>
                 <Field>
                     <FieldLabel htmlFor="title">Title</FieldLabel>
-                    <Input id="title" name="title" defaultValue={post?.title} required autoFocus />
+                    <Input
+                        id="title"
+                        name="title"
+                        value={title}
+                        onChange={event => setTitle(event.target.value)}
+                        required
+                        autoFocus
+                    />
                 </Field>
 
                 <Field>

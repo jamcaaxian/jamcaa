@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -11,6 +11,7 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator
 } from "@/components/ui/breadcrumb";
+import { readAdminCrumb, subscribeToAdminCrumb } from "@/lib/admin-crumb";
 
 function toLabel(segment: string) {
     return segment.replace(/-/g, " ").replace(/^\w/, character => character.toUpperCase());
@@ -26,38 +27,45 @@ function isIdentifier(segment: string) {
 
 export function AdminBreadcrumb() {
     const path = usePathname().split("/").filter(Boolean).slice(1);
+    const published = useSyncExternalStore(subscribeToAdminCrumb, readAdminCrumb, () => null);
+
     // Addresses are built from every segment, then the opaque ones are dropped, so
     // a crumb after an identifier still links to the right place.
-    const crumbs = path
-        .map((segment, index) => ({ segment, href: `/admin/${path.slice(0, index + 1).join("/")}` }))
-        .filter(crumb => !isIdentifier(crumb.segment));
+    const items = path
+        .map((segment, index) => ({
+            key: segment,
+            label: toLabel(segment),
+            href: `/admin/${path.slice(0, index + 1).join("/")}`
+        }))
+        .filter(item => !isIdentifier(item.key));
+
+    // A page named after an identifier can say what it is really called; anywhere
+    // else the address already reads as a name and is left alone.
+    const last = path.at(-1);
+
+    if (published !== null && last !== undefined && isIdentifier(last)) {
+        items.push({ key: last, label: published, href: `/admin/${path.join("/")}` });
+    }
 
     return (
         <Breadcrumb>
             <BreadcrumbList>
                 <BreadcrumbItem>
-                    {crumbs.length === 0 ?
+                    {items.length === 0 ?
                         <BreadcrumbPage>Overview</BreadcrumbPage>
                     :   <BreadcrumbLink render={<Link href="/admin" />}>Overview</BreadcrumbLink>}
                 </BreadcrumbItem>
 
-                {crumbs.map((crumb, index) => {
-                    const isLast = index === crumbs.length - 1;
-
-                    return (
-                        <Fragment key={crumb.href}>
-                            <BreadcrumbSeparator />
-                            <BreadcrumbItem>
-                                {isLast ?
-                                    <BreadcrumbPage>{toLabel(crumb.segment)}</BreadcrumbPage>
-                                :   <BreadcrumbLink render={<Link href={crumb.href} />}>
-                                        {toLabel(crumb.segment)}
-                                    </BreadcrumbLink>
-                                }
-                            </BreadcrumbItem>
-                        </Fragment>
-                    );
-                })}
+                {items.map((item, index) => (
+                    <Fragment key={item.key}>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            {index === items.length - 1 ?
+                                <BreadcrumbPage className="max-w-64 truncate">{item.label}</BreadcrumbPage>
+                            :   <BreadcrumbLink render={<Link href={item.href} />}>{item.label}</BreadcrumbLink>}
+                        </BreadcrumbItem>
+                    </Fragment>
+                ))}
             </BreadcrumbList>
         </Breadcrumb>
     );
