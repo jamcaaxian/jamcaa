@@ -28,8 +28,8 @@ export function defineContentModel(collections: readonly Collection[]): ContentM
         for (const [fieldName, field] of Object.entries(collection.fields)) {
             if (field.references !== undefined && !byName.has(field.references)) {
                 throw new Error(
-                    `Collection "${collection.name}": the field "${fieldName}" points at ` +
-                        `"${field.references}", which no collection declares.`
+                    `Collection "${collection.name}": the field "${fieldName}" points at `
+                        + `"${field.references}", which no collection declares.`
                 );
             }
         }
@@ -41,10 +41,5 @@ export function defineContentModel(collections: readonly Collection[]): ContentM
         tables[collection.name] = buildTable(collection);
     }
 
-    return {
-        collections,
-        tables,
-        collection: (name) => byName.get(name),
-        table: (name) => tables[name]
-    };
+    return { collections, tables, collection: name => byName.get(name), table: name => tables[name] };
 }

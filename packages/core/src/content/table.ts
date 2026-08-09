@@ -4,7 +4,7 @@ import { systemColumns } from "./system-fields";
 
 /** Declarations are camel case; SQL columns are snake case. */
 export function toColumnName(fieldName: string): string {
-    return fieldName.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+    return fieldName.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 }
 
 /**
@@ -21,7 +21,7 @@ export function buildTable(collection: Collection) {
 
     const columns = { ...systemColumns(), ...declared };
 
-    return sqliteTable(collection.name, columns, (table) => [
+    return sqliteTable(collection.name, columns, table => [
         // One slug may name only one entry within a collection.
         uniqueIndex(`${collection.name}_slug_key`).on(table.slug)
     ]);

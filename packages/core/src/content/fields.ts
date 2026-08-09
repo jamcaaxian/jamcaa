@@ -29,17 +29,10 @@ export interface Field<TValue = unknown> {
 export type FieldValue<TField> = TField extends Field<infer TValue> ? TValue : never;
 
 /** A field is nullable unless it was declared with `required: true`. */
-type Held<TValue, TOptions extends FieldOptions> = TOptions extends { required: true }
-    ? TValue
-    : TValue | null;
+type Held<TValue, TOptions extends FieldOptions> = TOptions extends { required: true } ? TValue : TValue | null;
 
 function base(kind: FieldKind, options: FieldOptions | undefined) {
-    return {
-        kind,
-        label: options?.label,
-        description: options?.description,
-        required: options?.required ?? false
-    };
+    return { kind, label: options?.label, description: options?.description, required: options?.required ?? false };
 }
 
 function column<TBuilder extends SQLiteColumnBuilderBase & { notNull(): SQLiteColumnBuilderBase }>(
@@ -57,10 +50,7 @@ export function text<const TOptions extends FieldOptions = FieldOptions>(
 ): Field<Held<string, TOptions>> {
     const definition = base("text", options);
 
-    return {
-        ...definition,
-        buildColumn: (name) => column(sqliteText(name), definition.required)
-    };
+    return { ...definition, buildColumn: name => column(sqliteText(name), definition.required) };
 }
 
 /** Long-form body content, stored and edited as Markdown. */
@@ -69,10 +59,7 @@ export function markdown<const TOptions extends FieldOptions = FieldOptions>(
 ): Field<Held<string, TOptions>> {
     const definition = base("markdown", options);
 
-    return {
-        ...definition,
-        buildColumn: (name) => column(sqliteText(name), definition.required)
-    };
+    return { ...definition, buildColumn: name => column(sqliteText(name), definition.required) };
 }
 
 export interface NumberOptions extends FieldOptions {
@@ -88,8 +75,7 @@ export function number<const TOptions extends NumberOptions = NumberOptions>(
 
     return {
         ...definition,
-        buildColumn: (name) =>
-            column(whole ? sqliteInteger(name) : sqliteReal(name), definition.required)
+        buildColumn: name => column(whole ? sqliteInteger(name) : sqliteReal(name), definition.required)
     };
 }
 
@@ -101,7 +87,7 @@ export function toggle<const TOptions extends FieldOptions = FieldOptions>(
 
     return {
         ...definition,
-        buildColumn: (name) => column(sqliteInteger(name, { mode: "boolean" }), definition.required)
+        buildColumn: name => column(sqliteInteger(name, { mode: "boolean" }), definition.required)
     };
 }
 
@@ -113,8 +99,7 @@ export function moment<const TOptions extends FieldOptions = FieldOptions>(
 
     return {
         ...definition,
-        buildColumn: (name) =>
-            column(sqliteInteger(name, { mode: "timestamp_ms" }), definition.required)
+        buildColumn: name => column(sqliteInteger(name, { mode: "timestamp_ms" }), definition.required)
     };
 }
 
@@ -132,7 +117,7 @@ export function choice<
 
     return {
         ...definition,
-        buildColumn: (name) =>
+        buildColumn: name =>
             column(sqliteText(name, { enum: options.of as [TChoice, ...TChoice[]] }), definition.required)
     };
 }
@@ -151,6 +136,6 @@ export function reference<const TOptions extends ReferenceOptions = ReferenceOpt
     return {
         ...definition,
         references: options.to,
-        buildColumn: (name) => column(sqliteText(name), definition.required)
+        buildColumn: name => column(sqliteText(name), definition.required)
     };
 }

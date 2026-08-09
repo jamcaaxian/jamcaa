@@ -11,9 +11,7 @@ type RequiredNames<TFields extends FieldMap> = {
 
 type OptionalNames<TFields extends FieldMap> = Exclude<keyof TFields, RequiredNames<TFields>>;
 
-type DeclaredValues<TFields extends FieldMap> = {
-    [TName in RequiredNames<TFields>]: FieldValue<TFields[TName]>;
-} & {
+type DeclaredValues<TFields extends FieldMap> = { [TName in RequiredNames<TFields>]: FieldValue<TFields[TName]> } & {
     [TName in OptionalNames<TFields>]?: FieldValue<TFields[TName]>;
 };
 
@@ -99,9 +97,9 @@ export function entryStore<TFields extends FieldMap>(options: {
             await database.delete(table).where(eq(columnNamed(table, "id"), id));
         },
 
-        byId: (id) => one(eq(columnNamed(table, "id"), id)),
+        byId: id => one(eq(columnNamed(table, "id"), id)),
 
-        bySlug: (slug) => one(eq(columnNamed(table, "slug"), slug)),
+        bySlug: slug => one(eq(columnNamed(table, "slug"), slug)),
 
         async list(query = {}) {
             const conditions = [];

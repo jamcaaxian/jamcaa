@@ -36,6 +36,17 @@ pnpm preview    # runs in the actual Workers runtime — use before opening a PR
 
 `pnpm dev` runs in Node.js and will happily accept code that fails in production. **Verify with `pnpm preview` before submitting.** The Workers runtime differs in ways that the dev server does not surface.
 
+### Formatting
+
+Formatting is settled by Prettier, so it is not something to have opinions about in review.
+
+```bash
+pnpm format        # rewrite
+pnpm format:check  # report only
+```
+
+Code generators do not know about our configuration — the shadcn registry and the Better Auth schema generator both emit their own style — so run `pnpm format` after adding a component or regenerating a schema.
+
 ### On Windows: enable Developer Mode first
 
 Building for Workers recreates the package manager's symlink layout, and Windows restricts symlink creation to administrators by default. Without this, the build fails with `EPERM: operation not permitted, symlink`.

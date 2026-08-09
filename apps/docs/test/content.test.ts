@@ -9,11 +9,7 @@ function database() {
 }
 
 async function anAuthor(email = "author@example.com") {
-    const auth = createAuth({
-        database: database(),
-        secret: env.BETTER_AUTH_SECRET,
-        baseURL: env.BETTER_AUTH_URL
-    });
+    const auth = createAuth({ database: database(), secret: env.BETTER_AUTH_SECRET, baseURL: env.BETTER_AUTH_URL });
     const { user } = await auth.api.signUpEmail({
         body: { name: "Author", email, password: "correct-horse-battery-staple" }
     });
@@ -56,17 +52,13 @@ describe("the table a declaration produced", () => {
 
         await posts(database()).create(entry);
 
-        expect(await refusalFor(posts(database()).create(entry))).toMatch(
-            /UNIQUE constraint failed: post\.slug/i
-        );
+        expect(await refusalFor(posts(database()).create(entry))).toMatch(/UNIQUE constraint failed: post\.slug/i);
     });
 
     it("refuses an entry whose author does not exist", async () => {
         const orphan = { slug: "orphan", authorId: "nobody", title: "Orphan", body: "..." };
 
-        expect(await refusalFor(posts(database()).create(orphan))).toMatch(
-            /FOREIGN KEY constraint failed/i
-        );
+        expect(await refusalFor(posts(database()).create(orphan))).toMatch(/FOREIGN KEY constraint failed/i);
     });
 });
 
@@ -81,12 +73,7 @@ describe("reading and writing entries", () => {
     it("returns the entry it just wrote", async () => {
         const authorId = await anAuthor();
 
-        const created = await posts(database()).create({
-            slug: "hello",
-            authorId,
-            title: "Hello",
-            body: "# Hello"
-        });
+        const created = await posts(database()).create({ slug: "hello", authorId, title: "Hello", body: "# Hello" });
 
         expect(created).toMatchObject({ slug: "hello", title: "Hello", body: "# Hello" });
         expect(created.id).toBeTruthy();
@@ -132,7 +119,7 @@ describe("reading and writing entries", () => {
         await store.create({ slug: "two", authorId, title: "Two", body: ".", status: "draft" });
 
         expect(await store.list()).toHaveLength(2);
-        expect((await store.list({ status: "published" })).map((entry) => entry.slug)).toEqual(["one"]);
+        expect((await store.list({ status: "published" })).map(entry => entry.slug)).toEqual(["one"]);
     });
 
     it("removes an entry", async () => {

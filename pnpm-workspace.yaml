@@ -1,10 +1,10 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+    - "apps/*"
+    - "packages/*"
 
 # pnpm 10 blocks postinstall scripts by default. These need theirs:
 # workerd is the Workers runtime binary; esbuild and unrs-resolver ship native binaries.
 onlyBuiltDependencies:
-  - esbuild
-  - workerd
-  - unrs-resolver
+    - esbuild
+    - workerd
+    - unrs-resolver

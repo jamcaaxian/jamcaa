@@ -33,26 +33,21 @@ describe("defineCollection", () => {
     });
 
     it("refuses to shadow one of the platform's own tables", () => {
-        expect(() =>
-            defineCollection({ name: "session", label: "x", plural: "x", fields: { title: text() } })
-        ).toThrow(/belongs to one of the platform/);
+        expect(() => defineCollection({ name: "session", label: "x", plural: "x", fields: { title: text() } })).toThrow(
+            /belongs to one of the platform/
+        );
     });
 
     it("refuses a field that every entry already has", () => {
         expect(() =>
-            defineCollection({
-                name: "note",
-                label: "x",
-                plural: "x",
-                fields: { title: text(), slug: text() }
-            })
+            defineCollection({ name: "note", label: "x", plural: "x", fields: { title: text(), slug: text() } })
         ).toThrow(/collides with a field every entry already has/);
     });
 
     it("refuses a collection with nothing in it", () => {
-        expect(() =>
-            defineCollection({ name: "empty", label: "x", plural: "x", fields: {} })
-        ).toThrow(/at least one field/);
+        expect(() => defineCollection({ name: "empty", label: "x", plural: "x", fields: {} })).toThrow(
+            /at least one field/
+        );
     });
 
     it("refuses a titleField that is not a field", () => {
@@ -68,9 +63,9 @@ describe("defineCollection", () => {
     });
 
     it("insists on something to name an entry by", () => {
-        expect(() =>
-            defineCollection({ name: "note", label: "x", plural: "x", fields: { body: markdown() } })
-        ).toThrow(/no field can name an entry/);
+        expect(() => defineCollection({ name: "note", label: "x", plural: "x", fields: { body: markdown() } })).toThrow(
+            /no field can name an entry/
+        );
     });
 
     it("says how many columns are left when the table would be too wide", () => {
@@ -80,9 +75,7 @@ describe("defineCollection", () => {
             fields[`field${index}`] = text();
         }
 
-        expect(() => defineCollection({ name: "wide", label: "x", plural: "x", fields })).toThrow(
-            /D1 allows 100/
-        );
+        expect(() => defineCollection({ name: "wide", label: "x", plural: "x", fields })).toThrow(/D1 allows 100/);
     });
 
     it("allows a table that exactly fills the limit", () => {
@@ -98,7 +91,7 @@ describe("defineCollection", () => {
 
 describe("buildTable", () => {
     const table = getTableConfig(buildTable(post));
-    const columns = new Map(table.columns.map((column) => [column.name, column]));
+    const columns = new Map(table.columns.map(column => [column.name, column]));
 
     it("gives every entry the fields the platform manages", () => {
         for (const name of ["id", "slug", "status", "author_id", "created_at", "updated_at"]) {
@@ -118,13 +111,15 @@ describe("buildTable", () => {
 
     it("stores whole numbers as integers and the rest as reals", () => {
         expect(columns.get("reading_time")?.getSQLType()).toBe("integer");
-        expect(getTableConfig(buildTable(withLoose)).columns.find((c) => c.name === "score")?.getSQLType()).toBe(
-            "real"
-        );
+        expect(
+            getTableConfig(buildTable(withLoose))
+                .columns.find(c => c.name === "score")
+                ?.getSQLType()
+        ).toBe("real");
     });
 
     it("keeps one slug to one entry", () => {
-        expect(table.indexes.some((index) => index.config.unique)).toBe(true);
+        expect(table.indexes.some(index => index.config.unique)).toBe(true);
     });
 });
 

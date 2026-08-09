@@ -1,0 +1,19 @@
+node_modules
+pnpm-lock.yaml
+
+# Build output
+.next
+.open-next
+.turbo
+.wrangler
+
+# Written by tooling, not by hand
+apps/*/cloudflare-env.d.ts
+apps/*/next-env.d.ts
+apps/*/migrations
+
+# Verbatim licence text
+LICENSE
+
+# Third-party skills, excluded from the repository entirely
+.github/skills

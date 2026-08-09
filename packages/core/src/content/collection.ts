@@ -8,14 +8,7 @@ const IDENTIFIER = /^[a-z][a-z0-9]*(?:[A-Z][a-z0-9]*)*$/;
 const COLLECTION_NAME = /^[a-z][a-z0-9_]*$/;
 
 /** Owned by the core's own migrations; a collection cannot claim them. */
-const RESERVED_TABLE_NAMES = new Set([
-    "user",
-    "session",
-    "account",
-    "verification",
-    "role",
-    "role_capability"
-]);
+const RESERVED_TABLE_NAMES = new Set(["user", "session", "account", "verification", "role", "role_capability"]);
 
 export type FieldMap = Record<string, Field>;
 
@@ -87,9 +80,9 @@ export function defineCollection<const TFields extends FieldMap>(
     if (columns > MAX_COLUMNS) {
         fail(
             name,
-            `it would need ${columns} columns and D1 allows ${MAX_COLUMNS}. ` +
-                `${systemFieldNames.length} of those belong to every entry, leaving ` +
-                `${MAX_COLUMNS - systemFieldNames.length} for declared fields.`
+            `it would need ${columns} columns and D1 allows ${MAX_COLUMNS}. `
+                + `${systemFieldNames.length} of those belong to every entry, leaving `
+                + `${MAX_COLUMNS - systemFieldNames.length} for declared fields.`
         );
     }
 
@@ -107,5 +100,5 @@ export function defineCollection<const TFields extends FieldMap>(
 }
 
 function findTitleField(fields: FieldMap): string | undefined {
-    return Object.keys(fields).find((fieldName) => fields[fieldName]?.kind === "text");
+    return Object.keys(fields).find(fieldName => fields[fieldName]?.kind === "text");
 }

@@ -13,9 +13,7 @@ export async function hasAnyUser(database: Database): Promise<boolean> {
 }
 
 export type FirstAdministratorResult =
-    | { status: "created" }
-    | { status: "already-installed" }
-    | { status: "rejected"; message: string };
+    { status: "created" } | { status: "already-installed" } | { status: "rejected"; message: string };
 
 /**
  * Bootstraps an empty installation: seeds the system roles and turns the first
