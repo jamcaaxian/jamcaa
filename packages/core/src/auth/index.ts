@@ -67,6 +67,7 @@ export function createAuth(options: AuthOptions) {
 
 export type Auth = ReturnType<typeof createAuth>;
 
+export * from "./bootstrap";
 export * from "./capabilities";
 export * from "./role-cache";
 export * from "./roles";

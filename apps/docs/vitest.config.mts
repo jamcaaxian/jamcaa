@@ -19,6 +19,9 @@ export default defineConfig({
             }
         }))
     ],
+    resolve: {
+        alias: { "@": path.resolve("src") }
+    },
     test: {
         setupFiles: ["./test/apply-migrations.ts"]
     }
