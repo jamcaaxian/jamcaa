@@ -4,6 +4,6 @@ import { defineConfig } from "drizzle-kit";
 // tables plus whatever collections this site declares. See docs/adr/0001.
 export default defineConfig({
     dialect: "sqlite",
-    schema: "../../packages/core/src/db/schema/index.ts",
+    schema: ["../../packages/core/src/db/schema/index.ts", "./src/content/schema.ts"],
     out: "./migrations"
 });

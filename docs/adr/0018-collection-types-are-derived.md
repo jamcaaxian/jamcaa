@@ -18,7 +18,7 @@ Rather than fight that, the two concerns are separated. **The assembled table is
 
 ## Consequences
 
-**Drizzle will not check a query against a collection's columns.** The table's columns are typed generically, so a misspelled column in a hand-written query is caught by SQLite at runtime rather than by the compiler. Query helpers that take a field name should be typed against the declaration to close this.
+**A collection's entries are reached through `entryStore`, not through Drizzle.** The assembled table's columns are typed generically, so a hand-written query against one is checked by SQLite at runtime rather than by the compiler. The store is where the declaration's types are put back: it takes and returns `EntryOf`, and keeps the untyped columns to itself. A site that reaches past it gives up the type safety this decision exists to provide.
 
 `Collection` is covariant in its fields, which cost a design constraint: `titleField` is narrowed to the declared keys while authoring but widens to `string` afterwards. Keeping `keyof TFields` on the resolved type made `Collection` invariant, and a specific collection could then not be passed to anything that accepts collections in general.
 
