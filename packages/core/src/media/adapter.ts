@@ -18,8 +18,16 @@ export interface SigningCredentials {
     secretAccessKey: string;
 }
 
+export interface FetchedObject {
+    body: ReadableStream;
+    mimeType: string;
+    size: number;
+}
+
 export interface StorageAdapter {
     put(key: string, body: ReadableStream | ArrayBuffer | Blob, mimeType: string): Promise<void>;
+    /** Undefined when the bucket has no such object. */
+    get(key: string): Promise<FetchedObject | undefined>;
     remove(key: string): Promise<void>;
     /** Undefined when the bucket is not served publicly and the app must stream it. */
     publicAddress(key: string): string | undefined;
@@ -103,6 +111,17 @@ export function createStorageAdapter(options: {
             put: async (key, body, mimeType) => {
                 await target.put(key, body, { httpMetadata: { contentType: mimeType } });
             },
+            get: async key => {
+                const object = await target.get(key);
+
+                return object === null ? undefined : (
+                        {
+                            body: object.body,
+                            mimeType: object.httpMetadata?.contentType ?? "application/octet-stream",
+                            size: object.size
+                        }
+                    );
+            },
             remove: async key => {
                 await target.delete(key);
             },
@@ -134,6 +153,17 @@ export function createStorageAdapter(options: {
             if (!response.ok && response.status !== 404) {
                 throw new Error(`Bucket "${record.id}" refused the delete: ${response.status}.`);
             }
+        },
+        get: async key => {
+            const response = await access.client.fetch(access.addressOf(key));
+
+            return response.ok && response.body ?
+                    {
+                        body: response.body,
+                        mimeType: response.headers.get("content-type") ?? "application/octet-stream",
+                        size: Number(response.headers.get("content-length") ?? 0)
+                    }
+                :   undefined;
         },
         publicAddress,
         presignPut

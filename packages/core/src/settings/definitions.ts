@@ -126,5 +126,12 @@ export const coreSettings = defineSettings({
         preview: "moment",
         suggestions: TIME_PATTERNS,
         check: checkPattern
+    },
+    "media.maxUploadMegabytes": {
+        kind: "number",
+        label: "Largest upload",
+        description: "In megabytes. A file that arrives through the server is also bounded by the platform it runs on.",
+        default: 25,
+        check: value => (value > 0 ? undefined : "An upload limit has to be more than nothing.")
     }
 });
