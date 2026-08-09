@@ -8,6 +8,7 @@
     "exports": {
         ".": "./src/index.ts",
         "./auth": "./src/auth/index.ts",
+        "./content": "./src/content/index.ts",
         "./db": "./src/db/index.ts",
         "./db/schema": "./src/db/schema/index.ts",
         "./theme": "./src/theme/index.ts"
