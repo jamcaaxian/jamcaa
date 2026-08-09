@@ -42,6 +42,10 @@ export interface StorageAdapter {
     presignPut?(key: string, mimeType: string, expiresInSeconds: number): Promise<string>;
 }
 
+function objectMetadata(object: Pick<R2Object, "httpMetadata" | "size">): StoredObjectMetadata {
+    return { mimeType: object.httpMetadata?.contentType ?? "application/octet-stream", size: object.size };
+}
+
 interface S3Access {
     client: AwsClient;
     addressOf(key: string): string;
@@ -132,9 +136,22 @@ export function createStorageAdapter(options: {
             head: async key => {
                 const object = await target.head(key);
 
-                return object === null ? undefined : (
-                        { mimeType: object.httpMetadata?.contentType ?? "application/octet-stream", size: object.size }
-                    );
+                if (object !== null) {
+                    return objectMetadata(object);
+                }
+
+                if (access === undefined) {
+                    return undefined;
+                }
+
+                const response = await access.client.fetch(access.addressOf(key), { method: "HEAD" });
+
+                return response.ok ?
+                        {
+                            mimeType: response.headers.get("content-type") ?? "application/octet-stream",
+                            size: Number(response.headers.get("content-length") ?? 0)
+                        }
+                    :   undefined;
             },
             remove: async key => {
                 await target.delete(key);

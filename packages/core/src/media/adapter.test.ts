@@ -1,3 +1,4 @@
+import { AwsClient } from "aws4fetch";
 import { describe, expect, it, vi } from "vitest";
 import { createStorageAdapter, type BucketRecord } from "./adapter";
 
@@ -66,6 +67,23 @@ describe("a bucket reached through a binding", () => {
         expect(url.searchParams.get("X-Amz-Signature")).toBeTruthy();
         // The secret must never travel in the address it signs.
         expect(address).not.toContain(credentials.secretAccessKey);
+    });
+
+    it("checks the S3 endpoint when local bindings cannot see a direct upload", async () => {
+        const target = fakeBucket();
+        const fetch = vi
+            .spyOn(AwsClient.prototype, "fetch")
+            .mockResolvedValueOnce(
+                new Response(null, { status: 200, headers: { "content-type": "video/mp4", "content-length": "24" } })
+            );
+        const adapter = createStorageAdapter({ record: bucketRow(), bindings: { MEDIA_BUCKET: target }, credentials });
+
+        await expect(adapter.head("2026/08/video.mp4")).resolves.toEqual({ mimeType: "video/mp4", size: 24 });
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/jamcaa-docs-media/2026/08/video.mp4"), {
+            method: "HEAD"
+        });
+
+        fetch.mockRestore();
     });
 });
 
