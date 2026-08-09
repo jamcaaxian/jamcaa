@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
 import { claimFirstAdministrator } from "@jamcaa/core/auth";
+import { seedStorage } from "@jamcaa/core/media";
+import { fallbackBucketId, siteBuckets } from "@/content/storage";
 import { getAuth } from "@/lib/auth";
 
 export type SetupState = { error?: string };
@@ -18,13 +20,8 @@ export async function createFirstAdministrator(_previous: SetupState, formData: 
     }
 
     const { env } = getCloudflareContext();
-    const result = await claimFirstAdministrator({
-        auth: await getAuth(),
-        database: createDatabase(env.DB),
-        name,
-        email,
-        password
-    });
+    const database = createDatabase(env.DB);
+    const result = await claimFirstAdministrator({ auth: await getAuth(), database, name, email, password });
 
     if (result.status === "already-installed") {
         // Checked again here rather than only on the page, so the window between
@@ -35,6 +32,9 @@ export async function createFirstAdministrator(_previous: SetupState, formData: 
     if (result.status === "rejected") {
         return { error: result.message };
     }
+
+    // Somewhere to put uploads, and a rule saying so, before anyone can make one.
+    await seedStorage(database, { buckets: siteBuckets, fallbackBucketId });
 
     redirect("/login");
 }

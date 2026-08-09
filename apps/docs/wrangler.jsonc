@@ -23,8 +23,13 @@
         }
     ],
     // ISR caching. Rationale in docs/adr/0004-r2-with-regional-cache-for-isr.md
-    // The binding names below are fixed by @opennextjs/cloudflare and must not be renamed.
-    "r2_buckets": [{ "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "jamcaa-docs-inc-cache" }],
+    // The first binding name is fixed by @opennextjs/cloudflare and must not be renamed.
+    "r2_buckets": [
+        { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "jamcaa-docs-inc-cache" },
+        // Media for this site. A bucket reached through a binding needs no credentials;
+        // one added at runtime is reached by signing instead. See docs/adr/0005.
+        { "binding": "MEDIA_BUCKET", "bucket_name": "jamcaa-docs-media" }
+    ],
     "durable_objects": {
         "bindings": [
             {
