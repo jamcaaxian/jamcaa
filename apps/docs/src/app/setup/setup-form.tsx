@@ -13,8 +13,14 @@ export function SetupForm() {
         <form action={action}>
             <FieldGroup>
                 <Field>
+                    <FieldLabel htmlFor="siteTitle">Site title</FieldLabel>
+                    <Input id="siteTitle" name="siteTitle" required autoFocus />
+                    <FieldDescription>Changed later under Settings.</FieldDescription>
+                </Field>
+
+                <Field>
                     <FieldLabel htmlFor="name">Name</FieldLabel>
-                    <Input id="name" name="name" autoComplete="name" required autoFocus />
+                    <Input id="name" name="name" autoComplete="name" required />
                 </Field>
 
                 <Field>

@@ -1,9 +1,13 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { createDatabase } from "@jamcaa/core";
+import { ensureInstalled } from "@jamcaa/core/install";
 import { AdminBreadcrumb } from "@/components/admin/admin-breadcrumb";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { ThemeToggle } from "@/components/admin/theme-toggle";
 import { UserMenu } from "@/components/admin/user-menu";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { installPlan } from "@/content/install";
 import { requireSession } from "@/lib/session";
 
 // Every admin page reads the session, and the runtime bindings it needs only
@@ -12,6 +16,12 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user } = await requireSession();
+
+    // A site installed under an earlier version is brought up to date here rather
+    // than by whoever deployed it remembering to run something.
+    const { env } = getCloudflareContext();
+
+    await ensureInstalled(createDatabase(env.DB), installPlan);
 
     return (
         <SidebarProvider>

@@ -22,17 +22,20 @@ export default async function SettingsPage() {
     const values = settings.all();
 
     // Only what can cross to the browser: the catalogue itself holds functions.
-    const fields: SettingField[] = Object.entries(siteSettings).map(([key, declaration]) => ({
-        key,
-        kind: declaration.kind,
-        label: declaration.label,
-        description: declaration.description,
-        multiline: declaration.kind === "text" ? declaration.multiline : undefined,
-        preview: declaration.kind === "text" ? declaration.preview : undefined,
-        suggestions: declaration.kind === "text" ? declaration.suggestions : undefined,
-        of: declaration.kind === "choice" ? declaration.of : undefined,
-        value: values[key] as string | boolean | number
-    }));
+    // Internal settings are the platform's bookkeeping and are not offered for editing.
+    const fields: SettingField[] = Object.entries(siteSettings)
+        .filter(([, declaration]) => declaration.internal !== true)
+        .map(([key, declaration]) => ({
+            key,
+            kind: declaration.kind,
+            label: declaration.label,
+            description: declaration.description,
+            multiline: declaration.kind === "text" ? declaration.multiline : undefined,
+            preview: declaration.kind === "text" ? declaration.preview : undefined,
+            suggestions: declaration.kind === "text" ? declaration.suggestions : undefined,
+            of: declaration.kind === "choice" ? declaration.of : undefined,
+            value: values[key] as string | boolean | number
+        }));
 
     return (
         <div className="space-y-6">

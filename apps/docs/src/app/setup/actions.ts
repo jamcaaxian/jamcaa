@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
 import { claimFirstAdministrator } from "@jamcaa/core/auth";
-import { seedStorage } from "@jamcaa/core/media";
-import { fallbackBucketId, siteBuckets } from "@/content/storage";
+import { ensureInstalled } from "@jamcaa/core/install";
+import { coreSettings, writeSettings } from "@jamcaa/core/settings";
+import { installPlan } from "@/content/install";
 import { getAuth } from "@/lib/auth";
 
 export type SetupState = { error?: string };
@@ -14,9 +15,10 @@ export async function createFirstAdministrator(_previous: SetupState, formData: 
     const name = String(formData.get("name") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
+    const siteTitle = String(formData.get("siteTitle") ?? "").trim();
 
-    if (!name || !email || !password) {
-        return { error: "Fill in every field to create the first account." };
+    if (!name || !email || !password || !siteTitle) {
+        return { error: "Fill in every field to finish setting the site up." };
     }
 
     const { env } = getCloudflareContext();
@@ -33,8 +35,8 @@ export async function createFirstAdministrator(_previous: SetupState, formData: 
         return { error: result.message };
     }
 
-    // Somewhere to put uploads, and a rule saying so, before anyone can make one.
-    await seedStorage(database, { buckets: siteBuckets, fallbackBucketId });
+    await ensureInstalled(database, installPlan);
+    await writeSettings(database, coreSettings, { "site.title": siteTitle });
 
     redirect("/login");
 }

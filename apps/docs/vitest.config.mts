@@ -11,6 +11,9 @@ export default defineConfig({
                 compatibilityDate: "2026-08-08",
                 compatibilityFlags: ["nodejs_compat"],
                 d1Databases: ["DB"],
+                // The same bindings the deployed Worker has, so a test that asks
+                // whether storage is reachable is asking about something real.
+                r2Buckets: ["MEDIA_BUCKET"],
                 bindings: {
                     TEST_MIGRATIONS: await readD1Migrations(path.resolve("migrations")),
                     BETTER_AUTH_SECRET: "test-only-secret-at-least-32-characters",

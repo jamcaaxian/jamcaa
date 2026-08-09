@@ -4,11 +4,17 @@ import { checkPattern, DATE_PATTERNS, TIME_PATTERNS } from "../dates";
  * Settings are declared in code and their values live in the database, for the same
  * reason capabilities are (ADR-0015): a setting nothing reads is a promise nothing
  * keeps, while the value itself is an operational choice.
- */ export type SettingDeclaration =
-    | {
+ */
+interface CommonSetting {
+    label: string;
+    description?: string;
+    /** Kept by the platform for its own bookkeeping; never offered for editing. */
+    internal?: boolean;
+}
+
+export type SettingDeclaration =
+    | (CommonSetting & {
           kind: "text";
-          label: string;
-          description?: string;
           default: string;
           multiline?: boolean;
           /** What the value describes, so the form can show what it would produce.
@@ -18,23 +24,15 @@ import { checkPattern, DATE_PATTERNS, TIME_PATTERNS } from "../dates";
           suggestions?: readonly string[];
           /** Beyond the shape: says why a well-formed value still will not do. */
           check?: (value: string) => string | undefined;
-      }
-    | { kind: "flag"; label: string; description?: string; default: boolean }
-    | {
-          kind: "number";
-          label: string;
-          description?: string;
-          default: number;
-          check?: (value: number) => string | undefined;
-      }
-    | {
+      })
+    | (CommonSetting & { kind: "flag"; default: boolean })
+    | (CommonSetting & { kind: "number"; default: number; check?: (value: number) => string | undefined })
+    | (CommonSetting & {
           kind: "choice";
-          label: string;
-          description?: string;
           of: readonly string[];
           default: string;
           check?: (value: string) => string | undefined;
-      };
+      });
 
 export type SettingCatalogue = Record<string, SettingDeclaration>;
 
@@ -110,6 +108,8 @@ export function checkSettingValue(declaration: SettingDeclaration, value: unknow
 export const coreSettings = defineSettings({
     "site.title": { kind: "text", label: "Site title", default: "jamcaa" },
     "site.description": { kind: "text", label: "Tagline", default: "", multiline: true },
+    // Which installation steps this site has already had run. Bookkeeping, not a choice.
+    "platform.installedVersion": { kind: "number", label: "Installed version", default: 0, internal: true },
     "format.date": {
         kind: "text",
         label: "Date format",

@@ -21,6 +21,10 @@ export async function saveSettings(_previous: SettingsFormState, formData: FormD
     const changes: Record<string, string | boolean | number> = {};
 
     for (const [key, declaration] of Object.entries(siteSettings)) {
+        if (declaration.internal === true) {
+            continue;
+        }
+
         const raw = formData.get(key);
 
         switch (declaration.kind) {
