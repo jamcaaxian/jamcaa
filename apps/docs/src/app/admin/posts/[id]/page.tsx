@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
+import { getSettings } from "@jamcaa/core/settings";
+import { siteSettings } from "@/content/settings";
 import { posts } from "@/content/store";
 import { mayTouch } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
@@ -15,7 +17,11 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     const actor = { id: session.user.id, role: session.user.role };
 
     const { env } = getCloudflareContext();
-    const entry = await posts(createDatabase(env.DB)).byId((await params).id);
+    const database = createDatabase(env.DB);
+    const [entry, settings] = await Promise.all([
+        posts(database).byId((await params).id),
+        getSettings(database, siteSettings)
+    ]);
 
     if (entry === undefined) {
         notFound();
@@ -24,6 +30,8 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     if (!(await mayTouch(actor, "post", "update", entry.authorId))) {
         return <p className="text-muted-foreground text-sm">This post is not yours to edit.</p>;
     }
+
+    const mayPublish = await mayTouch(actor, "post", "publish", entry.authorId);
 
     return (
         <div className="space-y-6">
@@ -43,7 +51,8 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
                     body: entry.body,
                     status: entry.status
                 }}
-                mayPublish={await mayTouch(actor, "post", "publish", entry.authorId)}
+                mayPublish={mayPublish}
+                address={{ pattern: settings.get("permalink.post"), mayChooseSlug: mayPublish }}
             />
         </div>
     );

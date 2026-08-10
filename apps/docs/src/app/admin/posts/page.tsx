@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
+import { formatMoment } from "@jamcaa/core/dates";
+import { getSettings } from "@jamcaa/core/settings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { posts } from "@/content/store";
+import { siteSettings } from "@/content/settings";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 
@@ -22,7 +25,10 @@ export default async function PostsPage() {
     }
 
     const { env } = getCloudflareContext();
-    const entries = await posts(createDatabase(env.DB)).list();
+    const database = createDatabase(env.DB);
+    const [entries, settings] = await Promise.all([posts(database).list(), getSettings(database, siteSettings)]);
+    const datePattern = settings.get("format.date");
+    const timePattern = settings.get("format.time");
     const mayCreate = await may(actor, "post", "create");
 
     return (
@@ -59,12 +65,8 @@ export default async function PostsPage() {
                                         <Badge variant={tone[entry.status]}>{entry.status}</Badge>
                                     </div>
                                     <p className="text-muted-foreground mt-3 text-xs">
-                                        Last edited{" "}
-                                        {entry.updatedAt.toLocaleDateString("en-GB", {
-                                            day: "numeric",
-                                            month: "short",
-                                            year: "numeric"
-                                        })}
+                                        Last edited {formatMoment(entry.updatedAt, datePattern)}{" "}
+                                        {formatMoment(entry.updatedAt, timePattern)}
                                     </p>
                                 </Link>
                             </li>
@@ -95,11 +97,8 @@ export default async function PostsPage() {
                                             <Badge variant={tone[entry.status]}>{entry.status}</Badge>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-sm">
-                                            {entry.updatedAt.toLocaleDateString("en-GB", {
-                                                day: "numeric",
-                                                month: "short",
-                                                year: "numeric"
-                                            })}
+                                            {formatMoment(entry.updatedAt, datePattern)}{" "}
+                                            {formatMoment(entry.updatedAt, timePattern)}
                                         </TableCell>
                                     </TableRow>
                                 ))}

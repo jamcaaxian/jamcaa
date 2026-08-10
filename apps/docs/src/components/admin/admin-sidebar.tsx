@@ -35,14 +35,14 @@ const sections = [
     }
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ siteTitle = "jamcaa" }: { siteTitle?: string }) {
     const pathname = usePathname();
 
     return (
         <Sidebar collapsible="icon">
             <SidebarHeader className="h-14 justify-center border-b px-4">
                 <Link href="/admin" className="font-heading text-sm font-semibold tracking-tight">
-                    jamcaa
+                    {siteTitle}
                 </Link>
             </SidebarHeader>
 

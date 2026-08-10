@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
-import { loadSettings } from "@jamcaa/core/settings";
+import { loadSettings, type SettingCatalogue } from "@jamcaa/core/settings";
 import { siteSettings } from "@/content/settings";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
@@ -19,11 +19,11 @@ export default async function SettingsPage() {
 
     const { env } = getCloudflareContext();
     const settings = await loadSettings(createDatabase(env.DB), siteSettings);
-    const values = settings.all();
+    const values = settings.all() as Record<string, string | boolean | number>;
 
     // Only what can cross to the browser: the catalogue itself holds functions.
     // Internal settings are the platform's bookkeeping and are not offered for editing.
-    const fields: SettingField[] = Object.entries(siteSettings)
+    const fields: SettingField[] = Object.entries(siteSettings as SettingCatalogue)
         .filter(([, declaration]) => declaration.internal !== true)
         .map(([key, declaration]) => ({
             key,
@@ -34,7 +34,7 @@ export default async function SettingsPage() {
             preview: declaration.kind === "text" ? declaration.preview : undefined,
             suggestions: declaration.kind === "text" ? declaration.suggestions : undefined,
             of: declaration.kind === "choice" ? declaration.of : undefined,
-            value: values[key] as string | boolean | number
+            value: values[key]!
         }));
 
     return (

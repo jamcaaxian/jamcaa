@@ -8,6 +8,7 @@ import {
     loadSettings,
     writeSettings
 } from "@jamcaa/core/settings";
+import { siteSettings } from "@/content/settings";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -109,6 +110,12 @@ describe("settings", () => {
 
         await expect(writeSettings(database(), permalinks, { "permalink.post": "/blog" })).rejects.toThrow(
             /must include \{slug\}/
+        );
+    });
+
+    it("refuses a permalink pattern inside a reserved Site namespace", async () => {
+        await expect(writeSettings(database(), siteSettings, { "permalink.post": "/admin/{slug}" })).rejects.toThrow(
+            /belongs to the Site/
         );
     });
 

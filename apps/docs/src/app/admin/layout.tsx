@@ -8,7 +8,9 @@ import { UserMenu } from "@/components/admin/user-menu";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { installPlan } from "@/content/install";
+import { siteSettings } from "@/content/settings";
 import { requireSession } from "@/lib/session";
+import { getSettings } from "@jamcaa/core/settings";
 
 // Every admin page reads the session, and the runtime bindings it needs only
 // exist inside a request. Applies to all segments below this layout.
@@ -21,11 +23,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // than by whoever deployed it remembering to run something.
     const { env } = getCloudflareContext();
 
-    await ensureInstalled(createDatabase(env.DB), installPlan);
+    const database = createDatabase(env.DB);
+
+    await ensureInstalled(database, installPlan);
+
+    const settings = await getSettings(database, siteSettings);
 
     return (
         <SidebarProvider>
-            <AdminSidebar />
+            <AdminSidebar siteTitle={settings.get("site.title")} />
             <SidebarInset>
                 <header className="bg-background sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4">
                     <SidebarTrigger className="-ml-1" />

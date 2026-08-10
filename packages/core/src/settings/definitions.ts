@@ -46,6 +46,11 @@ export type SettingValues<TCatalogue extends SettingCatalogue> = {
     [TKey in keyof TCatalogue]: SettingValue<TCatalogue[TKey]>;
 };
 
+type MergedSettings<TCatalogues extends readonly SettingCatalogue[]> =
+    TCatalogues extends readonly [infer THead extends SettingCatalogue, ...infer TTail extends SettingCatalogue[]] ?
+        THead & MergedSettings<TTail>
+    :   unknown;
+
 // Namespaced so a plugin's settings cannot silently collide with the platform's.
 // The dot is what matters; a segment may be named however its owner names things,
 // which lets a key be derived from a collection whose name is snake case.
@@ -66,7 +71,9 @@ export function defineSettings<const TCatalogue extends SettingCatalogue>(catalo
     return catalogue;
 }
 
-export function mergeSettings(...catalogues: SettingCatalogue[]): SettingCatalogue {
+export function mergeSettings<const TCatalogues extends readonly SettingCatalogue[]>(
+    ...catalogues: TCatalogues
+): MergedSettings<TCatalogues> {
     const merged: SettingCatalogue = {};
 
     for (const catalogue of catalogues) {
@@ -79,7 +86,7 @@ export function mergeSettings(...catalogues: SettingCatalogue[]): SettingCatalog
         }
     }
 
-    return merged;
+    return merged as MergedSettings<TCatalogues>;
 }
 
 /** Returns undefined when a stored value no longer fits what the setting accepts. */

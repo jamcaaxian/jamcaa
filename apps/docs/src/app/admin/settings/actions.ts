@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
-import { writeSettings } from "@jamcaa/core/settings";
+import { writeSettings, type SettingCatalogue } from "@jamcaa/core/settings";
 import { siteSettings } from "@/content/settings";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
@@ -20,7 +20,7 @@ export async function saveSettings(_previous: SettingsFormState, formData: FormD
 
     const changes: Record<string, string | boolean | number> = {};
 
-    for (const [key, declaration] of Object.entries(siteSettings)) {
+    for (const [key, declaration] of Object.entries(siteSettings as SettingCatalogue)) {
         if (declaration.internal === true) {
             continue;
         }
@@ -55,7 +55,7 @@ export async function saveSettings(_previous: SettingsFormState, formData: FormD
         return { error: error instanceof Error ? error.message : "Those settings could not be saved." };
     }
 
-    revalidatePath("/admin/settings");
+    revalidatePath("/", "layout");
 
     return { saved: true };
 }

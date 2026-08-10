@@ -23,8 +23,8 @@ export interface CollectionDeclaration<TFields extends FieldMap = FieldMap> {
     readonly titleField?: keyof TFields & string;
 }
 
-export interface Collection<TFields extends FieldMap = FieldMap> {
-    readonly name: string;
+export interface Collection<TFields extends FieldMap = FieldMap, TName extends string = string> {
+    readonly name: TName;
     readonly label: string;
     readonly plural: string;
     readonly fields: TFields;
@@ -46,9 +46,9 @@ function fail(collection: string, problem: string): never {
  * Checks a collection the moment it is declared, so a site fails to start rather
  * than failing when a migration runs or a form is opened.
  */
-export function defineCollection<const TFields extends FieldMap>(
-    declaration: CollectionDeclaration<TFields>
-): Collection<TFields> {
+export function defineCollection<const TName extends string, const TFields extends FieldMap>(
+    declaration: CollectionDeclaration<TFields> & { readonly name: TName }
+): Collection<TFields, TName> {
     const { name, fields } = declaration;
 
     if (!COLLECTION_NAME.test(name)) {

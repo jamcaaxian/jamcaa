@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPermalink, checkPermalink, permalinkSettings, PERMALINK_PATTERNS } from "./permalink";
+import { buildPermalink, checkPermalink, matchPermalink, permalinkSettings, PERMALINK_PATTERNS } from "./permalink";
 import { defineCollection } from "./collection";
 import { text } from "./fields";
 
@@ -24,6 +24,12 @@ describe("checkPermalink", () => {
 
         expect(problem).toMatch(/nothing called \{category\}/);
         expect(problem).toMatch(/\{slug\}/);
+    });
+
+    it("keeps tokens as complete path segments", () => {
+        expect(checkPermalink("/news-{year}/{slug}")).toMatch(/complete path segment/);
+        expect(checkPermalink("/{year}//{slug}")).toMatch(/non-empty path segments/);
+        expect(checkPermalink("/{slug}?preview=true")).toMatch(/query string or fragment/);
     });
 });
 
@@ -50,6 +56,31 @@ describe("buildPermalink", () => {
 
     it("keeps a slug written in another script", () => {
         expect(buildPermalink("/{slug}", { ...entry, slug: "你好-世界" })).toBe("/你好-世界");
+    });
+});
+
+describe("matchPermalink", () => {
+    const entry = {
+        slug: "hello",
+        collection: "post",
+        publishedAt: new Date(Date.UTC(2026, 7, 9)),
+        createdAt: new Date(Date.UTC(2020, 0, 1))
+    };
+
+    it("extracts a slug from literal and token segments", () => {
+        expect(matchPermalink("/writing/{slug}", "/writing/hello")).toEqual({ slug: "hello" });
+        expect(matchPermalink("/{collection}/{slug}", "/post/hello")).toEqual({ slug: "hello" });
+    });
+
+    it("refuses a different shape or literal", () => {
+        expect(matchPermalink("/writing/{slug}", "/notes/hello")).toBeUndefined();
+        expect(matchPermalink("/{year}/{slug}", "/2026/08/hello")).toBeUndefined();
+    });
+
+    it("verifies date and collection tokens against the loaded entry", () => {
+        expect(matchPermalink("/{year}/{month}/{day}/{slug}", "/2026/08/09/hello", entry)).toEqual({ slug: "hello" });
+        expect(matchPermalink("/{year}/{month}/{day}/{slug}", "/2025/08/09/hello", entry)).toBeUndefined();
+        expect(matchPermalink("/{collection}/{slug}", "/guide/hello", entry)).toBeUndefined();
     });
 });
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { publicSiteSettings } from "@/content/public-site";
 import { getSession, isInstalled, safeNextPath } from "@/lib/session";
 import { SignInForm } from "./sign-in-form";
 
@@ -20,12 +21,14 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         redirect(next);
     }
 
+    const siteTitle = (await publicSiteSettings()).get("site.title");
+
     return (
         <main id="main-content" className="flex min-h-svh items-center justify-center p-4 sm:p-6">
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle>Sign in</CardTitle>
-                    <CardDescription>Continue to the jamcaa admin.</CardDescription>
+                    <CardDescription>Continue to the {siteTitle} admin.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <SignInForm next={next} />

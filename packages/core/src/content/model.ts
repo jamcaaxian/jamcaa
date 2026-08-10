@@ -2,8 +2,8 @@ import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 import type { Collection } from "./collection";
 import { buildTable } from "./table";
 
-export interface ContentModel {
-    readonly collections: readonly Collection[];
+export interface ContentModel<TCollections extends readonly Collection[] = readonly Collection[]> {
+    readonly collections: TCollections;
     readonly tables: Readonly<Record<string, SQLiteTable>>;
     collection(name: string): Collection | undefined;
     table(name: string): SQLiteTable | undefined;
@@ -13,7 +13,9 @@ export interface ContentModel {
  * Assembles a site's collections and checks what a single declaration cannot:
  * that names are unique and that every reference points at something real.
  */
-export function defineContentModel(collections: readonly Collection[]): ContentModel {
+export function defineContentModel<const TCollections extends readonly Collection[]>(
+    collections: TCollections
+): ContentModel<TCollections> {
     const byName = new Map<string, Collection>();
 
     for (const collection of collections) {

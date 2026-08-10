@@ -21,6 +21,11 @@ export interface PostDraft {
     status: string;
 }
 
+export interface PostAddressSettings {
+    pattern: string;
+    mayChooseSlug: boolean;
+}
+
 const allStatuses = [
     { value: "draft", label: "Draft" },
     { value: "published", label: "Published" },
@@ -29,7 +34,15 @@ const allStatuses = [
 
 const postMedia = createHttpMediaAdapter({ collection: "post" });
 
-export function PostForm({ post, mayPublish }: { post?: PostDraft; mayPublish: boolean }) {
+export function PostForm({
+    post,
+    mayPublish,
+    address
+}: {
+    post?: PostDraft;
+    mayPublish: boolean;
+    address: PostAddressSettings;
+}) {
     const [state, action, pending] = useActionState<PostFormState, FormData>(savePost, {});
     const [title, setTitle] = useState(post?.title ?? "");
     // Publishing is withheld from the form as well as the action, so it is not
@@ -62,11 +75,19 @@ export function PostForm({ post, mayPublish }: { post?: PostDraft; mayPublish: b
                     />
                 </Field>
 
-                <Field>
-                    <FieldLabel htmlFor="slug">Address</FieldLabel>
-                    <Input id="slug" name="slug" defaultValue={post?.slug} placeholder="Taken from the title" />
-                    <FieldDescription>Leave this empty and the title decides.</FieldDescription>
-                </Field>
+                {address.mayChooseSlug ?
+                    <Field>
+                        <FieldLabel htmlFor="slug">Slug</FieldLabel>
+                        <Input id="slug" name="slug" defaultValue={post?.slug} placeholder="Taken from the title" />
+                        <FieldDescription>
+                            Leave this empty and the title decides. Public addresses follow {address.pattern}.
+                        </FieldDescription>
+                    </Field>
+                :   <>
+                        <input type="hidden" name="slug" value={post?.slug ?? ""} />
+                        <p className="text-muted-foreground text-sm">Public addresses follow {address.pattern}.</p>
+                    </>
+                }
 
                 <Field>
                     <FieldLabel htmlFor="excerpt">Excerpt</FieldLabel>
