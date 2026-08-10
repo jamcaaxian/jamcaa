@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getSchema } from "@tiptap/core";
 import { parseRichText } from "@jamcaa/core/content";
-import { richTextDocumentForSubmission, richTextExtensions } from "./rich-text-editor";
+import { richTextDocumentForSubmission, richTextExtensions, toolbarButtonPressedState } from "./rich-text-editor";
 
 describe("the browser and core rich text compatibility contract", () => {
     const schema = getSchema(richTextExtensions());
@@ -163,5 +163,11 @@ describe("the browser and core rich text compatibility contract", () => {
                 } as unknown as HTMLElement)
             :   undefined
         ).toBe(false);
+    });
+
+    it("exposes pressed state only when a toolbar command is a toggle", () => {
+        expect(toolbarButtonPressedState()).toBeUndefined();
+        expect(toolbarButtonPressedState(false)).toBe(false);
+        expect(toolbarButtonPressedState(true)).toBe(true);
     });
 });

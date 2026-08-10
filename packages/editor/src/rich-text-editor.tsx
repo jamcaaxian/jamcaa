@@ -130,7 +130,7 @@ export function richTextDocumentForSubmission(value: unknown): RichTextDocument 
 
 function ToolbarButton({
     label,
-    active = false,
+    active,
     disabled = false,
     onClick,
     children
@@ -146,7 +146,7 @@ function ToolbarButton({
             type="button"
             className="jamcaa-rich-text-editor__button"
             aria-label={label}
-            aria-pressed={active}
+            aria-pressed={toolbarButtonPressedState(active)}
             disabled={disabled}
             onClick={onClick}
             title={label}
@@ -154,6 +154,10 @@ function ToolbarButton({
             {children}
         </button>
     );
+}
+
+export function toolbarButtonPressedState(active?: boolean) {
+    return active === undefined ? undefined : active;
 }
 
 export interface RichTextEditorProps {
