@@ -328,6 +328,26 @@ describe("taking an upload", () => {
         expect(repeated.parts.map(part => part.partNumber)).toEqual([1, 2, 3]);
     });
 
+    it("does not begin a browser multipart upload without a part-address strategy", async () => {
+        const uploaderId = await anUploader();
+
+        await expect(
+            planMultipartUpload({
+                database: database(),
+                bindings: env as unknown as Record<string, unknown>,
+                file: { name: "unsigned.mp4", type: "video/mp4", size: 6 * 1024 * 1024 },
+                context: context({ mimeType: "video/mp4", size: 6 * 1024 * 1024 }),
+                uploaderId,
+                fingerprint: "unsigned.mp4:6291456:video/mp4:1",
+                partSize: 5 * 1024 * 1024,
+                expiresInSeconds: 300
+            })
+        ).rejects.toThrow('Bucket "media" cannot accept a multipart upload.');
+
+        const rows = await env.DB.prepare("SELECT COUNT(*) AS total FROM media").first<{ total: number }>();
+        expect(rows?.total).toBe(0);
+    });
+
     it("aborts a multipart upload when its pending media is cancelled", async () => {
         const uploaderId = await anUploader();
         const started = await planMultipartUpload({

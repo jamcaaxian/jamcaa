@@ -326,7 +326,10 @@ export async function planMultipartUpload(request: PlanMultipartUploadRequest): 
 
     const { record: destination, adapter } = await uploadDestination({ database, bindings, credentials, context });
 
-    if (adapter.multipart === undefined) {
+    if (
+        adapter.multipart === undefined
+        || (adapter.multipart.presignPart === undefined && partAddressFor === undefined)
+    ) {
         throw new Error(`Bucket "${destination.id}" cannot accept a multipart upload.`);
     }
 
