@@ -4,8 +4,9 @@ import {
     text as sqliteText,
     type SQLiteColumnBuilderBase
 } from "drizzle-orm/sqlite-core";
+import { parseRichText, type RichTextDocument } from "./rich-text";
 
-export type FieldKind = "text" | "markdown" | "number" | "toggle" | "moment" | "choice" | "reference";
+export type FieldKind = "text" | "markdown" | "richText" | "number" | "toggle" | "moment" | "choice" | "reference";
 
 export interface FieldOptions {
     /** Shown above the control in the admin. Defaults to the field name, humanised. */
@@ -23,6 +24,8 @@ export interface Field<TValue = unknown> {
     readonly references?: string;
     /** Carries the field's value type. Never assigned; erased at runtime. */
     readonly valueType?: TValue;
+    /** Normalises and validates a value before it crosses the collection boundary. */
+    readonly parse?: (value: unknown) => TValue;
     buildColumn(name: string): SQLiteColumnBuilderBase;
 }
 
@@ -60,6 +63,19 @@ export function markdown<const TOptions extends FieldOptions = FieldOptions>(
     const definition = base("markdown", options);
 
     return { ...definition, buildColumn: name => column(sqliteText(name), definition.required) };
+}
+
+/** Structured long-form content stored as ProseMirror JSON. */
+export function richText<const TOptions extends FieldOptions = FieldOptions>(
+    options?: TOptions
+): Field<Held<RichTextDocument, TOptions>> {
+    const definition = base("richText", options);
+
+    return {
+        ...definition,
+        parse: value => parseRichText(value),
+        buildColumn: name => column(sqliteText(name, { mode: "json" }).$type<RichTextDocument>(), definition.required)
+    };
 }
 
 export interface NumberOptions extends FieldOptions {

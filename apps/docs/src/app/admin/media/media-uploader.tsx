@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fileFingerprint, uploadMultipartWithFallback, type MultipartUploadPlan } from "@/lib/multipart-upload";
+import { uploadMedia } from "@/lib/media-upload";
+import { fileFingerprint } from "@/lib/multipart-upload";
 
 interface Attempt {
     key: string;
@@ -12,11 +13,6 @@ interface Attempt {
     state: "preparing" | "sending" | "confirming" | "done" | "failed";
     progress?: number;
     problem?: string;
-}
-
-interface DirectUploadAnswer {
-    mode?: "multipart" | "server";
-    error?: string;
 }
 
 export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
@@ -44,145 +40,25 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
                 );
 
             try {
-                const preparation = await fetch("/api/media", {
-                    method: "PUT",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ name: file.name, type: file.type, size: file.size })
-                });
-                const plan = (await preparation.json().catch(() => ({}))) as DirectUploadAnswer;
-
-                if (!preparation.ok) {
-                    settle("failed", plan.error ?? `The server answered ${preparation.status}.`);
-                    continue;
-                }
-
-                if (plan.mode === "multipart") {
-                    settle("sending");
-                    try {
-                        let currentMultipartId = "";
-
-                        await uploadMultipartWithFallback({
-                            file,
-                            prepare: async () => {
-                                const response = await fetch("/api/media/multipart", {
-                                    method: "POST",
-                                    headers: { "content-type": "application/json" },
-                                    body: JSON.stringify({
-                                        name: file.name,
-                                        type: file.type,
-                                        size: file.size,
-                                        fingerprint: fileFingerprint(file)
-                                    })
-                                });
-                                const answer = (await response.json().catch(() => ({}))) as MultipartUploadPlan & {
-                                    error?: string;
-                                };
-
-                                if (!response.ok || !answer.id || !Array.isArray(answer.parts)) {
-                                    throw new Error(
-                                        answer.error ?? `Multipart preparation answered ${response.status}.`
-                                    );
-                                }
-
-                                currentMultipartId = answer.id;
-                                return answer;
-                            },
-                            uploadPart: async (part, body) => {
-                                const response = await fetch(part.putUrl, { method: "PUT", body });
-
-                                if (!response.ok) {
-                                    throw new Error(
-                                        `Part ${part.partNumber} answered ${response.status}. Check the connection and bucket CORS rules.`
-                                    );
-                                }
-
-                                const etag = response.headers.get("etag");
-
-                                if (!etag) {
-                                    throw new Error(`Part ${part.partNumber} did not return an ETag.`);
-                                }
-
-                                return etag;
-                            },
-                            recordPart: async part => {
-                                const multipartId = currentMultipartId;
-
-                                if (!multipartId) {
-                                    throw new Error("The multipart upload identifier is missing.");
-                                }
-
-                                const response = await fetch("/api/media/multipart", {
-                                    method: "PATCH",
-                                    headers: { "content-type": "application/json" },
-                                    body: JSON.stringify({ id: multipartId, ...part })
-                                });
-
-                                if (!response.ok) {
-                                    throw new Error(`Part ${part.partNumber} could not be recorded.`);
-                                }
-                            },
-                            onProgress: progress =>
-                                setAttempts(current =>
-                                    current.map(attempt =>
-                                        attempt.key === attemptKey ?
-                                            {
-                                                ...attempt,
-                                                state: "sending",
-                                                progress: Math.round(
-                                                    (progress.completedBytes / progress.totalBytes) * 100
-                                                )
-                                            }
-                                        :   attempt
-                                    )
-                                ),
-                            complete: async id => {
-                                settle("confirming");
-                                const response = await fetch("/api/media/multipart", {
-                                    method: "PUT",
-                                    headers: { "content-type": "application/json" },
-                                    body: JSON.stringify({ id })
-                                });
-
-                                if (!response.ok) {
-                                    const answer = (await response.json().catch(() => ({}))) as { error?: string };
-                                    throw new Error(answer.error ?? `Confirmation answered ${response.status}.`);
-                                }
-                            },
-                            uploadServer: async fallbackFile => {
-                                settle("sending");
-                                const body = new FormData();
-                                body.set("file", fallbackFile);
-                                const response = await fetch("/api/media", { method: "POST", body });
-
-                                if (!response.ok) {
-                                    const answer = (await response.json().catch(() => ({}))) as { error?: string };
-                                    throw new Error(answer.error ?? `Server fallback answered ${response.status}.`);
-                                }
-                            }
-                        });
-
-                        settle("done");
-                    } catch (error) {
-                        settle("failed", error instanceof Error ? error.message : "The upload failed.");
-                    }
-
-                    continue;
-                }
-
                 settle("sending");
-                const body = new FormData();
-                body.set("file", file);
-                const response = await fetch("/api/media", { method: "POST", body });
-
-                if (response.ok) {
-                    settle("done");
-                } else {
-                    const answer = (await response.json().catch(() => ({}))) as { error?: string };
-
-                    settle("failed", answer.error ?? `The server answered ${response.status}.`);
-                }
-            } catch {
-                settle("failed", "The upload could not be sent. Check the connection and try again.");
+                await uploadMedia(file, {
+                    onProgress: progress =>
+                        setAttempts(current =>
+                            current.map(attempt =>
+                                attempt.key === attemptKey ?
+                                    {
+                                        ...attempt,
+                                        state: "sending",
+                                        progress: Math.round((progress.completedBytes / progress.totalBytes) * 100)
+                                    }
+                                :   attempt
+                            )
+                        ),
+                    onConfirming: () => settle("confirming")
+                });
+                settle("done");
+            } catch (error) {
+                settle("failed", error instanceof Error ? error.message : "The upload failed.");
             }
         }
 

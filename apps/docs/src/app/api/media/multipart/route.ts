@@ -43,10 +43,11 @@ function preparation(value: unknown) {
     const name = typeof candidate.name === "string" ? candidate.name.trim() : "";
     const type = typeof candidate.type === "string" && candidate.type ? candidate.type : "application/octet-stream";
     const fingerprint = typeof candidate.fingerprint === "string" ? candidate.fingerprint.trim() : "";
+    const collection = typeof candidate.collection === "string" ? candidate.collection.trim() : "";
     const size = candidate.size;
 
     return name && fingerprint && typeof size === "number" && Number.isSafeInteger(size) && size >= PART_SIZE ?
-            { name, type, size, fingerprint }
+            { name, type, size, fingerprint, ...(collection ? { collection } : {}) }
         :   undefined;
 }
 
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
             credentials,
             file,
             context: {
+                collection: file.collection,
                 authorRole: access.actor.role,
                 authorId: access.actor.id,
                 mimeType: file.type,
@@ -162,7 +164,14 @@ export async function PUT(request: Request) {
             uploaderId: access.actor.id
         });
 
-        return Response.json({ id: stored.id, filename: stored.filename, address: `/media/${stored.id}` });
+        return Response.json({
+            id: stored.id,
+            filename: stored.filename,
+            mimeType: stored.mimeType,
+            size: stored.size,
+            alt: stored.alt,
+            address: `/media/${stored.id}`
+        });
     } catch (error) {
         return problem(409, error instanceof Error ? error.message : "That multipart upload could not be completed.");
     }

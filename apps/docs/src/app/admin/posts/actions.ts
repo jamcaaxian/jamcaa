@@ -4,14 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
-import { freeSlug, toSlug, type EntryStatus } from "@jamcaa/core/content";
+import { freeSlug, toSlug } from "@jamcaa/core/content";
 import { posts } from "@/content/store";
 import { may, mayTouch, type Actor } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
+import { readPostSubmission } from "./post-submission";
 
 export type PostFormState = { error?: string };
-
-const statuses: EntryStatus[] = ["draft", "published", "archived"];
 
 async function workspace() {
     const session = await requireSession();
@@ -22,25 +21,17 @@ async function workspace() {
     return { actor, store: posts(database) };
 }
 
-function readStatus(value: FormDataEntryValue | null): EntryStatus {
-    const candidate = String(value ?? "draft") as EntryStatus;
-
-    return statuses.includes(candidate) ? candidate : "draft";
-}
-
 export async function savePost(_previous: PostFormState, formData: FormData): Promise<PostFormState> {
     const { actor, store } = await workspace();
 
-    const id = String(formData.get("id") ?? "");
-    const title = String(formData.get("title") ?? "").trim();
-    const excerpt = String(formData.get("excerpt") ?? "").trim();
-    const body = String(formData.get("body") ?? "");
-    const status = readStatus(formData.get("status"));
-    const wantedSlug = toSlug(String(formData.get("slug") ?? "") || title);
+    const submission = readPostSubmission(formData);
 
-    if (!title || !body.trim()) {
-        return { error: "A post needs a title and a body." };
+    if ("error" in submission) {
+        return submission;
     }
+
+    const { id, title, excerpt, body, status } = submission;
+    const wantedSlug = toSlug(submission.slug || title);
 
     if (!wantedSlug) {
         return { error: "That title produces no address. Give the post a slug of its own." };

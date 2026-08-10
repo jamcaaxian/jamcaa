@@ -29,7 +29,7 @@ A named data slot within a collection. It determines that data's storage shape, 
 _Avoid_: property, column, attribute
 
 **Post**:
-An entry published for readers, whose body is carried as Markdown.
+An entry published for readers, whose body is rich text. Markdown is an interchange format, not the body's stored form.
 _Avoid_: article, gallery, item
 
 **Taxonomy**:

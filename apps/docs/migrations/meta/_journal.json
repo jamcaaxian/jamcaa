@@ -43,6 +43,13 @@
       "when": 1786294079845,
       "tag": "0005_groovy_matthew_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1786333955095,
+      "tag": "0006_rich-text-post-body",
+      "breakpoints": true
     }
   ]
 }

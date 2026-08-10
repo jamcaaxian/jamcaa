@@ -53,7 +53,13 @@ describe("the multipart media HTTP route", () => {
         mocked.getSession.mockResolvedValue(null);
 
         const response = await POST(
-            request("POST", { name: "movie.mp4", type: "video/mp4", size: 11 * 1024 * 1024, fingerprint: "movie" })
+            request("POST", {
+                name: "movie.mp4",
+                type: "video/mp4",
+                size: 11 * 1024 * 1024,
+                fingerprint: "movie",
+                collection: "post"
+            })
         );
 
         expect(response.status).toBe(401);
@@ -72,7 +78,13 @@ describe("the multipart media HTTP route", () => {
         });
 
         const response = await POST(
-            request("POST", { name: "movie.mp4", type: "video/mp4", size: 11 * 1024 * 1024, fingerprint: "movie" })
+            request("POST", {
+                name: "movie.mp4",
+                type: "video/mp4",
+                size: 11 * 1024 * 1024,
+                fingerprint: "movie",
+                collection: "post"
+            })
         );
 
         expect(response.status).toBe(200);
@@ -84,7 +96,8 @@ describe("the multipart media HTTP route", () => {
                 uploaderId: "uploader-1",
                 fingerprint: "movie",
                 partSize: fiveMiB,
-                expiresInSeconds: 300
+                expiresInSeconds: 300,
+                context: expect.objectContaining({ collection: "post" })
             })
         );
     });

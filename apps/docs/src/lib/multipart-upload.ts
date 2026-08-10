@@ -34,10 +34,10 @@ interface MultipartUploadOptions {
     retryDelayMilliseconds?: number;
 }
 
-interface MultipartUploadWithFallbackOptions extends Omit<MultipartUploadOptions, "plan"> {
+interface MultipartUploadWithFallbackOptions<TResult> extends Omit<MultipartUploadOptions, "plan"> {
     prepare(): Promise<MultipartUploadPlan>;
-    complete(id: string): Promise<void>;
-    uploadServer(file: File): Promise<void>;
+    complete(id: string): Promise<TResult>;
+    uploadServer(file: File): Promise<TResult>;
 }
 
 export function fileFingerprint(file: Pick<File, "name" | "size" | "type" | "lastModified">) {
@@ -123,22 +123,28 @@ export async function uploadMultipart(options: MultipartUploadOptions): Promise<
     }
 }
 
-export async function uploadMultipartWithFallback(
-    options: MultipartUploadWithFallbackOptions
-): Promise<"multipart" | "server"> {
+export interface MultipartUploadResult<TResult> {
+    mode: "multipart" | "server";
+    value: TResult;
+}
+
+export async function uploadMultipartWithFallback<TResult>(
+    options: MultipartUploadWithFallbackOptions<TResult>
+): Promise<MultipartUploadResult<TResult>> {
     const { prepare, complete, uploadServer, ...uploadOptions } = options;
+    let plan: MultipartUploadPlan;
 
     try {
-        const plan = await prepare();
-        await uploadMultipart({ ...uploadOptions, plan });
-        await complete(plan.id);
-        return "multipart";
-    } catch (error) {
-        try {
-            await uploadServer(options.file);
-            return "server";
-        } catch {
-            throw error;
-        }
+        plan = await prepare();
+    } catch {
+        return { mode: "server", value: await uploadServer(options.file) };
     }
+
+    try {
+        await uploadMultipart({ ...uploadOptions, plan });
+    } catch {
+        return { mode: "server", value: await uploadServer(options.file) };
+    }
+
+    return { mode: "multipart", value: await complete(plan.id) };
 }

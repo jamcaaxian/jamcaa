@@ -59,11 +59,25 @@ export function entryStore<TFields extends FieldMap>(options: {
     collection: Collection<TFields>;
     table: SQLiteTable;
 }): EntryStore<TFields> {
-    const { database, table } = options;
+    const { database, collection, table } = options;
 
     type Entry = EntryOf<Collection<TFields>>;
 
-    const asEntries = (rows: Record<string, unknown>[]) => rows as Entry[];
+    function parseDeclaredValues(values: Record<string, unknown>) {
+        const parsed = { ...values };
+
+        for (const [fieldName, field] of Object.entries(collection.fields)) {
+            if (!(fieldName in values) || values[fieldName] === null || field.parse === undefined) {
+                continue;
+            }
+
+            parsed[fieldName] = field.parse(values[fieldName]);
+        }
+
+        return parsed;
+    }
+
+    const asEntries = (rows: Record<string, unknown>[]) => rows.map(parseDeclaredValues) as Entry[];
 
     async function one(where: ReturnType<typeof eq>): Promise<Entry | undefined> {
         const rows = await database.select().from(table).where(where).limit(1);
@@ -75,7 +89,7 @@ export function entryStore<TFields extends FieldMap>(options: {
         async create(entry) {
             const id = crypto.randomUUID();
 
-            await database.insert(table).values({ ...entry, id });
+            await database.insert(table).values({ ...parseDeclaredValues(entry), id });
 
             const created = await one(eq(columnNamed(table, "id"), id));
 
@@ -89,7 +103,7 @@ export function entryStore<TFields extends FieldMap>(options: {
         async update(id, changes) {
             await database
                 .update(table)
-                .set({ ...changes, updatedAt: new Date() })
+                .set({ ...parseDeclaredValues(changes), updatedAt: new Date() })
                 .where(eq(columnNamed(table, "id"), id));
         },
 

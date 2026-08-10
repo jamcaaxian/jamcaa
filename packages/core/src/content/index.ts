@@ -3,6 +3,7 @@ export * from "./entries";
 export * from "./fields";
 export * from "./model";
 export * from "./permalink";
+export * from "./rich-text";
 export * from "./slug";
 export * from "./system-fields";
 export * from "./table";

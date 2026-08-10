@@ -1,8 +1,9 @@
 import { getTableConfig } from "drizzle-orm/sqlite-core";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { defineCollection, type EntryOf } from "./collection";
-import { choice, markdown, moment, number, reference, text, toggle } from "./fields";
+import { choice, moment, number, reference, richText, text, toggle } from "./fields";
 import { defineContentModel } from "./model";
+import type { RichTextDocument } from "./rich-text";
 import { buildTable } from "./table";
 import { systemFieldNames } from "./system-fields";
 
@@ -13,7 +14,7 @@ const post = defineCollection({
     fields: {
         title: text({ required: true }),
         excerpt: text(),
-        body: markdown({ required: true }),
+        body: richText({ required: true }),
         readingTime: number({ whole: true }),
         featured: toggle(),
         embargoedUntil: moment(),
@@ -56,14 +57,14 @@ describe("defineCollection", () => {
                 name: "note",
                 label: "x",
                 plural: "x",
-                fields: { body: markdown() },
+                fields: { body: richText() },
                 titleField: "heading" as never
             })
         ).toThrow(/is not one of its fields/);
     });
 
     it("insists on something to name an entry by", () => {
-        expect(() => defineCollection({ name: "note", label: "x", plural: "x", fields: { body: markdown() } })).toThrow(
+        expect(() => defineCollection({ name: "note", label: "x", plural: "x", fields: { body: richText() } })).toThrow(
             /no field can name an entry/
         );
     });
@@ -172,7 +173,7 @@ describe("the type an entry takes", () => {
 
     it("derives from the declaration rather than being written twice", () => {
         expectTypeOf<Post["title"]>().toEqualTypeOf<string>();
-        expectTypeOf<Post["body"]>().toEqualTypeOf<string>();
+        expectTypeOf<Post["body"]>().toEqualTypeOf<RichTextDocument>();
     });
 
     it("lets an optional field be absent", () => {

@@ -1,4 +1,4 @@
-import { defineCollection, markdown, text } from "@jamcaa/core/content";
+import { defineCollection, richText, text } from "@jamcaa/core/content";
 
 export const post = defineCollection({
     name: "post",
@@ -7,6 +7,6 @@ export const post = defineCollection({
     fields: {
         title: text({ required: true }),
         excerpt: text({ description: "Shown in listings and search results." }),
-        body: markdown({ required: true })
+        body: richText({ required: true })
     }
 });

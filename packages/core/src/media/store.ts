@@ -1,4 +1,4 @@
-import { and, desc, eq, lt } from "drizzle-orm";
+import { and, desc, eq, like, lt } from "drizzle-orm";
 import type { Database } from "../db/client";
 import { bucket, media, multipartUpload, storageRule } from "../db/schema/media";
 import { createStorageAdapter, type SigningCredentials, type StorageAdapter, type UploadedPart } from "./adapter";
@@ -592,12 +592,18 @@ export async function openMedia(options: {
 
 export async function listMedia(
     database: Database,
-    query: { limit?: number; offset?: number } = {}
+    query: { limit?: number; offset?: number; mimePrefix?: string } = {}
 ): Promise<StoredMedia[]> {
+    const conditions = [eq(media.state, "stored")];
+
+    if (query.mimePrefix) {
+        conditions.push(like(media.mimeType, `${query.mimePrefix}%`));
+    }
+
     return database
         .select()
         .from(media)
-        .where(eq(media.state, "stored"))
+        .where(and(...conditions))
         .orderBy(desc(media.createdAt))
         .limit(query.limit ?? 60)
         .offset(query.offset ?? 0);

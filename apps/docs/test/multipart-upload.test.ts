@@ -73,9 +73,9 @@ describe("uploading a file in resumable parts", () => {
 
     it("uses the server path after multipart retries are exhausted", async () => {
         const file = new File([new Uint8Array(6)], "movie.mp4", { type: "video/mp4", lastModified: 1 });
-        const uploadServer = vi.fn(async () => undefined);
+        const uploadServer = vi.fn(async (..._arguments: [File]) => undefined);
 
-        const mode = await uploadMultipartWithFallback({
+        const result = await uploadMultipartWithFallback({
             file,
             prepare: async () => ({
                 id: "media-1",
@@ -87,12 +87,39 @@ describe("uploading a file in resumable parts", () => {
             }),
             recordPart: vi.fn(async () => undefined),
             complete: vi.fn(async () => undefined),
-            uploadServer,
+            uploadServer: async fallbackFile => {
+                await uploadServer(fallbackFile);
+                return "stored";
+            },
             attempts: 2,
             retryDelayMilliseconds: 0
         });
 
-        expect(mode).toBe("server");
+        expect(result).toEqual({ mode: "server", value: "stored" });
         expect(uploadServer).toHaveBeenCalledWith(file);
+    });
+
+    it("does not create a second upload when multipart completion is uncertain", async () => {
+        const file = new File([new Uint8Array(6)], "movie.mp4", { type: "video/mp4", lastModified: 1 });
+        const uploadServer = vi.fn(async (..._arguments: [File]) => "duplicate");
+
+        await expect(
+            uploadMultipartWithFallback({
+                file,
+                prepare: async () => ({
+                    id: "media-1",
+                    completedParts: [],
+                    parts: [{ partNumber: 1, offset: 0, size: 6, putUrl: "https://parts/1" }]
+                }),
+                uploadPart: vi.fn(async () => '"part-one"'),
+                recordPart: vi.fn(async () => undefined),
+                complete: vi.fn(async () => {
+                    throw new Error("completion response lost");
+                }),
+                uploadServer,
+                retryDelayMilliseconds: 0
+            })
+        ).rejects.toThrow("completion response lost");
+        expect(uploadServer).not.toHaveBeenCalled();
     });
 });

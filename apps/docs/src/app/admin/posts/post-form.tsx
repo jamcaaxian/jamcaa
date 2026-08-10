@@ -2,11 +2,12 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
+import type { RichTextDocument } from "@jamcaa/core/content";
 import { Button } from "@/components/ui/button";
+import { RichTextEditor } from "@/components/editor/rich-text-editor";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { setAdminCrumb } from "@/lib/admin-crumb";
 import { savePost, type PostFormState } from "./actions";
 
@@ -15,7 +16,7 @@ export interface PostDraft {
     title: string;
     slug: string;
     excerpt: string | null;
-    body: string;
+    body: RichTextDocument;
     status: string;
 }
 
@@ -72,15 +73,8 @@ export function PostForm({ post, mayPublish }: { post?: PostDraft; mayPublish: b
 
                 <Field>
                     <FieldLabel htmlFor="body">Body</FieldLabel>
-                    <Textarea
-                        id="body"
-                        name="body"
-                        defaultValue={post?.body}
-                        rows={18}
-                        required
-                        className="font-mono"
-                    />
-                    <FieldDescription>Markdown.</FieldDescription>
+                    <RichTextEditor name="body" initialValue={post?.body} />
+                    <FieldDescription>Rich text. Images remain managed as Media.</FieldDescription>
                 </Field>
 
                 <Field>

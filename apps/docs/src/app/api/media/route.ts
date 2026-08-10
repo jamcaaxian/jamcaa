@@ -1,4 +1,4 @@
-import { acceptUpload, cancelUpload, confirmUpload } from "@jamcaa/core/media";
+import { acceptUpload, cancelUpload, confirmUpload, listMedia } from "@jamcaa/core/media";
 import { coreSettings, loadSettings } from "@jamcaa/core/settings";
 import { mediaRuntime } from "@/lib/media";
 import { transferModeFor } from "@/lib/media-transfer";
@@ -22,6 +22,22 @@ async function actorWhoMayUpload() {
 
     if (!(await may(actor, "media", "upload"))) {
         return { problem: problem(403, "You do not have permission to upload.") } as const;
+    }
+
+    return { actor } as const;
+}
+
+async function actorWhoMayRead() {
+    const session = await getSession();
+
+    if (session === null) {
+        return { problem: problem(401, "Sign in to see Media.") } as const;
+    }
+
+    const actor = { id: session.user.id, role: session.user.role };
+
+    if (!(await may(actor, "media", "read"))) {
+        return { problem: problem(403, "You do not have permission to see Media.") } as const;
     }
 
     return { actor } as const;
@@ -55,6 +71,37 @@ function fileDescription(value: unknown) {
     return name && typeof size === "number" && Number.isSafeInteger(size) && size >= 0 ?
             { name, type, size }
         :   undefined;
+}
+
+function pageNumber(value: string | null, fallback: number, maximum: number) {
+    const parsed = Number(value ?? fallback);
+
+    return Number.isSafeInteger(parsed) && parsed >= 0 ? Math.min(parsed, maximum) : fallback;
+}
+
+export async function GET(request: Request) {
+    const access = await actorWhoMayRead();
+
+    if ("problem" in access) {
+        return access.problem;
+    }
+
+    const url = new URL(request.url);
+    const limit = pageNumber(url.searchParams.get("limit"), 60, 100);
+    const offset = pageNumber(url.searchParams.get("offset"), 0, 10_000);
+    const mimePrefix = url.searchParams.get("type") === "image" ? "image/" : undefined;
+    const items = await listMedia(mediaRuntime().database, { limit, offset, mimePrefix });
+
+    return Response.json({
+        items: items.map(item => ({
+            id: item.id,
+            filename: item.filename,
+            mimeType: item.mimeType,
+            size: item.size,
+            alt: item.alt,
+            address: `/media/${item.id}`
+        }))
+    });
 }
 
 export async function PUT(request: Request) {
@@ -106,7 +153,14 @@ export async function PATCH(request: Request) {
     try {
         const stored = await confirmUpload({ database, bindings, credentials, id, uploaderId: access.actor.id });
 
-        return Response.json({ id: stored.id, filename: stored.filename, address: `/media/${stored.id}` });
+        return Response.json({
+            id: stored.id,
+            filename: stored.filename,
+            mimeType: stored.mimeType,
+            size: stored.size,
+            alt: stored.alt,
+            address: `/media/${stored.id}`
+        });
     } catch (error) {
         return problem(409, error instanceof Error ? error.message : "That direct upload could not be confirmed.");
     }
@@ -180,7 +234,14 @@ export async function POST(request: Request) {
             uploaderId: access.actor.id
         });
 
-        return Response.json({ id: stored.id, filename: stored.filename, address: `/media/${stored.id}` });
+        return Response.json({
+            id: stored.id,
+            filename: stored.filename,
+            mimeType: stored.mimeType,
+            size: stored.size,
+            alt: stored.alt,
+            address: `/media/${stored.id}`
+        });
     } catch (error) {
         return problem(500, error instanceof Error ? error.message : "That file could not be stored.");
     }

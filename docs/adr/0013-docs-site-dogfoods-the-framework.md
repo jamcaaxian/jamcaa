@@ -8,6 +8,6 @@ The example and the documentation site are one and the same to avoid maintaining
 
 ## Consequences
 
-There is an explicit bootstrapping order: the documentation site cannot exist before the framework can render content. Early documentation is therefore maintained as Markdown files inside the repository and migrated into the framework once the content pipeline works. Because content is Markdown underneath, that migration is cheap.
+There is an explicit bootstrapping order: the documentation site cannot exist before the framework can render content. Early documentation is therefore maintained as Markdown files inside the repository and migrated into the framework once the content pipeline works. ADR-0019 defines rich text as the stored form and Markdown as an interchange format.
 
 It also ties the documentation site's availability to the framework's stability: a serious defect in the framework takes the documentation with it. That risk is inherent to bootstrapping and is accepted in exchange for the benefits above.
