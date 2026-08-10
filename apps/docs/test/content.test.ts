@@ -75,11 +75,17 @@ describe("the table a declaration produced", () => {
                 .run();
         }
 
-        const migration = env.TEST_MIGRATIONS.find(candidate => candidate.name.startsWith("0006_"));
+        const markdownMigration = env.TEST_MIGRATIONS.find(candidate => candidate.name.startsWith("0006_"));
+        const canonicalMigration = env.TEST_MIGRATIONS.find(candidate => candidate.name.startsWith("0007_"));
 
-        expect(migration).toBeDefined();
+        expect(markdownMigration).toBeDefined();
+        expect(canonicalMigration).toBeDefined();
 
-        for (const query of migration?.queries ?? []) {
+        for (const query of markdownMigration?.queries ?? []) {
+            await env.DB.prepare(query).run();
+        }
+
+        for (const query of canonicalMigration?.queries ?? []) {
             await env.DB.prepare(query).run();
         }
 

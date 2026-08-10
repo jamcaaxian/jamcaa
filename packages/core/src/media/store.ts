@@ -55,6 +55,13 @@ export interface MultipartUploadPlan {
     expiresInSeconds: number;
 }
 
+export class MultipartUploadNotEstablishedError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "MultipartUploadNotEstablishedError";
+    }
+}
+
 async function loadRules(database: Database): Promise<StorageRule[]> {
     const rows = await database.select().from(storageRule);
 
@@ -330,27 +337,19 @@ export async function planMultipartUpload(request: PlanMultipartUploadRequest): 
         adapter.multipart === undefined
         || (adapter.multipart.presignPart === undefined && partAddressFor === undefined)
     ) {
-        throw new Error(`Bucket "${destination.id}" cannot accept a multipart upload.`);
+        throw new MultipartUploadNotEstablishedError(`Bucket "${destination.id}" cannot accept a multipart upload.`);
     }
 
     const pending = await createPendingMedia({ database, bucketId: destination.id, file, at: context.at, uploaderId });
+    let uploadId: string | undefined;
+    let sessionRecorded = false;
 
     try {
-        const uploadId = await adapter.multipart.begin(pending.objectKey, file.type);
-        try {
-            await database
-                .insert(multipartUpload)
-                .values({
-                    mediaId: pending.id,
-                    uploadId,
-                    fingerprint: scopedFingerprint,
-                    partSize,
-                    completedParts: "[]"
-                });
-        } catch (error) {
-            await adapter.multipart.abort(pending.objectKey, uploadId).catch(() => undefined);
-            throw error;
-        }
+        uploadId = await adapter.multipart.begin(pending.objectKey, file.type);
+        await database
+            .insert(multipartUpload)
+            .values({ mediaId: pending.id, uploadId, fingerprint: scopedFingerprint, partSize, completedParts: "[]" });
+        sessionRecorded = true;
         const record = await mediaById(database, pending.id);
         const [upload] = await database
             .select()
@@ -364,7 +363,32 @@ export async function planMultipartUpload(request: PlanMultipartUploadRequest): 
 
         return multipartPlan({ adapter, record, upload, expiresInSeconds, partAddressFor });
     } catch (error) {
-        await database.delete(media).where(eq(media.id, pending.id));
+        if (uploadId === undefined) {
+            await database.delete(media).where(eq(media.id, pending.id));
+        } else {
+            try {
+                await adapter.multipart.abort(pending.objectKey, uploadId);
+                await database.delete(media).where(eq(media.id, pending.id));
+            } catch {
+                // Keep a recorded session so the regular abandoned-upload sweep can retry cleanup.
+                if (!sessionRecorded) {
+                    try {
+                        await database
+                            .insert(multipartUpload)
+                            .values({
+                                mediaId: pending.id,
+                                uploadId,
+                                fingerprint: scopedFingerprint,
+                                partSize,
+                                completedParts: "[]"
+                            })
+                            .onConflictDoNothing();
+                    } catch {
+                        // Preserve the initiating failure when neither remote nor database cleanup is available.
+                    }
+                }
+            }
+        }
         throw error;
     }
 }

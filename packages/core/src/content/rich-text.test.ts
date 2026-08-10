@@ -43,6 +43,17 @@ describe("the rich text interface", () => {
                 content: [{ type: "mediaImage", attrs: { mediaId: "../settings", alt: "" } }]
             })
         ).toThrow(/Media identifier/i);
+        expect(() =>
+            parseRichText({
+                type: "doc",
+                content: [
+                    {
+                        type: "mediaImage",
+                        attrs: { mediaId: "00000000-0000-4000-8000-000000000001", alt: "Diagram", src: "/settings" }
+                    }
+                ]
+            })
+        ).toThrow(/unsupported.*attribute/i);
     });
 
     it("accepts StarterKit list structure and escapes code blocks literally", () => {
@@ -62,6 +73,24 @@ describe("the rich text interface", () => {
         expect(renderRichTextToHtml(body)).toBe(
             '<ul><li><p>One</p></li></ul><pre><code class="language-html">&lt;b&gt;\n</code></pre>'
         );
+    });
+
+    it("canonicalises the code-block language default used by the browser schema", () => {
+        expect(
+            parseRichText({
+                type: "doc",
+                content: [{ type: "codeBlock", content: [{ type: "text", text: "const answer = 42;" }] }]
+            })
+        ).toEqual({
+            type: "doc",
+            content: [
+                {
+                    type: "codeBlock",
+                    attrs: { language: null },
+                    content: [{ type: "text", text: "const answer = 42;" }]
+                }
+            ]
+        });
     });
 
     it("accepts marks Tiptap preserves on a hard break", () => {
@@ -98,6 +127,24 @@ describe("the rich text interface", () => {
     });
 
     it("renders text and links without trusting stored input", () => {
+        expect(() =>
+            parseRichText({
+                type: "doc",
+                content: [
+                    {
+                        type: "paragraph",
+                        content: [
+                            {
+                                type: "text",
+                                text: "blocked",
+                                marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }]
+                            }
+                        ]
+                    }
+                ]
+            })
+        ).toThrow(/link needs an address/i);
+
         const body = parseRichText({
             type: "doc",
             content: [
@@ -109,11 +156,6 @@ describe("the rich text interface", () => {
                             type: "text",
                             text: " safe",
                             marks: [{ type: "link", attrs: { href: "https://jamcaa.com" } }]
-                        },
-                        {
-                            type: "text",
-                            text: " blocked",
-                            marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }]
                         }
                     ]
                 }
@@ -121,7 +163,7 @@ describe("the rich text interface", () => {
         });
 
         expect(renderRichTextToHtml(body)).toBe(
-            '<p><strong>&lt;script&gt;</strong><a href="https://jamcaa.com" rel="noopener noreferrer"> safe</a> blocked</p>'
+            '<p><strong>&lt;script&gt;</strong><a href="https://jamcaa.com" rel="noopener noreferrer"> safe</a></p>'
         );
     });
 

@@ -33,7 +33,7 @@ export default async function SetupPage() {
     const unmet = requirements.filter(requirement => !requirement.met);
 
     return (
-        <main className="flex min-h-svh items-center justify-center p-6">
+        <main id="main-content" className="flex min-h-svh items-center justify-center p-4 sm:p-6">
             <Card className="w-full max-w-lg">
                 <CardHeader>
                     <CardTitle>{unmet.length > 0 ? "Almost ready" : "Set up this site"}</CardTitle>
@@ -50,12 +50,12 @@ export default async function SetupPage() {
                                 {requirement.met ?
                                     <CheckCircle2 className="text-primary mt-0.5 size-4 shrink-0" />
                                 :   <CircleAlert className="text-destructive mt-0.5 size-4 shrink-0" />}
-                                <div className="space-y-1">
+                                <div className="min-w-0 flex-1 space-y-1">
                                     <div className={requirement.met ? "text-muted-foreground" : ""}>
                                         {requirement.name}
                                     </div>
                                     {requirement.met ? null : (
-                                        <code className="bg-muted block rounded-md px-2 py-1 font-mono text-xs">
+                                        <code className="bg-muted block max-w-full overflow-x-auto rounded-md px-2 py-1 font-mono text-xs whitespace-pre-wrap wrap-anywhere">
                                             {requirement.remedy}
                                         </code>
                                     )}

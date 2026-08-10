@@ -1,0 +1,45 @@
+{
+    "name": "@jamcaa/editor",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Reusable browser Editing Controls for jamcaa Sites",
+    "license": "Apache-2.0",
+    "type": "module",
+    "sideEffects": [
+        "./src/styles.css"
+    ],
+    "exports": {
+        ".": "./src/index.ts",
+        "./content": "./src/content.tsx",
+        "./media": "./src/media.ts",
+        "./styles.css": "./src/styles.css"
+    },
+    "scripts": {
+        "lint": "eslint",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@jamcaa/core": "workspace:*",
+        "@tiptap/core": "^3.29.2",
+        "@tiptap/react": "^3.29.2",
+        "@tiptap/starter-kit": "^3.29.2",
+        "lucide-react": "^1.30.0"
+    },
+    "peerDependencies": {
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "^5.20260808.1",
+        "@types/react": "^19.2.7",
+        "@types/react-dom": "^19.2.4",
+        "@typescript/native": "npm:typescript@^7.0.2",
+        "eslint": "^9",
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+        "typescript": "npm:@typescript/typescript6@^6.0.2",
+        "typescript-eslint": "^8.66.0",
+        "vitest": "^4.1.10"
+    }
+}

@@ -75,7 +75,7 @@ function TextSetting({ field }: { field: SettingField }) {
                             key={suggestion}
                             type="button"
                             onClick={() => setValue(suggestion)}
-                            className="bg-muted hover:bg-accent rounded-md px-2 py-1 font-mono text-xs"
+                            className="bg-muted hover:bg-accent pointer-coarse:min-h-11 rounded-md px-2 py-1 font-mono text-xs wrap-anywhere"
                         >
                             {suggestion}
                         </button>
@@ -105,7 +105,7 @@ function SettingControl({ field }: { field: SettingField }) {
                     name={field.key}
                     type="checkbox"
                     defaultChecked={Boolean(field.value)}
-                    className="accent-primary size-4"
+                    className="accent-primary size-5"
                 />
                 <FieldLabel htmlFor={field.key}>{field.label}</FieldLabel>
             </Field>
@@ -121,7 +121,7 @@ function SettingControl({ field }: { field: SettingField }) {
                     name={field.key}
                     type="number"
                     defaultValue={Number(field.value)}
-                    className="w-40"
+                    className="w-full sm:w-40"
                 />
                 {field.description ?
                     <FieldDescription>{field.description}</FieldDescription>
@@ -137,7 +137,7 @@ function SettingControl({ field }: { field: SettingField }) {
             <Field>
                 <FieldLabel htmlFor={field.key}>{field.label}</FieldLabel>
                 <Select name={field.key} defaultValue={String(field.value)} items={options}>
-                    <SelectTrigger id={field.key} className="w-56">
+                    <SelectTrigger id={field.key} className="w-full sm:w-56">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -182,7 +182,7 @@ export function SettingsForm({ fields, mayManage }: { fields: SettingField[]; ma
                 <p className="text-muted-foreground text-sm">Saved.</p>
             :   null}
 
-            <Button type="submit" disabled={pending || !mayManage}>
+            <Button type="submit" disabled={pending || !mayManage} className="w-full sm:w-auto">
                 {pending ? "Saving…" : "Save settings"}
             </Button>
         </form>

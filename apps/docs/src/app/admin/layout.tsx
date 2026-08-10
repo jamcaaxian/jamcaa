@@ -30,14 +30,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <header className="bg-background sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4">
                     <SidebarTrigger className="-ml-1" />
                     <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
-                    <AdminBreadcrumb />
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                        <AdminBreadcrumb />
+                    </div>
                     <div className="ml-auto flex items-center gap-1">
                         <ThemeToggle />
                         <UserMenu user={user} />
                     </div>
                 </header>
 
-                <div className="flex-1 p-6">{children}</div>
+                <div id="main-content" className="min-w-0 flex-1 p-4 sm:p-6">
+                    {children}
+                </div>
             </SidebarInset>
         </SidebarProvider>
     );

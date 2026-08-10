@@ -3,9 +3,11 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
+import { createHttpMediaAdapter } from "@jamcaa/editor/media";
 import { Button } from "@/components/ui/button";
-import { uploadMedia } from "@/lib/media-upload";
-import { fileFingerprint } from "@/lib/multipart-upload";
+import { mediaUploadProblem } from "./media-upload-problem";
+
+const media = createHttpMediaAdapter();
 
 interface Attempt {
     key: string;
@@ -28,12 +30,12 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
             return;
         }
 
-        setAttempts(chosen.map(file => ({ key: fileFingerprint(file), filename: file.name, state: "preparing" })));
+        const uploads = chosen.map(file => ({ file, key: crypto.randomUUID() }));
+        setAttempts(uploads.map(({ file, key }) => ({ key, filename: file.name, state: "preparing" })));
 
         // One at a time: the database serves queries serially, and a burst of parallel
         // uploads competes with the reads each of them needs.
-        for (const file of chosen) {
-            const attemptKey = fileFingerprint(file);
+        for (const { file, key: attemptKey } of uploads) {
             const settle = (state: Attempt["state"], problem?: string) =>
                 setAttempts(current =>
                     current.map(attempt => (attempt.key === attemptKey ? { ...attempt, state, problem } : attempt))
@@ -41,7 +43,7 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
 
             try {
                 settle("sending");
-                await uploadMedia(file, {
+                await media.uploadImage?.(file, {
                     onProgress: progress =>
                         setAttempts(current =>
                             current.map(attempt =>
@@ -58,7 +60,7 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
                 });
                 settle("done");
             } catch (error) {
-                settle("failed", error instanceof Error ? error.message : "The upload failed.");
+                settle("failed", mediaUploadProblem(error));
             }
         }
 
@@ -78,7 +80,7 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
                     setDragging(false);
                     void send(event.dataTransfer.files);
                 }}
-                className={`flex flex-col items-center gap-3 rounded-lg border border-dashed p-8 text-center ${
+                className={`flex flex-col items-center gap-3 rounded-lg border border-dashed p-5 text-center sm:p-8 ${
                     dragging ? "border-primary bg-accent" : "border-border"
                 }`}
             >
@@ -108,8 +110,8 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
             {attempts.length > 0 ?
                 <ul className="space-y-1 text-sm">
                     {attempts.map(attempt => (
-                        <li key={attempt.key} className="flex flex-wrap items-baseline gap-2">
-                            <span className="truncate font-medium">{attempt.filename}</span>
+                        <li key={attempt.key} className="flex min-w-0 flex-wrap items-baseline gap-2">
+                            <span className="min-w-0 max-w-full flex-1 truncate font-medium">{attempt.filename}</span>
                             {attempt.state === "preparing" ?
                                 <span className="text-muted-foreground text-xs">preparing…</span>
                             : attempt.state === "sending" ?

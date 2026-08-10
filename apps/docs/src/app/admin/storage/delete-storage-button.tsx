@@ -60,7 +60,7 @@ export function DeleteStorageButton({
                 :   null}
                 <AlertDialogFooter>
                     <AlertDialogCancel>Keep it</AlertDialogCancel>
-                    <form action={action}>
+                    <form action={action} className="w-full sm:w-auto">
                         <input type="hidden" name="id" value={id} />
                         <AlertDialogAction
                             nativeButton

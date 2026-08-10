@@ -71,6 +71,21 @@ function MoveRuleButtons({ rule, index, total }: { rule: ManagedStorageRule; ind
     );
 }
 
+type InspectedBucket = Awaited<ReturnType<ReturnType<typeof createStorageConfiguration>["inspect"]>>["buckets"][number];
+
+function BucketStatus({ bucket }: { bucket: InspectedBucket }) {
+    return (
+        <div className="flex flex-wrap gap-1.5">
+            <Badge variant={bucket.reachable ? "secondary" : "destructive"}>
+                {bucket.reachable ? "Reachable" : "Unavailable"}
+            </Badge>
+            {bucket.isFallbackTarget ?
+                <Badge variant="outline">Fallback</Badge>
+            :   null}
+        </div>
+    );
+}
+
 export default async function StoragePage() {
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
@@ -117,7 +132,7 @@ export default async function StoragePage() {
             </Card>
 
             <section className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                     <div>
                         <h2 className="text-sm font-semibold tracking-tight">Buckets</h2>
                         <p className="text-muted-foreground text-sm">
@@ -145,7 +160,61 @@ export default async function StoragePage() {
                     :   null}
                 </div>
 
-                <div className="overflow-hidden rounded-xl border">
+                <ul className="space-y-3 lg:hidden">
+                    {configuration.buckets.map(bucket => (
+                        <li key={bucket.id} className="space-y-4 rounded-xl border p-4">
+                            <div className="flex min-w-0 items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <h3 className="font-medium wrap-anywhere">{bucket.label}</h3>
+                                    <p className="text-muted-foreground mt-1 font-mono text-xs wrap-anywhere">
+                                        {bucket.id}
+                                    </p>
+                                </div>
+                                <BucketStatus bucket={bucket} />
+                            </div>
+                            <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                                <div>
+                                    <dt className="text-muted-foreground text-xs">Location</dt>
+                                    <dd className="mt-1 font-mono text-xs wrap-anywhere">
+                                        {bucket.binding ?? bucket.endpoint}
+                                        {bucket.bucketName ? ` / ${bucket.bucketName}` : ""}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-muted-foreground text-xs">Use</dt>
+                                    <dd className="mt-1 text-xs">
+                                        {bucket.mediaCount} media · {bucket.ruleCount} rules
+                                    </dd>
+                                </div>
+                            </dl>
+                            {mayManage ?
+                                <div className="flex flex-wrap justify-end gap-1 border-t pt-3">
+                                    <Sheet>
+                                        <SheetTrigger render={<Button variant="ghost" size="sm" />}>Edit</SheetTrigger>
+                                        <SheetContent className="sm:max-w-md">
+                                            <SheetHeader>
+                                                <SheetTitle>Edit {bucket.label}</SheetTitle>
+                                                <SheetDescription>
+                                                    Rename the destination or change how stored files are served.
+                                                </SheetDescription>
+                                            </SheetHeader>
+                                            <BucketForm bucket={bucket} />
+                                        </SheetContent>
+                                    </Sheet>
+                                    <DeleteStorageButton
+                                        kind="bucket"
+                                        id={bucket.id}
+                                        label={bucket.label}
+                                        disabled={!bucket.mayDelete}
+                                        reason={bucket.deleteBlocker}
+                                    />
+                                </div>
+                            :   null}
+                        </li>
+                    ))}
+                </ul>
+
+                <div className="hidden overflow-hidden rounded-xl border lg:block">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -175,14 +244,7 @@ export default async function StoragePage() {
                                         {bucket.mediaCount} media · {bucket.ruleCount} rules
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex gap-1.5">
-                                            <Badge variant={bucket.reachable ? "secondary" : "destructive"}>
-                                                {bucket.reachable ? "Reachable" : "Unavailable"}
-                                            </Badge>
-                                            {bucket.isFallbackTarget ?
-                                                <Badge variant="outline">Fallback</Badge>
-                                            :   null}
-                                        </div>
+                                        <BucketStatus bucket={bucket} />
                                     </TableCell>
                                     {mayManage ?
                                         <TableCell>
@@ -225,7 +287,7 @@ export default async function StoragePage() {
             </section>
 
             <section className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                     <div>
                         <h2 className="text-sm font-semibold tracking-tight">Routing rules</h2>
                         <p className="text-muted-foreground text-sm">
@@ -263,77 +325,141 @@ export default async function StoragePage() {
                             </CardAction>
                         :   null}
                     </Card>
-                :   <div className="overflow-hidden rounded-xl border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    {mayManage ?
-                                        <TableHead className="w-20">Order</TableHead>
-                                    :   null}
-                                    <TableHead>Rule</TableHead>
-                                    <TableHead>Conditions</TableHead>
-                                    <TableHead>Destination</TableHead>
-                                    {mayManage ?
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    :   null}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {rules.map((rule, index) => (
-                                    <TableRow key={rule.id}>
-                                        {mayManage ?
-                                            <TableCell>
-                                                <MoveRuleButtons rule={rule} index={index} total={rules.length} />
-                                            </TableCell>
-                                        :   null}
-                                        <TableCell>
-                                            <div className="font-medium">{rule.label}</div>
-                                            <div className="text-muted-foreground text-xs">
+                :   <>
+                        <ul className="space-y-3 lg:hidden">
+                            {rules.map((rule, index) => (
+                                <li key={rule.id} className="space-y-4 rounded-xl border p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <h3 className="font-medium wrap-anywhere">{rule.label}</h3>
+                                            <p className="text-muted-foreground mt-1 text-xs">
                                                 Priority {rule.priority}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell
-                                            className={
-                                                rule.conditions === undefined ?
-                                                    "text-destructive"
-                                                :   "text-muted-foreground"
-                                            }
-                                        >
-                                            <div className="max-w-md whitespace-normal text-xs">
-                                                {conditionSummary(rule.conditions)}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {configuration.buckets.find(bucket => bucket.id === rule.bucketId)?.label
-                                                ?? rule.bucketId}
-                                        </TableCell>
+                                            </p>
+                                        </div>
                                         {mayManage ?
-                                            <TableCell>
-                                                <div className="flex justify-end gap-1">
-                                                    <Sheet>
-                                                        <SheetTrigger render={<Button variant="ghost" size="sm" />}>
-                                                            Edit
-                                                        </SheetTrigger>
-                                                        <SheetContent className="sm:max-w-lg">
-                                                            <SheetHeader>
-                                                                <SheetTitle>Edit {rule.label}</SheetTitle>
-                                                                <SheetDescription>
-                                                                    Existing media stays where it is; this changes
-                                                                    future uploads only.
-                                                                </SheetDescription>
-                                                            </SheetHeader>
-                                                            <RuleForm rule={rule} buckets={configuration.buckets} />
-                                                        </SheetContent>
-                                                    </Sheet>
-                                                    <DeleteStorageButton kind="rule" id={rule.id} label={rule.label} />
-                                                </div>
-                                            </TableCell>
+                                            <MoveRuleButtons rule={rule} index={index} total={rules.length} />
+                                        :   null}
+                                    </div>
+                                    <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                                        <div>
+                                            <dt className="text-muted-foreground text-xs">Conditions</dt>
+                                            <dd
+                                                className={
+                                                    rule.conditions === undefined ?
+                                                        "text-destructive mt-1 text-xs wrap-anywhere"
+                                                    :   "mt-1 text-xs wrap-anywhere"
+                                                }
+                                            >
+                                                {conditionSummary(rule.conditions)}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-muted-foreground text-xs">Destination</dt>
+                                            <dd className="mt-1 wrap-anywhere">
+                                                {configuration.buckets.find(bucket => bucket.id === rule.bucketId)
+                                                    ?.label ?? rule.bucketId}
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                    {mayManage ?
+                                        <div className="flex flex-wrap justify-end gap-1 border-t pt-3">
+                                            <Sheet>
+                                                <SheetTrigger render={<Button variant="ghost" size="sm" />}>
+                                                    Edit
+                                                </SheetTrigger>
+                                                <SheetContent className="sm:max-w-lg">
+                                                    <SheetHeader>
+                                                        <SheetTitle>Edit {rule.label}</SheetTitle>
+                                                        <SheetDescription>
+                                                            Existing media stays where it is; this changes future
+                                                            uploads only.
+                                                        </SheetDescription>
+                                                    </SheetHeader>
+                                                    <RuleForm rule={rule} buckets={configuration.buckets} />
+                                                </SheetContent>
+                                            </Sheet>
+                                            <DeleteStorageButton kind="rule" id={rule.id} label={rule.label} />
+                                        </div>
+                                    :   null}
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="hidden overflow-hidden rounded-xl border lg:block">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        {mayManage ?
+                                            <TableHead className="w-20">Order</TableHead>
+                                        :   null}
+                                        <TableHead>Rule</TableHead>
+                                        <TableHead>Conditions</TableHead>
+                                        <TableHead>Destination</TableHead>
+                                        {mayManage ?
+                                            <TableHead className="text-right">Actions</TableHead>
                                         :   null}
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {rules.map((rule, index) => (
+                                        <TableRow key={rule.id}>
+                                            {mayManage ?
+                                                <TableCell>
+                                                    <MoveRuleButtons rule={rule} index={index} total={rules.length} />
+                                                </TableCell>
+                                            :   null}
+                                            <TableCell>
+                                                <div className="font-medium">{rule.label}</div>
+                                                <div className="text-muted-foreground text-xs">
+                                                    Priority {rule.priority}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell
+                                                className={
+                                                    rule.conditions === undefined ?
+                                                        "text-destructive"
+                                                    :   "text-muted-foreground"
+                                                }
+                                            >
+                                                <div className="max-w-md whitespace-normal text-xs">
+                                                    {conditionSummary(rule.conditions)}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {configuration.buckets.find(bucket => bucket.id === rule.bucketId)
+                                                    ?.label ?? rule.bucketId}
+                                            </TableCell>
+                                            {mayManage ?
+                                                <TableCell>
+                                                    <div className="flex justify-end gap-1">
+                                                        <Sheet>
+                                                            <SheetTrigger render={<Button variant="ghost" size="sm" />}>
+                                                                Edit
+                                                            </SheetTrigger>
+                                                            <SheetContent className="sm:max-w-lg">
+                                                                <SheetHeader>
+                                                                    <SheetTitle>Edit {rule.label}</SheetTitle>
+                                                                    <SheetDescription>
+                                                                        Existing media stays where it is; this changes
+                                                                        future uploads only.
+                                                                    </SheetDescription>
+                                                                </SheetHeader>
+                                                                <RuleForm rule={rule} buckets={configuration.buckets} />
+                                                            </SheetContent>
+                                                        </Sheet>
+                                                        <DeleteStorageButton
+                                                            kind="rule"
+                                                            id={rule.id}
+                                                            label={rule.label}
+                                                        />
+                                                    </div>
+                                                </TableCell>
+                                            :   null}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </>
                 }
             </section>
         </div>

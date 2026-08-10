@@ -14,7 +14,7 @@ export function SetupForm() {
             <FieldGroup>
                 <Field>
                     <FieldLabel htmlFor="siteTitle">Site title</FieldLabel>
-                    <Input id="siteTitle" name="siteTitle" required autoFocus />
+                    <Input id="siteTitle" name="siteTitle" required />
                     <FieldDescription>Changed later under Settings.</FieldDescription>
                 </Field>
 
@@ -45,7 +45,7 @@ export function SetupForm() {
                     <FieldError errors={[{ message: state.error }]} />
                 :   null}
 
-                <Button type="submit" disabled={pending}>
+                <Button type="submit" disabled={pending} className="w-full sm:w-auto">
                     {pending ? "Creating…" : "Create administrator"}
                 </Button>
             </FieldGroup>

@@ -3,8 +3,9 @@
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import type { RichTextDocument } from "@jamcaa/core/content";
+import { RichTextEditor } from "@jamcaa/editor";
+import { createHttpMediaAdapter } from "@jamcaa/editor/media";
 import { Button } from "@/components/ui/button";
-import { RichTextEditor } from "@/components/editor/rich-text-editor";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +27,8 @@ const allStatuses = [
     { value: "archived", label: "Archived" }
 ];
 
+const postMedia = createHttpMediaAdapter({ collection: "post" });
+
 export function PostForm({ post, mayPublish }: { post?: PostDraft; mayPublish: boolean }) {
     const [state, action, pending] = useActionState<PostFormState, FormData>(savePost, {});
     const [title, setTitle] = useState(post?.title ?? "");
@@ -42,7 +45,7 @@ export function PostForm({ post, mayPublish }: { post?: PostDraft; mayPublish: b
     }, [title]);
 
     return (
-        <form action={action} className="max-w-3xl">
+        <form action={action} className="max-w-3xl [--jamcaa-editor-sticky-offset:3.5rem]">
             {post ?
                 <input type="hidden" name="id" value={post.id} />
             :   null}
@@ -56,7 +59,6 @@ export function PostForm({ post, mayPublish }: { post?: PostDraft; mayPublish: b
                         value={title}
                         onChange={event => setTitle(event.target.value)}
                         required
-                        autoFocus
                     />
                 </Field>
 
@@ -72,15 +74,24 @@ export function PostForm({ post, mayPublish }: { post?: PostDraft; mayPublish: b
                 </Field>
 
                 <Field>
-                    <FieldLabel htmlFor="body">Body</FieldLabel>
-                    <RichTextEditor name="body" initialValue={post?.body} />
+                    <FieldLabel id="body-label" htmlFor="body-editor">
+                        Body
+                    </FieldLabel>
+                    <RichTextEditor
+                        name="body"
+                        label="Post body"
+                        labelledBy="body-label"
+                        defaultValue={post?.body}
+                        media={postMedia}
+                        messages={{ placeholder: "Write the Post body…" }}
+                    />
                     <FieldDescription>Rich text. Images remain managed as Media.</FieldDescription>
                 </Field>
 
                 <Field>
                     <FieldLabel htmlFor="status">Status</FieldLabel>
                     <Select name="status" defaultValue={post?.status ?? "draft"} items={statuses}>
-                        <SelectTrigger id="status" className="w-56">
+                        <SelectTrigger id="status" className="w-full sm:w-56">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -97,11 +108,16 @@ export function PostForm({ post, mayPublish }: { post?: PostDraft; mayPublish: b
                     <FieldError errors={[{ message: state.error }]} />
                 :   null}
 
-                <div className="flex gap-2">
-                    <Button type="submit" disabled={pending}>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button type="submit" disabled={pending} className="w-full sm:w-auto">
                         {pending ? "Saving…" : "Save"}
                     </Button>
-                    <Button variant="ghost" nativeButton={false} render={<Link href="/admin/posts" />}>
+                    <Button
+                        variant="ghost"
+                        nativeButton={false}
+                        render={<Link href="/admin/posts" />}
+                        className="w-full sm:w-auto"
+                    >
                         Cancel
                     </Button>
                 </div>

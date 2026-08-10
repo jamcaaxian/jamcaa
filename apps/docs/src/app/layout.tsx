@@ -18,6 +18,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <ThemeScript />
             </head>
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+                <a
+                    href="#main-content"
+                    className="bg-background text-foreground focus-visible:ring-ring fixed top-2 left-2 z-100 -translate-y-20 rounded-lg px-3 py-2 text-sm font-medium shadow-lg focus:translate-y-0 focus-visible:ring-3"
+                >
+                    Skip to content
+                </a>
                 <TooltipProvider delay={300}>{children}</TooltipProvider>
             </body>
         </html>

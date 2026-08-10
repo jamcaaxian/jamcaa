@@ -1,5 +1,6 @@
 import {
     completeMultipartUpload,
+    MultipartUploadNotEstablishedError,
     planMultipartUpload,
     recordMultipartPart,
     type UploadedPart
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 const PART_SIZE = 5 * 1024 * 1024;
 const PART_URL_EXPIRES_IN_SECONDS = 5 * 60;
+const CONTENT_FINGERPRINT = /^sha256-tree-v1:[0-9a-f]{64}$/;
 
 function problem(status: number, message: string) {
     return Response.json({ error: message }, { status });
@@ -46,7 +48,13 @@ function preparation(value: unknown) {
     const collection = typeof candidate.collection === "string" ? candidate.collection.trim() : "";
     const size = candidate.size;
 
-    return name && fingerprint && typeof size === "number" && Number.isSafeInteger(size) && size >= PART_SIZE ?
+    return (
+            name
+                && CONTENT_FINGERPRINT.test(fingerprint)
+                && typeof size === "number"
+                && Number.isSafeInteger(size)
+                && size >= PART_SIZE
+        ) ?
             { name, type, size, fingerprint, ...(collection ? { collection } : {}) }
         :   undefined;
 }
@@ -109,6 +117,10 @@ export async function POST(request: Request) {
 
         return Response.json(plan);
     } catch (error) {
+        if (error instanceof MultipartUploadNotEstablishedError) {
+            return Response.json({ fallback: "server" });
+        }
+
         return problem(409, error instanceof Error ? error.message : "That multipart upload could not be prepared.");
     }
 }

@@ -9,3 +9,5 @@ Field types matter most among them. The content model is itself declarative, and
 ## Consequences
 
 Extension points are public API and fall under semantic versioning. Their signatures therefore need to be right before the first stable release; changing them afterwards is a breaking change. Internal implementation details must not leak through an extension point, or the core will be unable to refactor without breaking plugins.
+
+A front-end component override may replace an entire Editing Control. Internal editor-library extensions are not plugin extension points: a new Rich Text node must contribute its persisted schema, validation, rendering, text extraction, and editing behaviour as one compatible capability rather than injecting browser behaviour alone.

@@ -27,7 +27,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                 <h1 className="text-lg font-semibold tracking-tight">Edit post</h1>
                 {(await mayTouch(actor, "post", "delete", entry.authorId)) ?
                     <DeletePostButton id={entry.id} title={entry.title} />

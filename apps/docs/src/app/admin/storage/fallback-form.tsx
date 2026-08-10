@@ -15,7 +15,7 @@ export function FallbackForm({ buckets, bucketId }: { buckets: ManagedBucket[]; 
         <form action={action} className="space-y-3">
             <div className="flex flex-col gap-2 sm:flex-row">
                 <Select name="bucketId" defaultValue={bucketId} items={items}>
-                    <SelectTrigger className="w-full sm:w-64">
+                    <SelectTrigger aria-label="Fallback bucket" className="w-full sm:w-64">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -26,7 +26,7 @@ export function FallbackForm({ buckets, bucketId }: { buckets: ManagedBucket[]; 
                         ))}
                     </SelectContent>
                 </Select>
-                <Button type="submit" variant="outline" disabled={pending}>
+                <Button type="submit" variant="outline" disabled={pending} className="w-full sm:w-auto">
                     {pending ? "Saving…" : "Set fallback"}
                 </Button>
             </div>

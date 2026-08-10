@@ -34,7 +34,7 @@ export function DeletePostButton({ id, title }: { id: string; title: string }) {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Keep it</AlertDialogCancel>
-                    <form action={deletePost}>
+                    <form action={deletePost} className="w-full sm:w-auto">
                         <input type="hidden" name="id" value={id} />
                         <AlertDialogAction
                             nativeButton

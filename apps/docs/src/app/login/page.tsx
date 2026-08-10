@@ -21,7 +21,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     }
 
     return (
-        <main className="flex min-h-svh items-center justify-center p-6">
+        <main id="main-content" className="flex min-h-svh items-center justify-center p-4 sm:p-6">
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle>Sign in</CardTitle>

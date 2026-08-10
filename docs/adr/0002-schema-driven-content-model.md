@@ -1,6 +1,6 @@
 # Schema-driven content model
 
-A site's content structure is defined in a single TypeScript declaration, from which the database schema, migration files, admin editing forms, and static types are all derived. A new site takes on its own content shape by rewriting that declaration, not by modifying the core.
+A Site's content structure is defined in a single TypeScript declaration, from which the database schema, migration files, Editing Control requirements, and static types are all derived. A new Site takes on its own content shape by rewriting that declaration, not by modifying the core. The declaration identifies the Field kind; reusable browser packages supply compatible Editing Controls, while each Site currently owns control selection, form composition, and its domain rules.
 
 ## Considered Options
 

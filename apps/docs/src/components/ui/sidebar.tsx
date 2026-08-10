@@ -113,7 +113,7 @@ function SidebarProvider({
                     } as React.CSSProperties
                 }
                 className={cn(
-                    "group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar",
+                    "group/sidebar-wrapper flex min-h-dvh w-full has-data-[variant=inset]:bg-sidebar",
                     className
                 )}
                 {...props}
@@ -175,7 +175,7 @@ function Sidebar({
 
     return (
         <div
-            className="group peer hidden text-sidebar-foreground md:block"
+            className="group peer hidden text-sidebar-foreground lg:block"
             data-state={state}
             data-collapsible={state === "collapsed" ? collapsible : ""}
             data-variant={variant}
@@ -198,7 +198,7 @@ function Sidebar({
                 data-slot="sidebar-container"
                 data-side={side}
                 className={cn(
-                    "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-left-(--sidebar-width) data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:-right-(--sidebar-width) md:flex",
+                    "fixed inset-y-0 z-10 hidden h-dvh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-left-(--sidebar-width) data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:-right-(--sidebar-width) lg:flex",
                     // Adjust the padding for floating and inset variants.
                     variant === "floating" || variant === "inset" ?
                         "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
@@ -271,7 +271,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
         <main
             data-slot="sidebar-inset"
             className={cn(
-                "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+                "relative flex min-w-0 w-full flex-1 flex-col bg-background lg:peer-data-[variant=inset]:m-2 lg:peer-data-[variant=inset]:ml-0 lg:peer-data-[variant=inset]:rounded-xl lg:peer-data-[variant=inset]:shadow-sm lg:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
                 className
             )}
             {...props}
@@ -451,10 +451,18 @@ function SidebarMenuButton({
         isActive?: boolean;
         tooltip?: string | React.ComponentProps<typeof TooltipContent>;
     } & VariantProps<typeof sidebarMenuButtonVariants>) {
-    const { isMobile, state } = useSidebar();
+    const { isMobile, state, setOpenMobile } = useSidebar();
     const comp = useRender({
         defaultTagName: "button",
-        props: mergeProps<"button">({ className: cn(sidebarMenuButtonVariants({ variant, size }), className) }, props),
+        props: mergeProps<"button">(
+            {
+                className: cn(sidebarMenuButtonVariants({ variant, size }), className),
+                onClick: () => {
+                    if (isMobile) setOpenMobile(false);
+                }
+            },
+            props
+        ),
         render: !tooltip ? render : <TooltipTrigger render={render} />,
         state: { slot: "sidebar-menu-button", sidebar: "menu-button", size, active: isActive }
     });

@@ -48,9 +48,9 @@ export function AdminBreadcrumb() {
     }
 
     return (
-        <Breadcrumb>
-            <BreadcrumbList>
-                <BreadcrumbItem>
+        <Breadcrumb className="min-w-0 overflow-hidden">
+            <BreadcrumbList className="min-w-0 flex-nowrap overflow-hidden">
+                <BreadcrumbItem className={items.length > 0 ? "hidden sm:inline-flex" : undefined}>
                     {items.length === 0 ?
                         <BreadcrumbPage>Overview</BreadcrumbPage>
                     :   <BreadcrumbLink render={<Link href="/admin" />}>Overview</BreadcrumbLink>}
@@ -58,10 +58,10 @@ export function AdminBreadcrumb() {
 
                 {items.map((item, index) => (
                     <Fragment key={item.key}>
-                        <BreadcrumbSeparator />
-                        <BreadcrumbItem>
+                        <BreadcrumbSeparator className={index < items.length - 2 ? "hidden sm:flex" : undefined} />
+                        <BreadcrumbItem className={index < items.length - 2 ? "hidden sm:inline-flex" : "min-w-0"}>
                             {index === items.length - 1 ?
-                                <BreadcrumbPage className="max-w-64 truncate">{item.label}</BreadcrumbPage>
+                                <BreadcrumbPage className="max-w-full truncate">{item.label}</BreadcrumbPage>
                             :   <BreadcrumbLink render={<Link href={item.href} />}>{item.label}</BreadcrumbLink>}
                         </BreadcrumbItem>
                     </Fragment>

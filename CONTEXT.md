@@ -28,8 +28,16 @@ _Avoid_: record, document, row
 A named data slot within a collection. It determines that data's storage shape, editing control, and validation rules alike.
 _Avoid_: property, column, attribute
 
+**Rich Text**:
+Structured long-form content that may contain headings, lists, links, code, and references to Media.
+_Avoid_: Post body, HTML, Markdown
+
+**Editing Control**:
+The interface control used to author one Field according to its kind.
+_Avoid_: editor or widget as names for the domain concept; implementation names such as `@jamcaa/editor` may use the shorter technical term.
+
 **Post**:
-An entry published for readers, whose body is rich text. Markdown is an interchange format, not the body's stored form.
+An entry published for readers, whose body is Rich Text. Markdown is an interchange format, not the body's stored form.
 _Avoid_: article, gallery, item
 
 **Taxonomy**:

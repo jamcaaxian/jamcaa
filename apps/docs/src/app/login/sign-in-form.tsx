@@ -22,7 +22,6 @@ export function SignInForm({ next }: { next: string }) {
                         autoComplete="email"
                         defaultValue={state.email}
                         required
-                        autoFocus
                     />
                 </Field>
 
@@ -35,7 +34,7 @@ export function SignInForm({ next }: { next: string }) {
                     <FieldError errors={[{ message: state.error }]} />
                 :   null}
 
-                <Button type="submit" disabled={pending}>
+                <Button type="submit" disabled={pending} className="w-full sm:w-auto">
                     {pending ? "Signing in…" : "Sign in"}
                 </Button>
             </FieldGroup>

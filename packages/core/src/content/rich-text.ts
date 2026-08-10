@@ -63,10 +63,19 @@ function record(value: unknown): Record<string, unknown> | undefined {
         :   undefined;
 }
 
+function onlyAttributes(attrs: Record<string, unknown> | undefined, allowed: readonly string[], type: string) {
+    const unsupported = Object.keys(attrs ?? {}).find(attribute => !allowed.includes(attribute));
+
+    if (unsupported !== undefined) {
+        throw new Error(`Unsupported rich text ${type} attribute: ${unsupported}.`);
+    }
+}
+
 function attrsFor(type: RichTextNodeType, value: unknown): RichTextNode["attrs"] {
     const attrs = record(value);
 
     if (type === "heading") {
+        onlyAttributes(attrs, ["level"], type);
         const level = attrs?.level;
 
         if (typeof level !== "number" || !Number.isSafeInteger(level) || level < 1 || level > 6) {
@@ -77,22 +86,29 @@ function attrsFor(type: RichTextNodeType, value: unknown): RichTextNode["attrs"]
     }
 
     if (type === "orderedList") {
+        onlyAttributes(attrs, ["start"], type);
         const start = attrs?.start ?? 1;
 
         if (typeof start !== "number" || !Number.isSafeInteger(start) || start < 1) {
             throw new Error("A rich text ordered list needs a positive starting number.");
         }
 
-        return start === 1 ? undefined : { start };
+        return { start };
     }
 
     if (type === "codeBlock") {
+        onlyAttributes(attrs, ["language"], type);
         const language = attrs?.language;
 
-        return typeof language === "string" && language ? { language } : undefined;
+        if (language !== undefined && language !== null && typeof language !== "string") {
+            throw new Error("A rich text code block language must be text.");
+        }
+
+        return { language: typeof language === "string" && language ? language : null };
     }
 
     if (type === "mediaImage") {
+        onlyAttributes(attrs, ["mediaId", "alt"], type);
         const mediaId = attrs?.mediaId;
         const alt = attrs?.alt;
 
@@ -108,6 +124,26 @@ function attrsFor(type: RichTextNodeType, value: unknown): RichTextNode["attrs"]
     }
 
     return undefined;
+}
+
+export function safeRichTextHref(value: string): string | undefined {
+    const href = value.trim();
+
+    if (href.startsWith("#") || href.startsWith("./") || href.startsWith("../")) {
+        return href;
+    }
+
+    if (href.startsWith("/") && !href.startsWith("//")) {
+        return href;
+    }
+
+    try {
+        const protocol = new URL(href).protocol;
+
+        return ["http:", "https:", "mailto:", "tel:"].includes(protocol) ? href : undefined;
+    } catch {
+        return undefined;
+    }
 }
 
 function markFrom(value: unknown): RichTextMark {
@@ -126,11 +162,11 @@ function markFrom(value: unknown): RichTextMark {
     if (type === "link") {
         const href = record(candidate.attrs)?.href;
 
-        if (typeof href !== "string" || !href.trim()) {
+        if (typeof href !== "string" || !safeRichTextHref(href)) {
             throw new Error("A rich text link needs an address.");
         }
 
-        return { type, attrs: { href: href.trim() } };
+        return { type, attrs: { href: safeRichTextHref(href)! } };
     }
 
     return { type: type as RichTextMarkType };
@@ -290,7 +326,7 @@ function nodeFrom(value: unknown, state: ParseState, depth: number): RichTextNod
         return {
             type: container,
             ...(attrs ? { attrs } : {}),
-            ...(content.length > 0 || container === "doc" || container === "paragraph" ? { content } : {})
+            ...(content.length > 0 || container === "doc" ? { content } : {})
         };
     }
 
@@ -318,7 +354,7 @@ export function parseRichText(value: unknown): RichTextDocument {
 }
 
 export function emptyRichText(): RichTextDocument {
-    return { type: "doc", content: [{ type: "paragraph", content: [] }] };
+    return { type: "doc", content: [{ type: "paragraph" }] };
 }
 
 export function richTextFromPlainText(text: string): RichTextDocument {
@@ -374,26 +410,6 @@ function escapeHtml(value: string): string {
         .replaceAll("'", "&#39;");
 }
 
-function safeHref(value: string): string | undefined {
-    const href = value.trim();
-
-    if (href.startsWith("#") || href.startsWith("./") || href.startsWith("../")) {
-        return href;
-    }
-
-    if (href.startsWith("/") && !href.startsWith("//")) {
-        return href;
-    }
-
-    try {
-        const protocol = new URL(href).protocol;
-
-        return ["http:", "https:", "mailto:", "tel:"].includes(protocol) ? href : undefined;
-    } catch {
-        return undefined;
-    }
-}
-
 function renderMarks(text: string, marks: RichTextMark[] = []): string {
     return marks.reduce((content, mark) => {
         if (mark.type === "bold") return `<strong>${content}</strong>`;
@@ -401,7 +417,7 @@ function renderMarks(text: string, marks: RichTextMark[] = []): string {
         if (mark.type === "strike") return `<s>${content}</s>`;
         if (mark.type === "code") return `<code>${content}</code>`;
 
-        const href = mark.attrs?.href ? safeHref(mark.attrs.href) : undefined;
+        const href = mark.attrs?.href ? safeRichTextHref(mark.attrs.href) : undefined;
         return href ? `<a href="${escapeHtml(href)}" rel="noopener noreferrer">${content}</a>` : content;
     }, text);
 }

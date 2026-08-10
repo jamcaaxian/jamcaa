@@ -35,13 +35,31 @@ interface MultipartUploadOptions {
 }
 
 interface MultipartUploadWithFallbackOptions<TResult> extends Omit<MultipartUploadOptions, "plan"> {
-    prepare(): Promise<MultipartUploadPlan>;
+    prepare(): Promise<MultipartUploadPlan | { fallback: "server" }>;
     complete(id: string): Promise<TResult>;
     uploadServer(file: File): Promise<TResult>;
+    planAttempts?: number;
 }
 
-export function fileFingerprint(file: Pick<File, "name" | "size" | "type" | "lastModified">) {
-    return `${file.name}:${file.size}:${file.type || "application/octet-stream"}:${file.lastModified}`;
+const FINGERPRINT_CHUNK_SIZE = 4 * 1024 * 1024;
+
+function hexadecimal(bytes: ArrayBuffer) {
+    return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function fileFingerprint(file: File) {
+    const chunkDigests: Uint8Array[] = [];
+
+    for (let offset = 0; offset < file.size; offset += FINGERPRINT_CHUNK_SIZE) {
+        const chunk = await file.slice(offset, offset + FINGERPRINT_CHUNK_SIZE).arrayBuffer();
+        chunkDigests.push(new Uint8Array(await crypto.subtle.digest("SHA-256", chunk)));
+    }
+
+    const digestInput = new Uint8Array(chunkDigests.length * 32);
+    chunkDigests.forEach((digest, index) => digestInput.set(digest, index * 32));
+    const digest = await crypto.subtle.digest("SHA-256", digestInput);
+
+    return `sha256-tree-v1:${hexadecimal(digest)}`;
 }
 
 function pause(milliseconds: number) {
@@ -131,19 +149,33 @@ export interface MultipartUploadResult<TResult> {
 export async function uploadMultipartWithFallback<TResult>(
     options: MultipartUploadWithFallbackOptions<TResult>
 ): Promise<MultipartUploadResult<TResult>> {
-    const { prepare, complete, uploadServer, ...uploadOptions } = options;
-    let plan: MultipartUploadPlan;
+    const { prepare, complete, uploadServer, planAttempts = 3, ...uploadOptions } = options;
+    let prepared = await prepare();
 
-    try {
-        plan = await prepare();
-    } catch {
+    if ("fallback" in prepared) {
         return { mode: "server", value: await uploadServer(options.file) };
     }
 
-    try {
-        await uploadMultipart({ ...uploadOptions, plan });
-    } catch {
-        return { mode: "server", value: await uploadServer(options.file) };
+    let plan = prepared;
+    const rounds = Math.max(1, Math.floor(planAttempts));
+
+    for (let round = 1; round <= rounds; round += 1) {
+        try {
+            await uploadMultipart({ ...uploadOptions, plan });
+            break;
+        } catch (error) {
+            if (round === rounds) {
+                throw error;
+            }
+
+            prepared = await prepare();
+
+            if ("fallback" in prepared) {
+                throw error;
+            }
+
+            plan = prepared;
+        }
     }
 
     return { mode: "multipart", value: await complete(plan.id) };

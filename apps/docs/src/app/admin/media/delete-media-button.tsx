@@ -19,7 +19,7 @@ export function DeleteMediaButton({ id, filename }: { id: string; filename: stri
         <AlertDialog>
             <AlertDialogTrigger
                 render={
-                    <Button variant="ghost" size="sm" className="text-destructive h-auto px-1 py-0 text-xs">
+                    <Button variant="ghost" size="sm" className="text-destructive -mr-2 text-xs sm:mr-0">
                         Delete
                     </Button>
                 }
@@ -34,7 +34,7 @@ export function DeleteMediaButton({ id, filename }: { id: string; filename: stri
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Keep it</AlertDialogCancel>
-                    <form action={deleteMedia}>
+                    <form action={deleteMedia} className="w-full sm:w-auto">
                         <input type="hidden" name="id" value={id} />
                         <AlertDialogAction
                             nativeButton

@@ -27,7 +27,7 @@ export default async function PostsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="space-y-1">
                     <h1 className="text-lg font-semibold tracking-tight">Posts</h1>
                     <p className="text-muted-foreground text-sm">
@@ -43,37 +43,70 @@ export default async function PostsPage() {
 
             {entries.length === 0 ?
                 <p className="text-muted-foreground text-sm">Nothing written yet.</p>
-            :   <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Title</TableHead>
-                            <TableHead className="w-32">Status</TableHead>
-                            <TableHead className="w-44">Last edited</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
+            :   <>
+                    <ul className="space-y-3 md:hidden">
                         {entries.map(entry => (
-                            <TableRow key={entry.id}>
-                                <TableCell>
-                                    <Link href={`/admin/posts/${entry.id}`} className="font-medium hover:underline">
-                                        {entry.title}
-                                    </Link>
-                                    <div className="text-muted-foreground text-xs">/{entry.slug}</div>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant={tone[entry.status]}>{entry.status}</Badge>
-                                </TableCell>
-                                <TableCell className="text-muted-foreground text-sm">
-                                    {entry.updatedAt.toLocaleDateString("en-GB", {
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric"
-                                    })}
-                                </TableCell>
-                            </TableRow>
+                            <li key={entry.id}>
+                                <Link
+                                    href={`/admin/posts/${entry.id}`}
+                                    className="block rounded-xl border p-4 transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
+                                >
+                                    <div className="flex min-w-0 items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <h2 className="font-medium wrap-anywhere">{entry.title}</h2>
+                                            <p className="text-muted-foreground mt-1 truncate text-xs">/{entry.slug}</p>
+                                        </div>
+                                        <Badge variant={tone[entry.status]}>{entry.status}</Badge>
+                                    </div>
+                                    <p className="text-muted-foreground mt-3 text-xs">
+                                        Last edited{" "}
+                                        {entry.updatedAt.toLocaleDateString("en-GB", {
+                                            day: "numeric",
+                                            month: "short",
+                                            year: "numeric"
+                                        })}
+                                    </p>
+                                </Link>
+                            </li>
                         ))}
-                    </TableBody>
-                </Table>
+                    </ul>
+                    <div className="hidden md:block">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Title</TableHead>
+                                    <TableHead className="w-32">Status</TableHead>
+                                    <TableHead className="w-44">Last edited</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {entries.map(entry => (
+                                    <TableRow key={entry.id}>
+                                        <TableCell>
+                                            <Link
+                                                href={`/admin/posts/${entry.id}`}
+                                                className="font-medium hover:underline"
+                                            >
+                                                {entry.title}
+                                            </Link>
+                                            <div className="text-muted-foreground text-xs">/{entry.slug}</div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={tone[entry.status]}>{entry.status}</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">
+                                            {entry.updatedAt.toLocaleDateString("en-GB", {
+                                                day: "numeric",
+                                                month: "short",
+                                                year: "numeric"
+                                            })}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </>
             }
         </div>
     );

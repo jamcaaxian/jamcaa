@@ -278,7 +278,7 @@ describe("taking an upload", () => {
             file: { name: "movie.mp4", type: "video/mp4", size: 11 * 1024 * 1024 },
             context: context({ mimeType: "video/mp4", size: 11 * 1024 * 1024 }),
             uploaderId,
-            fingerprint: "movie.mp4:11534336:video/mp4:1",
+            fingerprint: `sha256-tree-v1:${"1".repeat(64)}`,
             partSize: 5 * 1024 * 1024,
             expiresInSeconds: 300,
             partAddressFor: ({ partNumber }: { partNumber: number }) => `https://upload.test/part/${partNumber}`
@@ -338,7 +338,7 @@ describe("taking an upload", () => {
                 file: { name: "unsigned.mp4", type: "video/mp4", size: 6 * 1024 * 1024 },
                 context: context({ mimeType: "video/mp4", size: 6 * 1024 * 1024 }),
                 uploaderId,
-                fingerprint: "unsigned.mp4:6291456:video/mp4:1",
+                fingerprint: `sha256-tree-v1:${"2".repeat(64)}`,
                 partSize: 5 * 1024 * 1024,
                 expiresInSeconds: 300
             })
@@ -346,6 +346,47 @@ describe("taking an upload", () => {
 
         const rows = await env.DB.prepare("SELECT COUNT(*) AS total FROM media").first<{ total: number }>();
         expect(rows?.total).toBe(0);
+    });
+
+    it("keeps a failed multipart plan recoverable when immediate cleanup is unavailable", async () => {
+        const uploaderId = await anUploader();
+        let failedUpload: { objectKey: string; uploadId: string } | undefined;
+
+        await expect(
+            planMultipartUpload({
+                database: database(),
+                bindings: env as unknown as Record<string, unknown>,
+                file: { name: "broken-plan.mp4", type: "video/mp4", size: 6 * 1024 * 1024 },
+                context: context({ mimeType: "video/mp4", size: 6 * 1024 * 1024 }),
+                uploaderId,
+                fingerprint: `sha256-tree-v1:${"5".repeat(64)}`,
+                partSize: 5 * 1024 * 1024,
+                expiresInSeconds: 300,
+                partAddressFor: ({ objectKey, uploadId, partNumber }) => {
+                    failedUpload = { objectKey, uploadId };
+                    throw new Error(`Cannot address part ${partNumber}.`);
+                }
+            })
+        ).rejects.toThrow(/cannot address part/i);
+
+        const pending = await env.DB.prepare("SELECT id FROM media").first<{ id: string }>();
+        const uploadRows = await env.DB.prepare("SELECT COUNT(*) AS total FROM multipart_upload").first<{
+            total: number;
+        }>();
+        expect(pending?.id).toBeDefined();
+        expect(uploadRows?.total).toBe(1);
+        expect(failedUpload).toBeDefined();
+
+        await cancelUpload({
+            database: database(),
+            bindings: env as unknown as Record<string, unknown>,
+            id: pending!.id,
+            uploaderId
+        });
+
+        expect(await mediaById(database(), pending!.id)).toBeUndefined();
+        const multipart = env.MEDIA_BUCKET.resumeMultipartUpload(failedUpload!.objectKey, failedUpload!.uploadId);
+        await expect(multipart.uploadPart(1, new Uint8Array(5 * 1024 * 1024))).rejects.toThrow();
     });
 
     it("aborts a multipart upload when its pending media is cancelled", async () => {
@@ -356,7 +397,7 @@ describe("taking an upload", () => {
             file: { name: "cancelled.mp4", type: "video/mp4", size: 6 * 1024 * 1024 },
             context: context({ mimeType: "video/mp4", size: 6 * 1024 * 1024 }),
             uploaderId,
-            fingerprint: "cancelled.mp4:6291456:video/mp4:1",
+            fingerprint: `sha256-tree-v1:${"3".repeat(64)}`,
             partSize: 5 * 1024 * 1024,
             expiresInSeconds: 300,
             partAddressFor: ({ partNumber }: { partNumber: number }) => `https://upload.test/part/${partNumber}`
@@ -382,7 +423,7 @@ describe("taking an upload", () => {
             bindings: env as unknown as Record<string, unknown>,
             file: { name: "shared.mp4", type: "video/mp4", size: 6 * 1024 * 1024 },
             context: context({ mimeType: "video/mp4", size: 6 * 1024 * 1024 }),
-            fingerprint: "shared.mp4:6291456:video/mp4:1",
+            fingerprint: `sha256-tree-v1:${"4".repeat(64)}`,
             partSize: 5 * 1024 * 1024,
             expiresInSeconds: 300,
             partAddressFor: ({ partNumber }: { partNumber: number }) => `https://upload.test/part/${partNumber}`

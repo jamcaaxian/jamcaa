@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, HardDrive, Image as ImageIcon, MessageSquare, Settings, ShieldCheck, Users } from "lucide-react";
+import { FileText, HardDrive, Image as ImageIcon, Settings } from "lucide-react";
 import {
     Sidebar,
     SidebarContent,
@@ -23,16 +23,13 @@ const sections = [
         label: "Content",
         items: [
             { title: "Posts", href: "/admin/posts", icon: FileText },
-            { title: "Media", href: "/admin/media", icon: ImageIcon },
-            { title: "Comments", href: "/admin/comments", icon: MessageSquare }
+            { title: "Media", href: "/admin/media", icon: ImageIcon }
         ]
     },
     {
         label: "Configuration",
         items: [
             { title: "Storage", href: "/admin/storage", icon: HardDrive },
-            { title: "Roles", href: "/admin/roles", icon: ShieldCheck },
-            { title: "Users", href: "/admin/users", icon: Users },
             { title: "Settings", href: "/admin/settings", icon: Settings }
         ]
     }

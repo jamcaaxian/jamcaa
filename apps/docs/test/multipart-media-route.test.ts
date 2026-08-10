@@ -1,20 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocked = vi.hoisted(() => ({
-    getSession: vi.fn(),
-    may: vi.fn(),
-    mediaRuntime: vi.fn(),
-    loadSettings: vi.fn(),
-    planMultipartUpload: vi.fn(),
-    recordMultipartPart: vi.fn(),
-    completeMultipartUpload: vi.fn()
-}));
+const mocked = vi.hoisted(() => {
+    class MultipartUploadNotEstablishedError extends Error {}
+
+    return {
+        MultipartUploadNotEstablishedError,
+        getSession: vi.fn(),
+        may: vi.fn(),
+        mediaRuntime: vi.fn(),
+        loadSettings: vi.fn(),
+        planMultipartUpload: vi.fn(),
+        recordMultipartPart: vi.fn(),
+        completeMultipartUpload: vi.fn()
+    };
+});
 
 vi.mock("@/lib/session", () => ({ getSession: mocked.getSession }));
 vi.mock("@/lib/permissions", () => ({ may: mocked.may }));
 vi.mock("@/lib/media", () => ({ mediaRuntime: mocked.mediaRuntime }));
 vi.mock("@jamcaa/core/settings", () => ({ coreSettings: {}, loadSettings: mocked.loadSettings }));
 vi.mock("@jamcaa/core/media", () => ({
+    MultipartUploadNotEstablishedError: mocked.MultipartUploadNotEstablishedError,
     planMultipartUpload: mocked.planMultipartUpload,
     recordMultipartPart: mocked.recordMultipartPart,
     completeMultipartUpload: mocked.completeMultipartUpload
@@ -23,6 +29,7 @@ vi.mock("@jamcaa/core/media", () => ({
 import { PATCH as routePatch, POST as routePost, PUT as routePut } from "@/app/api/media/multipart/route";
 
 const fiveMiB = 5 * 1024 * 1024;
+const fingerprint = `sha256-tree-v1:${"a".repeat(64)}`;
 
 function request(method: string, body: unknown) {
     return new Request("http://localhost/api/media/multipart", {
@@ -57,7 +64,7 @@ describe("the multipart media HTTP route", () => {
                 name: "movie.mp4",
                 type: "video/mp4",
                 size: 11 * 1024 * 1024,
-                fingerprint: "movie",
+                fingerprint,
                 collection: "post"
             })
         );
@@ -82,7 +89,7 @@ describe("the multipart media HTTP route", () => {
                 name: "movie.mp4",
                 type: "video/mp4",
                 size: 11 * 1024 * 1024,
-                fingerprint: "movie",
+                fingerprint,
                 collection: "post"
             })
         );
@@ -94,12 +101,48 @@ describe("the multipart media HTTP route", () => {
         expect(mocked.planMultipartUpload).toHaveBeenCalledWith(
             expect.objectContaining({
                 uploaderId: "uploader-1",
-                fingerprint: "movie",
+                fingerprint,
                 partSize: fiveMiB,
                 expiresInSeconds: 300,
                 context: expect.objectContaining({ collection: "post" })
             })
         );
+    });
+
+    it("allows server fallback only when no multipart upload was established", async () => {
+        mocked.planMultipartUpload.mockRejectedValue(
+            new mocked.MultipartUploadNotEstablishedError("The bucket cannot accept multipart uploads.")
+        );
+
+        const response = await POST(
+            request("POST", {
+                name: "movie.mp4",
+                type: "video/mp4",
+                size: 11 * 1024 * 1024,
+                fingerprint,
+                collection: "post"
+            })
+        );
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toEqual({ fallback: "server" });
+    });
+
+    it("keeps uncertain multipart preparation failures on the multipart path", async () => {
+        mocked.planMultipartUpload.mockRejectedValue(new Error("preparation response lost"));
+
+        const response = await POST(
+            request("POST", {
+                name: "movie.mp4",
+                type: "video/mp4",
+                size: 11 * 1024 * 1024,
+                fingerprint,
+                collection: "post"
+            })
+        );
+
+        expect(response.status).toBe(409);
+        await expect(response.json()).resolves.toEqual({ error: "preparation response lost" });
     });
 
     it("records a browser part ETag", async () => {

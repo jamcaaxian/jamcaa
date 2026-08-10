@@ -7,3 +7,5 @@ This "no" is recorded because it is not cheaply reversible in the data model: fi
 ## Consequences
 
 The content schema should leave room for a language dimension later, but the first version implements no translation editor, translation progress tracking, or fallback strategy in the admin interface.
+
+Reusable interface packages accept typed message catalogs for visible copy, placeholders, errors, and accessible names. Their adapters report stable typed error codes plus optional diagnostic causes; Editing Controls map those codes through the message catalog rather than displaying transport or server messages directly. User-visible copy must not be embedded in CSS or fixed to one Collection.

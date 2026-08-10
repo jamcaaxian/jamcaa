@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
     // Workspace packages ship TypeScript source rather than a build artifact.
-    transpilePackages: ["@jamcaa/core"],
+    transpilePackages: ["@jamcaa/core", "@jamcaa/editor"],
     typescript: {
         // Type checking runs as a separate `typecheck` task using TypeScript 7's tsc,
         // which has no compiler API for Next to call into. See docs/adr/0014.

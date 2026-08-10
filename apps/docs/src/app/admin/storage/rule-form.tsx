@@ -38,7 +38,7 @@ function ConditionsFields({ conditions = {} }: { conditions?: StorageConditions 
                 </FieldDescription>
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field>
                     <FieldLabel htmlFor="rule-min-size">Minimum MB</FieldLabel>
                     <Input
@@ -112,7 +112,7 @@ function ConditionsFields({ conditions = {} }: { conditions?: StorageConditions 
                             placeholder="One user ID per line"
                         />
                     </Field>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <Field>
                             <FieldLabel htmlFor="rule-from">From</FieldLabel>
                             <Input id="rule-from" name="from" type="date" defaultValue={datePart(conditions.from)} />
@@ -190,14 +190,16 @@ export function RuleForm({ rule, buckets }: { rule?: ManagedStorageRule; buckets
             </div>
 
             <SheetFooter className="border-t">
-                <Button type="submit" disabled={pending || buckets.length === 0}>
+                <Button type="submit" disabled={pending || buckets.length === 0} className="w-full sm:w-auto">
                     {pending ?
                         "Saving…"
                     : isNew ?
                         "Add rule"
                     :   "Save rule"}
                 </Button>
-                <SheetClose render={<Button type="button" variant="outline" />}>Close</SheetClose>
+                <SheetClose render={<Button type="button" variant="outline" className="w-full sm:w-auto" />}>
+                    Close
+                </SheetClose>
             </SheetFooter>
         </form>
     );

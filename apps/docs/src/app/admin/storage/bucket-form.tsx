@@ -61,8 +61,8 @@ export function BucketForm({ bucket }: { bucket?: ManagedBucket }) {
                         </>
                     :   <Field>
                             <FieldLabel>Location</FieldLabel>
-                            <div className="bg-muted rounded-lg px-3 py-2 text-sm">
-                                <span className="font-mono">
+                            <div className="bg-muted rounded-lg px-3 py-2 text-sm wrap-anywhere">
+                                <span className="font-mono wrap-anywhere">
                                     {bucket.binding ?? bucket.endpoint ?? "Not configured"}
                                 </span>
                                 {bucket.bucketName ?
@@ -99,14 +99,16 @@ export function BucketForm({ bucket }: { bucket?: ManagedBucket }) {
             </div>
 
             <SheetFooter className="border-t">
-                <Button type="submit" disabled={pending}>
+                <Button type="submit" disabled={pending} className="w-full sm:w-auto">
                     {pending ?
                         "Saving…"
                     : isNew ?
                         "Add bucket"
                     :   "Save bucket"}
                 </Button>
-                <SheetClose render={<Button type="button" variant="outline" />}>Close</SheetClose>
+                <SheetClose render={<Button type="button" variant="outline" className="w-full sm:w-auto" />}>
+                    Close
+                </SheetClose>
             </SheetFooter>
         </form>
     );

@@ -10,12 +10,14 @@ export default async function Home() {
     const entries = await posts(createDatabase(env.DB)).list({ status: "published", limit: 20 });
 
     return (
-        <main className="mx-auto min-h-screen max-w-3xl px-6 py-16 sm:py-24">
+        <main id="main-content" className="mx-auto min-h-dvh max-w-3xl px-4 py-14 sm:px-6 sm:py-24">
             <header className="mb-14 space-y-3">
                 <Link href="/" className="text-primary text-sm font-semibold tracking-tight">
                     jamcaa
                 </Link>
-                <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Published with the platform.</h1>
+                <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
+                    Published with the platform.
+                </h1>
                 <p className="text-muted-foreground max-w-xl text-lg leading-8">
                     The documentation site uses the same Collection, Entry, Media, and publishing interfaces it
                     demonstrates.
@@ -30,7 +32,7 @@ export default async function Home() {
                     {entries.map(entry => (
                         <li key={entry.id} className="py-7 first:pt-0">
                             <Link href={`/posts/${entry.slug}`} className="group block space-y-2">
-                                <h2 className="text-xl font-semibold tracking-tight group-hover:text-primary">
+                                <h2 className="text-xl font-semibold tracking-tight wrap-anywhere group-hover:text-primary">
                                     {entry.title}
                                 </h2>
                                 {entry.excerpt ?
