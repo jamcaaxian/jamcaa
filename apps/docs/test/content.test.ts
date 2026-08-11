@@ -396,6 +396,48 @@ describe("reading and writing entries", () => {
         expect(whole.nextCursor).toBeUndefined();
     });
 
+    it("keeps an in-progress Entry Summary pagination chain stable when a newer Entry is published", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+        const earlier = new Date("2026-08-01T00:00:00.000Z");
+        const later = new Date("2026-08-02T00:00:00.000Z");
+
+        for (const name of ["a", "b", "c", "d"]) {
+            await store.create({
+                slug: `stable-${name}`,
+                authorId,
+                categoryId,
+                title: name.toUpperCase(),
+                body: body(),
+                status: "published",
+                publishedAt: earlier
+            });
+        }
+
+        const summaries = postSummaries(database());
+        const before = await summaries.list({ limit: 50 });
+        const first = await summaries.list({ limit: 2 });
+
+        await store.create({
+            slug: "stable-newer",
+            authorId,
+            categoryId,
+            title: "Newer",
+            body: body(),
+            status: "published",
+            publishedAt: later
+        });
+
+        const repeatedFirst = await summaries.list({ limit: 2 });
+        const second = await summaries.list({ limit: 2, cursor: first.nextCursor });
+        const seen = [...first.summaries, ...second.summaries].map(summary => summary.slug);
+
+        expect(seen).toEqual(before.summaries.map(summary => summary.slug));
+        expect(new Set(seen).size).toBe(4);
+        expect(repeatedFirst.summaries[0]?.slug).toBe("stable-newer");
+        expect(second.summaries.map(summary => summary.slug)).not.toContain("stable-newer");
+    });
+
     it("refuses an unreadable Entry Summary cursor", async () => {
         await expect(postSummaries(database()).list({ cursor: "not+a+cursor" })).rejects.toThrow(/cursor is invalid/i);
     });

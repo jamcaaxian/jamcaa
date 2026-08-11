@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
-import { PostList } from "@/components/public/post-list";
-import { NextPageLink } from "@/components/public/next-page-link";
-import { publicPostPage } from "@/content/public-listing";
+import { ProgressivePostList } from "@/components/public/progressive-post-list";
+import { publicPostListing } from "@/content/public-listing";
+import { publicPostPage } from "@/content/public-listing-page";
 import { publicSiteSettings } from "@/content/public-site";
 import { postSummaries } from "@/content/store";
 
@@ -18,6 +18,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
     ]);
     const siteTitle = settings.get("site.title");
     const siteDescription = settings.get("site.description").trim();
+    const listing = publicPostListing(entries, {
+        path: "/",
+        cursor,
+        permalink: settings.get("permalink.post"),
+        datePattern: settings.get("format.date"),
+        timePattern: settings.get("format.time")
+    });
 
     return (
         <main id="main-content" className="mx-auto min-h-dvh max-w-3xl px-4 py-14 sm:px-6 sm:py-24">
@@ -34,14 +41,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
                 </p>
             </header>
 
-            <PostList
-                entries={entries.summaries}
-                permalink={settings.get("permalink.post")}
-                datePattern={settings.get("format.date")}
-                timePattern={settings.get("format.time")}
+            <ProgressivePostList
+                key={listing.pageAddress}
+                initialPage={listing}
                 emptyMessage="No Posts have been published yet."
             />
-            <NextPageLink path="/" cursor={entries.nextCursor} />
         </main>
     );
 }
