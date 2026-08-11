@@ -26,4 +26,8 @@ A collection is checked the moment it is declared — names, collisions with the
 
 The model also derives one Tag relation table per Collection. The internal table name starts with `_jamcaa_`, which a Collection name cannot use, and connects the Collection's real Entry table to the platform's Tag table with foreign keys.
 
+A Collection may declare the Fields in its public Entry Summary. The declaration must include the resolved title Field, may include scalar Fields, and rejects Markdown and Rich Text because a summary must not read or parse long-form content. `EntrySummaryOf<typeof collection>` derives the resulting type from the same declaration.
+
+Entry Summaries are read through the core summary reader. It performs an exact column projection, returns Published Entries only, applies direct Category and Tag filters with AND semantics, and orders by the public publication moment descending with the Entry identifier as the stable tie-breaker. Site list and feed code must not recreate that query with Drizzle; doing so would give up both the derived type and the guarantee that long-form content is omitted.
+
 References are checked when the model is assembled rather than when a collection is declared, since a collection may legitimately point at one that has not been declared yet.

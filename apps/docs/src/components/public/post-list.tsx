@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { EntryOf } from "@jamcaa/core/content";
+import type { EntrySummaryOf } from "@jamcaa/core/content";
 import { formatMoment } from "@jamcaa/core/dates";
 import { post } from "@/content/collections";
 import { postAddress } from "@/content/public-paths";
@@ -11,7 +11,7 @@ export function PostList({
     timePattern,
     emptyMessage
 }: {
-    entries: EntryOf<typeof post>[];
+    entries: EntrySummaryOf<typeof post>[];
     permalink: string;
     datePattern: string;
     timePattern: string;

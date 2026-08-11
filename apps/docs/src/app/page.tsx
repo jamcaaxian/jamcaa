@@ -3,14 +3,14 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
 import { PostList } from "@/components/public/post-list";
 import { publicSiteSettings } from "@/content/public-site";
-import { posts } from "@/content/store";
+import { postSummaries } from "@/content/store";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
     const { env } = getCloudflareContext();
     const [entries, settings] = await Promise.all([
-        posts(createDatabase(env.DB)).list({ status: "published", limit: 20 }),
+        postSummaries(createDatabase(env.DB)).list({ limit: 20 }),
         publicSiteSettings()
     ]);
     const siteTitle = settings.get("site.title");
@@ -32,7 +32,7 @@ export default async function Home() {
             </header>
 
             <PostList
-                entries={entries}
+                entries={entries.summaries}
                 permalink={settings.get("permalink.post")}
                 datePattern={settings.get("format.date")}
                 timePattern={settings.get("format.time")}

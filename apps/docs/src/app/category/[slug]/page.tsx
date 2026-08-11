@@ -4,7 +4,7 @@ import { createDatabase } from "@jamcaa/core";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { PostList } from "@/components/public/post-list";
 import { publicSiteSettings } from "@/content/public-site";
-import { posts } from "@/content/store";
+import { postSummaries } from "@/content/store";
 import { taxonomy } from "@/content/taxonomy";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export default async function CategoryArchive({ params }: { params: Promise<{ sl
     }
 
     const [entries, settings] = await Promise.all([
-        posts(database).list({ status: "published", categoryId: category.id, limit: 20 }),
+        postSummaries(database).list({ categoryId: category.id, limit: 20 }),
         publicSiteSettings()
     ]);
 
@@ -33,7 +33,7 @@ export default async function CategoryArchive({ params }: { params: Promise<{ sl
                 <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-5xl">{category.name}</h1>
             </header>
             <PostList
-                entries={entries}
+                entries={entries.summaries}
                 permalink={settings.get("permalink.post")}
                 datePattern={settings.get("format.date")}
                 timePattern={settings.get("format.time")}

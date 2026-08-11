@@ -33,6 +33,9 @@ export type FieldValue<TField> = TField extends Field<infer TValue, FieldKind> ?
 
 export type SearchableFieldKind = Extract<FieldKind, "text" | "markdown" | "richText">;
 
+/** Fields whose values can be read cheaply in public Entry Summaries. */
+export type SummaryFieldKind = Exclude<FieldKind, "markdown" | "richText">;
+
 /** A field is nullable unless it was declared with `required: true`. */
 type Held<TValue, TOptions extends FieldOptions> = TOptions extends { required: true } ? TValue : TValue | null;
 

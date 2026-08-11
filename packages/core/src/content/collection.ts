@@ -1,4 +1,4 @@
-import type { Field, FieldValue, SearchableFieldKind } from "./fields";
+import type { Field, FieldValue, SearchableFieldKind, SummaryFieldKind } from "./fields";
 import { systemFieldNames, type SystemFields } from "./system-fields";
 
 /** D1 refuses a table with more than this many columns. */
@@ -31,9 +31,19 @@ export type SearchableFieldName<TFields extends FieldMap> = {
 }[keyof TFields]
     & string;
 
+export type SummaryFieldName<TFields extends FieldMap> = {
+    [TName in keyof TFields]: TFields[TName]["kind"] extends SummaryFieldKind ? TName : never;
+}[keyof TFields]
+    & string;
+
 export interface SearchDeclaration<TFields extends FieldMap = FieldMap> {
     /** Fields are indexed and ranked in this declaration order. */
     readonly fields: readonly SearchableFieldName<TFields>[];
+}
+
+export interface SummaryDeclaration<TFields extends FieldMap = FieldMap> {
+    /** Lightweight Fields returned with system Fields in a public Entry Summary. */
+    readonly fields: readonly SummaryFieldName<TFields>[];
 }
 
 export interface CollectionDeclaration<TFields extends FieldMap = FieldMap> {
@@ -47,9 +57,15 @@ export interface CollectionDeclaration<TFields extends FieldMap = FieldMap> {
     readonly titleField?: keyof TFields & string;
     /** The public full-text projection. Omit it when this Collection is not searchable. */
     readonly search?: SearchDeclaration<TFields>;
+    /** The public lightweight projection. Omit it when this Collection has no public lists or feed. */
+    readonly summary?: SummaryDeclaration<TFields>;
 }
 
-export interface Collection<TFields extends FieldMap = FieldMap, TName extends string = string> {
+export interface Collection<
+    TFields extends FieldMap = FieldMap,
+    TName extends string = string,
+    TSummaryFields extends readonly string[] | undefined = readonly string[] | undefined
+> {
     readonly name: TName;
     readonly label: string;
     readonly plural: string;
@@ -59,6 +75,7 @@ export interface Collection<TFields extends FieldMap = FieldMap, TName extends s
     // passed anywhere that accepts collections in general.
     readonly titleField: string;
     readonly search: { readonly fields: readonly string[] } | undefined;
+    readonly summary: TSummaryFields extends readonly string[] ? { readonly fields: TSummaryFields } : undefined;
 }
 
 export type EntryOf<TCollection extends Collection> = SystemFields & {
@@ -73,9 +90,16 @@ function fail(collection: string, problem: string): never {
  * Checks a collection the moment it is declared, so a site fails to start rather
  * than failing when a migration runs or a form is opened.
  */
-export function defineCollection<const TName extends string, const TFields extends FieldMap>(
-    declaration: CollectionDeclaration<TFields> & { readonly name: TName }
-): Collection<TFields, TName> {
+export function defineCollection<
+    const TName extends string,
+    const TFields extends FieldMap,
+    const TSummaryFields extends readonly SummaryFieldName<TFields>[] | undefined = undefined
+>(
+    declaration: CollectionDeclaration<TFields> & { readonly name: TName } & {
+        readonly summary?: TSummaryFields extends readonly SummaryFieldName<TFields>[] ? { fields: TSummaryFields }
+        :   never;
+    }
+): Collection<TFields, TName, TSummaryFields> {
     const { name, fields } = declaration;
 
     if (!COLLECTION_NAME.test(name)) {
@@ -151,7 +175,44 @@ export function defineCollection<const TName extends string, const TFields exten
         fail(name, `titleField "${titleField}" is not one of its fields.`);
     }
 
-    return { ...declaration, titleField, search: declaration.search };
+    if (declaration.summary !== undefined) {
+        const summaryFields = declaration.summary.fields as readonly string[];
+
+        if (summaryFields.length === 0) {
+            fail(name, "summary needs at least one Field.");
+        }
+
+        const seen = new Set<string>();
+
+        for (const fieldName of summaryFields) {
+            const field = fields[fieldName];
+
+            if (field === undefined) {
+                fail(name, `the summary Field "${fieldName}" is not one of its Fields.`);
+            }
+
+            if ((["markdown", "richText"] as const).includes(field.kind as "markdown" | "richText")) {
+                fail(name, `the Field "${fieldName}" is long-form content and cannot enter an Entry Summary.`);
+            }
+
+            if (seen.has(fieldName)) {
+                fail(name, `the summary Field "${fieldName}" is declared more than once.`);
+            }
+
+            seen.add(fieldName);
+        }
+
+        if (!seen.has(titleField)) {
+            fail(name, `summary must include its titleField "${titleField}".`);
+        }
+    }
+
+    return {
+        ...declaration,
+        titleField,
+        search: declaration.search,
+        summary: declaration.summary as Collection<TFields, TName, TSummaryFields>["summary"]
+    };
 }
 
 function findTitleField(fields: FieldMap): string | undefined {

@@ -3,7 +3,7 @@ import { createAuth } from "@jamcaa/core/auth";
 import { richTextFromPlainText, type RichTextDocument } from "@jamcaa/core/content";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, expectTypeOf, it } from "vitest";
-import { postTagIds, posts, replacePostTags, writePostWithTags } from "@/content/store";
+import { postSummaries, postTagIds, posts, replacePostTags, writePostWithTags } from "@/content/store";
 import { taxonomy } from "@/content/taxonomy";
 
 const categoryId = "jamcaa-default-category";
@@ -224,6 +224,78 @@ describe("reading and writing entries", () => {
         expect((await store.list({ status: "published" })).map(entry => entry.slug)).toEqual(["one"]);
     });
 
+    it("reads lightweight Published Entry Summaries", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+        const created = await store.create({
+            slug: "summary-projection",
+            authorId,
+            categoryId,
+            title: "Summary projection",
+            excerpt: "Lightweight",
+            body: body("This body must not be returned."),
+            status: "published"
+        });
+        await store.create({ slug: "summary-draft", authorId, categoryId, title: "Draft", body: body("Draft") });
+
+        const page = await postSummaries(database()).list();
+        const summary = page.summaries.find(candidate => candidate.id === created.id);
+
+        expect(summary).toMatchObject({
+            id: created.id,
+            title: "Summary projection",
+            excerpt: "Lightweight",
+            status: "published"
+        });
+        expect(summary).not.toHaveProperty("body");
+        expect(page.summaries.map(candidate => candidate.slug)).not.toContain("summary-draft");
+    });
+
+    it("orders Entry Summaries by public publication time and id", async () => {
+        const authorId = await anAuthor();
+        const timestamp = Date.now();
+
+        await env.DB.prepare(
+            `INSERT INTO post
+                (id, slug, author_id, category_id, status, created_at, updated_at, published_at, title, excerpt, body)
+             VALUES (?, ?, ?, ?, 'published', ?, ?, ?, ?, NULL, ?)`
+        )
+            .bind(
+                "summary-a",
+                "summary-a",
+                authorId,
+                categoryId,
+                timestamp,
+                timestamp,
+                timestamp,
+                "A",
+                JSON.stringify(body("A"))
+            )
+            .run();
+        await env.DB.prepare(
+            `INSERT INTO post
+                (id, slug, author_id, category_id, status, created_at, updated_at, published_at, title, excerpt, body)
+             VALUES (?, ?, ?, ?, 'published', ?, ?, ?, ?, NULL, ?)`
+        )
+            .bind(
+                "summary-b",
+                "summary-b",
+                authorId,
+                categoryId,
+                timestamp,
+                timestamp,
+                timestamp,
+                "B",
+                JSON.stringify(body("B"))
+            )
+            .run();
+
+        const page = await postSummaries(database()).list({ limit: 1 });
+
+        expect(page.summaries).toHaveLength(1);
+        expect(page.summaries[0]?.id).toBe("summary-b");
+    });
+
     it("narrows archives to direct Category ownership or Tag membership", async () => {
         const authorId = await anAuthor();
         const store = posts(database());
@@ -252,6 +324,44 @@ describe("reading and writing entries", () => {
             "direct"
         ]);
         expect((await store.list({ status: "published", tagId: tag.id })).map(entry => entry.slug)).toEqual(["direct"]);
+    });
+
+    it("combines Entry Summary Category and Tag filters with AND", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+        const terms = taxonomy(database());
+        const guides = await terms.createCategory({ name: "Summary Guides" });
+        const news = await terms.createCategory({ name: "Summary News" });
+        const featured = await terms.createTag({ name: "Summary Featured" });
+        const matching = await store.create({
+            slug: "summary-matching",
+            authorId,
+            categoryId: guides.id,
+            title: "Matching",
+            body: body(),
+            status: "published"
+        });
+        const wrongCategory = await store.create({
+            slug: "summary-wrong-category",
+            authorId,
+            categoryId: news.id,
+            title: "Wrong category",
+            body: body(),
+            status: "published"
+        });
+        await replacePostTags(database(), matching.id, [featured.id]);
+        await replacePostTags(database(), wrongCategory.id, [featured.id]);
+
+        const page = await postSummaries(database()).list({ categoryId: guides.id, tagId: featured.id });
+
+        expect(page.summaries.map(summary => summary.slug)).toEqual(["summary-matching"]);
+    });
+
+    it("validates Entry Summary limits", async () => {
+        const summaries = postSummaries(database());
+
+        await expect(summaries.list({ limit: 0 })).rejects.toThrow(/integer from 1 to 50/i);
+        await expect(summaries.list({ limit: 51 })).rejects.toThrow(/integer from 1 to 50/i);
     });
 
     it("cascades Tag membership when an Entry is removed", async () => {

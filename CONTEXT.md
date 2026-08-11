@@ -52,6 +52,10 @@ Category and tag names classify and browse Entries, but do not become part of an
 A published Entry found by matching its declared searchable Fields. It identifies the Entry and may carry a plain-text excerpt of the match; it is not another Entry.
 _Avoid_: search record, indexed document
 
+**Entry Summary**:
+A read-only, lightweight projection of a published Entry for public lists and feeds. It keeps the Entry's identity and declared summary Fields but omits long-form content; it is not another Entry and has no separate lifecycle.
+_Avoid_: card record, feed item, excerpt
+
 **Revision**:
 A snapshot of an entry's content at a point in time, used for tracing and rollback.
 _Avoid_: version, history

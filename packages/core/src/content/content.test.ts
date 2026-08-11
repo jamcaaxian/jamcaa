@@ -6,6 +6,7 @@ import { defineContentModel } from "./model";
 import type { RichTextDocument } from "./rich-text";
 import { buildTable } from "./table";
 import { systemFieldNames } from "./system-fields";
+import type { EntrySummaryOf } from "./summaries";
 
 const post = defineCollection({
     name: "post",
@@ -119,6 +120,50 @@ describe("defineCollection", () => {
                 plural: "Duplicate Searches",
                 fields: { title: text() },
                 search: { fields: ["title", "title"] }
+            })
+        ).toThrow(/declared more than once/i);
+    });
+
+    it("declares a lightweight public Entry Summary projection", () => {
+        const summarized = defineCollection({
+            name: "release",
+            label: "Release",
+            plural: "Releases",
+            fields: { title: text(), excerpt: text(), body: richText(), score: number() },
+            summary: { fields: ["title", "excerpt", "score"] }
+        });
+
+        expect(summarized.summary?.fields).toEqual(["title", "excerpt", "score"]);
+    });
+
+    it("refuses a long-form or incomplete Entry Summary projection", () => {
+        expect(() =>
+            defineCollection({
+                name: "long_summary",
+                label: "Long Summary",
+                plural: "Long Summaries",
+                fields: { title: text(), body: richText() },
+                summary: { fields: ["title", "body" as never] }
+            })
+        ).toThrow(/long-form content/i);
+
+        expect(() =>
+            defineCollection({
+                name: "missing_title_summary",
+                label: "Missing Title Summary",
+                plural: "Missing Title Summaries",
+                fields: { title: text(), excerpt: text() },
+                summary: { fields: ["excerpt"] }
+            })
+        ).toThrow(/must include its titleField/i);
+
+        expect(() =>
+            defineCollection({
+                name: "duplicate_summary",
+                label: "Duplicate Summary",
+                plural: "Duplicate Summaries",
+                fields: { title: text() },
+                summary: { fields: ["title", "title"] }
             })
         ).toThrow(/declared more than once/i);
     });
@@ -238,5 +283,22 @@ describe("the type an entry takes", () => {
         expectTypeOf<Post["id"]>().toEqualTypeOf<string>();
         expectTypeOf<Post["categoryId"]>().toEqualTypeOf<string>();
         expectTypeOf<Post["publishedAt"]>().toEqualTypeOf<Date | null>();
+    });
+
+    it("derives a lightweight Entry Summary type from its declaration", () => {
+        const summarizedPost = defineCollection({
+            name: "summarized_post",
+            label: "Post",
+            plural: "Posts",
+            fields: { title: text({ required: true }), excerpt: text(), body: richText({ required: true }) },
+            summary: { fields: ["title", "excerpt"] }
+        });
+        type Summary = EntrySummaryOf<typeof summarizedPost>;
+
+        expect(summarizedPost.summary?.fields).toEqual(["title", "excerpt"]);
+        expectTypeOf<Summary["title"]>().toEqualTypeOf<string>();
+        expectTypeOf<Summary["excerpt"]>().toEqualTypeOf<string | null>();
+        expectTypeOf<Summary["status"]>().toEqualTypeOf<"published">();
+        expectTypeOf<Summary>().not.toHaveProperty("body");
     });
 });

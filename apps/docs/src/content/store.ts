@@ -1,10 +1,14 @@
-import { entryStore, tagMembershipStore, writeEntryWithTags } from "@jamcaa/core/content";
+import { entryStore, entrySummaryReader, tagMembershipStore, writeEntryWithTags } from "@jamcaa/core/content";
 import type { Database } from "@jamcaa/core/db";
 import { post } from "./collections";
-import { postTable, postTagTable } from "./schema";
+import { contentModel, postTable, postTagTable } from "./schema";
 
 export function posts(database: Database) {
     return entryStore({ database, collection: post, table: postTable, tagTable: postTagTable });
+}
+
+export function postSummaries(database: Database) {
+    return entrySummaryReader({ database, model: contentModel, collection: post });
 }
 
 export async function postTagIds(database: Database, postId: string): Promise<string[]> {

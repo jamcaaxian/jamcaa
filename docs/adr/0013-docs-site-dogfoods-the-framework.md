@@ -10,4 +10,6 @@ The example and the documentation site are one and the same to avoid maintaining
 
 There is an explicit bootstrapping order: the documentation site cannot exist before the framework can render content. Early documentation is therefore maintained as Markdown files inside the repository and migrated into the framework once the content pipeline works. ADR-0019 defines rich text as the stored form and Markdown as an interchange format. ADR-0022 makes the Site's configured permalink authoritative for its published Entries rather than leaving the example on a fixed route.
 
+The public home, Category, and Tag lists read declared Entry Summaries rather than complete Entries. This keeps the reference Site honest about the cost of reader-facing lists: adding Rich Text to a Post must not make every archive fetch and parse the full body.
+
 It also ties the documentation site's availability to the framework's stability: a serious defect in the framework takes the documentation with it. That risk is inherent to bootstrapping and is accepted in exchange for the benefits above.
