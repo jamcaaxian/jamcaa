@@ -14,6 +14,7 @@
         "./db/schema": "./src/db/schema/index.ts",
         "./install": "./src/install/index.ts",
         "./media": "./src/media/index.ts",
+        "./search": "./src/search/index.ts",
         "./settings": "./src/settings/index.ts",
         "./theme": "./src/theme/index.ts"
     },

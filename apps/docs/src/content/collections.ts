@@ -8,5 +8,6 @@ export const post = defineCollection({
         title: text({ required: true }),
         excerpt: text({ description: "Shown in listings and search results." }),
         body: richText({ required: true })
-    }
+    },
+    search: { fields: ["title", "excerpt", "body"] }
 });

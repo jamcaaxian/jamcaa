@@ -1,7 +1,7 @@
 import { getTableConfig } from "drizzle-orm/sqlite-core";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { defineCollection, type EntryOf } from "./collection";
-import { choice, moment, number, reference, richText, text, toggle } from "./fields";
+import { choice, markdown, moment, number, reference, richText, text, toggle } from "./fields";
 import { defineContentModel } from "./model";
 import type { RichTextDocument } from "./rich-text";
 import { buildTable } from "./table";
@@ -87,6 +87,40 @@ describe("defineCollection", () => {
         }
 
         expect(() => defineCollection({ name: "full", label: "x", plural: "x", fields })).not.toThrow();
+    });
+
+    it("declares an ordered public search projection", () => {
+        const searchable = defineCollection({
+            name: "guide",
+            label: "Guide",
+            plural: "Guides",
+            fields: { title: text(), summary: markdown(), body: richText(), score: number() },
+            search: { fields: ["title", "summary", "body"] }
+        });
+
+        expect(searchable.search?.fields).toEqual(["title", "summary", "body"]);
+    });
+
+    it("refuses an invalid public search projection", () => {
+        expect(() =>
+            defineCollection({
+                name: "scorecard",
+                label: "Scorecard",
+                plural: "Scorecards",
+                fields: { title: text(), score: number() },
+                search: { fields: ["score" as never] }
+            })
+        ).toThrow(/no searchable text representation/i);
+
+        expect(() =>
+            defineCollection({
+                name: "duplicate_search",
+                label: "Duplicate Search",
+                plural: "Duplicate Searches",
+                fields: { title: text() },
+                search: { fields: ["title", "title"] }
+            })
+        ).toThrow(/declared more than once/i);
     });
 });
 

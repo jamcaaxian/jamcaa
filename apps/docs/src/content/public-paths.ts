@@ -1,7 +1,17 @@
 import { buildPermalink, checkPermalink, matchPermalink } from "@jamcaa/core/content";
 import type { RichTextDocument } from "@jamcaa/core/content";
 
-const RESERVED_PATH_PREFIXES = new Set(["_next", "admin", "api", "login", "media", "setup"]);
+const RESERVED_PATH_PREFIXES = new Set([
+    "_next",
+    "admin",
+    "api",
+    "category",
+    "login",
+    "media",
+    "search",
+    "setup",
+    "tag"
+]);
 
 export interface AddressablePost {
     slug: string;

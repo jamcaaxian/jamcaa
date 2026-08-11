@@ -21,7 +21,10 @@ const entry = {
 describe("public entry paths", () => {
     it("keeps the Site's own namespaces reserved", () => {
         expect(isReservedPublicAddress("/admin/example")).toBe(true);
+        expect(isReservedPublicAddress("/category/example")).toBe(true);
         expect(isReservedPublicAddress("/media/example")).toBe(true);
+        expect(isReservedPublicAddress("/search")).toBe(true);
+        expect(isReservedPublicAddress("/tag/example")).toBe(true);
         expect(isReservedPublicAddress("/writing/example")).toBe(false);
         expect(checkPublicPermalink("/admin/{slug}")).toMatch(/belongs to the Site/);
         expect(checkPublicPermalink("/writing/{slug}")).toBeUndefined();

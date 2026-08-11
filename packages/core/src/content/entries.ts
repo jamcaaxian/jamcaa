@@ -1,4 +1,4 @@
-import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
 import type { SQLiteColumn, SQLiteTable } from "drizzle-orm/sqlite-core";
 import type { Database } from "../db/client";
 import type { Collection, EntryOf, FieldMap } from "./collection";
@@ -38,6 +38,8 @@ export interface EntryStore<TFields extends FieldMap> {
     update(id: string, changes: EntryChanges<TFields>): Promise<void>;
     remove(id: string): Promise<void>;
     byId(id: string): Promise<EntryOf<Collection<TFields>> | undefined>;
+    /** Preserves requested order and omits identifiers that no longer exist. */
+    byIds(ids: readonly string[]): Promise<EntryOf<Collection<TFields>>[]>;
     bySlug(slug: string): Promise<EntryOf<Collection<TFields>> | undefined>;
     list(query?: EntryQuery): Promise<EntryOf<Collection<TFields>>[]>;
 }
@@ -116,6 +118,38 @@ export function entryStore<TFields extends FieldMap>(options: {
         },
 
         byId: id => one(eq(columnNamed(table, "id"), id)),
+
+        async byIds(ids) {
+            if (ids.length === 0) {
+                return [];
+            }
+
+            const unique = [...new Set(ids)];
+            const found: Entry[] = [];
+
+            for (let start = 0; start < unique.length; start += 50) {
+                const batch = unique.slice(start, start + 50);
+                const rows = await database
+                    .select()
+                    .from(table)
+                    .where(inArray(columnNamed(table, "id"), batch));
+
+                found.push(...asEntries(rows));
+            }
+
+            const byId = new Map(found.map(entry => [entry.id, entry]));
+            const ordered: Entry[] = [];
+
+            for (const id of ids) {
+                const entry = byId.get(id);
+
+                if (entry !== undefined) {
+                    ordered.push(entry);
+                }
+            }
+
+            return ordered;
+        },
 
         bySlug: slug => one(eq(columnNamed(table, "slug"), slug)),
 

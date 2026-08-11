@@ -1,4 +1,4 @@
-import type { Field, FieldValue } from "./fields";
+import type { Field, FieldValue, SearchableFieldKind } from "./fields";
 import { systemFieldNames, type SystemFields } from "./system-fields";
 
 /** D1 refuses a table with more than this many columns. */
@@ -26,6 +26,16 @@ const RESERVED_TABLE_NAMES = new Set([
 
 export type FieldMap = Record<string, Field>;
 
+export type SearchableFieldName<TFields extends FieldMap> = {
+    [TName in keyof TFields]: TFields[TName]["kind"] extends SearchableFieldKind ? TName : never;
+}[keyof TFields]
+    & string;
+
+export interface SearchDeclaration<TFields extends FieldMap = FieldMap> {
+    /** Fields are indexed and ranked in this declaration order. */
+    readonly fields: readonly SearchableFieldName<TFields>[];
+}
+
 export interface CollectionDeclaration<TFields extends FieldMap = FieldMap> {
     /** Becomes the table name, so it is lower snake case. */
     readonly name: string;
@@ -35,6 +45,8 @@ export interface CollectionDeclaration<TFields extends FieldMap = FieldMap> {
     readonly fields: TFields;
     /** The field to show when an entry has to be named in a list. */
     readonly titleField?: keyof TFields & string;
+    /** The public full-text projection. Omit it when this Collection is not searchable. */
+    readonly search?: SearchDeclaration<TFields>;
 }
 
 export interface Collection<TFields extends FieldMap = FieldMap, TName extends string = string> {
@@ -46,6 +58,7 @@ export interface Collection<TFields extends FieldMap = FieldMap, TName extends s
     // would make Collection invariant, and a specific collection could then not be
     // passed anywhere that accepts collections in general.
     readonly titleField: string;
+    readonly search: { readonly fields: readonly string[] } | undefined;
 }
 
 export type EntryOf<TCollection extends Collection> = SystemFields & {
@@ -89,6 +102,34 @@ export function defineCollection<const TName extends string, const TFields exten
         }
     }
 
+    if (declaration.search !== undefined) {
+        const searchFields = declaration.search.fields as readonly string[];
+
+        if (searchFields.length === 0) {
+            fail(name, "search needs at least one Field.");
+        }
+
+        const seen = new Set<string>();
+
+        for (const fieldName of searchFields) {
+            const field = fields[fieldName];
+
+            if (field === undefined) {
+                fail(name, `the searchable Field "${fieldName}" is not one of its Fields.`);
+            }
+
+            if (!(["text", "markdown", "richText"] as const).includes(field.kind as SearchableFieldKind)) {
+                fail(name, `the Field "${fieldName}" has no searchable text representation.`);
+            }
+
+            if (seen.has(fieldName)) {
+                fail(name, `the searchable Field "${fieldName}" is declared more than once.`);
+            }
+
+            seen.add(fieldName);
+        }
+    }
+
     const columns = systemFieldNames.length + fieldNames.length;
 
     if (columns > MAX_COLUMNS) {
@@ -110,7 +151,7 @@ export function defineCollection<const TName extends string, const TFields exten
         fail(name, `titleField "${titleField}" is not one of its fields.`);
     }
 
-    return { ...declaration, titleField };
+    return { ...declaration, titleField, search: declaration.search };
 }
 
 function findTitleField(fields: FieldMap): string | undefined {

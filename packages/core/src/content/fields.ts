@@ -15,8 +15,8 @@ export interface FieldOptions {
     required?: boolean;
 }
 
-export interface Field<TValue = unknown> {
-    readonly kind: FieldKind;
+export interface Field<TValue = unknown, TKind extends FieldKind = FieldKind> {
+    readonly kind: TKind;
     readonly label: string | undefined;
     readonly description: string | undefined;
     readonly required: boolean;
@@ -29,12 +29,14 @@ export interface Field<TValue = unknown> {
     buildColumn(name: string): SQLiteColumnBuilderBase;
 }
 
-export type FieldValue<TField> = TField extends Field<infer TValue> ? TValue : never;
+export type FieldValue<TField> = TField extends Field<infer TValue, FieldKind> ? TValue : never;
+
+export type SearchableFieldKind = Extract<FieldKind, "text" | "markdown" | "richText">;
 
 /** A field is nullable unless it was declared with `required: true`. */
 type Held<TValue, TOptions extends FieldOptions> = TOptions extends { required: true } ? TValue : TValue | null;
 
-function base(kind: FieldKind, options: FieldOptions | undefined) {
+function base<const TKind extends FieldKind>(kind: TKind, options: FieldOptions | undefined) {
     return { kind, label: options?.label, description: options?.description, required: options?.required ?? false };
 }
 
@@ -50,7 +52,7 @@ function column<TBuilder extends SQLiteColumnBuilderBase & { notNull(): SQLiteCo
 /** A single line of plain text: titles, slugs, names. */
 export function text<const TOptions extends FieldOptions = FieldOptions>(
     options?: TOptions
-): Field<Held<string, TOptions>> {
+): Field<Held<string, TOptions>, "text"> {
     const definition = base("text", options);
 
     return { ...definition, buildColumn: name => column(sqliteText(name), definition.required) };
@@ -59,7 +61,7 @@ export function text<const TOptions extends FieldOptions = FieldOptions>(
 /** Long-form body content, stored and edited as Markdown. */
 export function markdown<const TOptions extends FieldOptions = FieldOptions>(
     options?: TOptions
-): Field<Held<string, TOptions>> {
+): Field<Held<string, TOptions>, "markdown"> {
     const definition = base("markdown", options);
 
     return { ...definition, buildColumn: name => column(sqliteText(name), definition.required) };
@@ -68,7 +70,7 @@ export function markdown<const TOptions extends FieldOptions = FieldOptions>(
 /** Structured long-form content stored as ProseMirror JSON. */
 export function richText<const TOptions extends FieldOptions = FieldOptions>(
     options?: TOptions
-): Field<Held<RichTextDocument, TOptions>> {
+): Field<Held<RichTextDocument, TOptions>, "richText"> {
     const definition = base("richText", options);
 
     return {
@@ -85,7 +87,7 @@ export interface NumberOptions extends FieldOptions {
 
 export function number<const TOptions extends NumberOptions = NumberOptions>(
     options?: TOptions
-): Field<Held<number, TOptions>> {
+): Field<Held<number, TOptions>, "number"> {
     const definition = base("number", options);
     const whole = options?.whole ?? false;
 
@@ -98,7 +100,7 @@ export function number<const TOptions extends NumberOptions = NumberOptions>(
 /** A yes or no. SQLite has no boolean, so this is an integer Drizzle reads as one. */
 export function toggle<const TOptions extends FieldOptions = FieldOptions>(
     options?: TOptions
-): Field<Held<boolean, TOptions>> {
+): Field<Held<boolean, TOptions>, "toggle"> {
     const definition = base("toggle", options);
 
     return {
@@ -110,7 +112,7 @@ export function toggle<const TOptions extends FieldOptions = FieldOptions>(
 /** A point in time, stored as milliseconds since the epoch. */
 export function moment<const TOptions extends FieldOptions = FieldOptions>(
     options?: TOptions
-): Field<Held<Date, TOptions>> {
+): Field<Held<Date, TOptions>, "moment"> {
     const definition = base("moment", options);
 
     return {
@@ -128,7 +130,7 @@ export interface ChoiceOptions<TChoice extends string> extends FieldOptions {
 export function choice<
     const TChoice extends string,
     const TOptions extends ChoiceOptions<TChoice> = ChoiceOptions<TChoice>
->(options: TOptions & ChoiceOptions<TChoice>): Field<Held<TChoice, TOptions>> {
+>(options: TOptions & ChoiceOptions<TChoice>): Field<Held<TChoice, TOptions>, "choice"> {
     const definition = base("choice", options);
 
     return {
@@ -146,7 +148,7 @@ export interface ReferenceOptions extends FieldOptions {
 /** Points at one entry of another collection by its identifier. */
 export function reference<const TOptions extends ReferenceOptions = ReferenceOptions>(
     options: TOptions & ReferenceOptions
-): Field<Held<string, TOptions>> {
+): Field<Held<string, TOptions>, "reference"> {
     const definition = base("reference", options);
 
     return {
