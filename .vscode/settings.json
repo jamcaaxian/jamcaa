@@ -2,5 +2,6 @@
     "files.associations": { "css": "tailwindcss" },
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true,
-    "[tailwindcss]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }
+    "[tailwindcss]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+    "[sql]": { "editor.defaultFormatter": "inferrinizzard.prettier-sql-vscode" }
 }
