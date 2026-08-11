@@ -13,6 +13,7 @@ const RESERVED_PATH_PREFIXES = new Set([
     "setup",
     "tag"
 ]);
+const RESERVED_EXACT_PATHS = new Set(["/favicon.svg", "/file.svg", "/globe.svg", "/next.svg", "/window.svg"]);
 
 export interface AddressablePost {
     slug: string;
@@ -25,6 +26,10 @@ export interface AddressablePost {
 }
 
 export function isReservedPublicAddress(address: string): boolean {
+    if (RESERVED_EXACT_PATHS.has(address.toLowerCase())) {
+        return true;
+    }
+
     const first = address.replace(/^\/+/, "").split("/")[0]?.toLowerCase();
 
     return first !== undefined && RESERVED_PATH_PREFIXES.has(first);

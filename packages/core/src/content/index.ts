@@ -1,6 +1,7 @@
 export * from "./collection";
 export * from "./entries";
 export * from "./fields";
+export * from "./former-addresses";
 export * from "./model";
 export * from "./permalink";
 export * from "./rich-text";

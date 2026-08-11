@@ -26,6 +26,8 @@ describe("public entry paths", () => {
         expect(isReservedPublicAddress("/search")).toBe(true);
         expect(isReservedPublicAddress("/tag/example")).toBe(true);
         expect(isReservedPublicAddress("/feed.json")).toBe(true);
+        expect(isReservedPublicAddress("/favicon.svg")).toBe(true);
+        expect(isReservedPublicAddress("/file.svg")).toBe(true);
         expect(isReservedPublicAddress("/writing/example")).toBe(false);
         expect(checkPublicPermalink("/admin/{slug}")).toMatch(/belongs to the Site/);
         expect(checkPublicPermalink("/feed.json/{slug}")).toMatch(/belongs to the Site/);

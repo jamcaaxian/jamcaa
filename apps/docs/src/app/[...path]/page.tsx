@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { PostContent } from "@/components/public/post-content";
 import { publicMoment, publishedPostAt } from "@/content/public-site";
 
@@ -12,15 +12,15 @@ async function requestedPost(params: Promise<{ path: string[] }>) {
 export async function generateMetadata({ params }: { params: Promise<{ path: string[] }> }): Promise<Metadata> {
     const entry = await requestedPost(params);
 
-    return entry ?
+    return entry?.kind === "entry" ?
             {
-                title: entry.title,
-                description: entry.excerpt ?? undefined,
+                title: entry.entry.title,
+                description: entry.entry.excerpt ?? undefined,
                 openGraph: {
-                    title: entry.title,
-                    description: entry.excerpt ?? undefined,
+                    title: entry.entry.title,
+                    description: entry.entry.excerpt ?? undefined,
                     type: "article",
-                    publishedTime: (entry.publishedAt ?? entry.createdAt).toISOString()
+                    publishedTime: (entry.entry.publishedAt ?? entry.entry.createdAt).toISOString()
                 }
             }
         :   { title: "Post not found" };
@@ -31,7 +31,11 @@ export default async function PublicEntryPage({ params }: { params: Promise<{ pa
 
     if (entry === undefined) notFound();
 
-    const published = await publicMoment(entry.publishedAt ?? entry.createdAt);
+    if (entry.kind === "former") {
+        permanentRedirect(entry.address);
+    }
 
-    return <PostContent post={entry} publishedLabel={published.label} />;
+    const published = await publicMoment(entry.entry.publishedAt ?? entry.entry.createdAt);
+
+    return <PostContent post={entry.entry} publishedLabel={published.label} />;
 }

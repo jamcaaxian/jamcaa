@@ -64,6 +64,13 @@
       "when": 1786412112304,
       "tag": "0008_taxonomy",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1786476434303,
+      "tag": "0010_former_post_addresses",
+      "breakpoints": true
     }
   ]
 }

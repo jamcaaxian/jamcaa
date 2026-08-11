@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
 import { formatMoment } from "@jamcaa/core/dates";
-import { getSettings, type SettingCatalogue } from "@jamcaa/core/settings";
+import { loadSettings, type SettingCatalogue } from "@jamcaa/core/settings";
+import { publicPostAddresses, type FormerPostResolution } from "./public-addresses";
 import { postAddress, resolvePublishedPost } from "./public-paths";
 import { siteSettings } from "./settings";
 import { posts } from "./store";
@@ -22,7 +23,7 @@ function isMissingSettingsTable(error: unknown): boolean {
 }
 
 export async function publicSiteSettings() {
-    return getSettings(database(), siteSettings);
+    return loadSettings(database(), siteSettings);
 }
 
 export async function publicSiteMetadata(): Promise<Metadata> {
@@ -60,13 +61,21 @@ export async function publicPostAddress(entry: {
 
 export async function publishedPostAt(pathSegments: string[]) {
     const settings = await publicSiteSettings();
-    const store = posts(database());
+    const siteDatabase = database();
+    const store = posts(siteDatabase);
+    const pattern = settings.get("permalink.post");
+    const entry = await resolvePublishedPost({ pattern, pathSegments, bySlug: slug => store.bySlug(slug) });
 
-    return resolvePublishedPost({
-        pattern: settings.get("permalink.post"),
+    if (entry !== undefined) {
+        return { kind: "entry" as const, entry };
+    }
+
+    const former: FormerPostResolution | undefined = await publicPostAddresses(siteDatabase).formerAt(
         pathSegments,
-        bySlug: slug => store.bySlug(slug)
-    });
+        pattern
+    );
+
+    return former === undefined ? undefined : { kind: "former" as const, ...former };
 }
 
 export async function publicMoment(moment: Date): Promise<{ dateTime: string; label: string }> {

@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
-import { writeSettings, type SettingCatalogue } from "@jamcaa/core/settings";
-import { siteSettings } from "@/content/settings";
+import { type SettingCatalogue } from "@jamcaa/core/settings";
+import { siteSettings, writeSiteSettings } from "@/content/settings";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 
@@ -48,9 +48,10 @@ export async function saveSettings(_previous: SettingsFormState, formData: FormD
     }
 
     const { env } = getCloudflareContext();
+    const database = createDatabase(env.DB);
 
     try {
-        await writeSettings(createDatabase(env.DB), siteSettings, changes);
+        await writeSiteSettings(database, changes);
     } catch (error) {
         return { error: error instanceof Error ? error.message : "Those settings could not be saved." };
     }

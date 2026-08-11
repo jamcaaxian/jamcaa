@@ -60,6 +60,10 @@ _Avoid_: card record, feed item, excerpt
 A machine-readable rendering of a Site's most recent published Entries, addressed by its own URL and intended for subscription rather than browsing. It carries the same Entry Summaries the public lists show; it is not a separate content store and adds nothing an Entry Summary does not already declare.
 _Avoid_: RSS, syndication, export
 
+**Former Address**:
+An exact public path retained after an Entry's canonical address changes. It belongs to that Entry and resolves directly to the Entry's current canonical address while the Entry is published.
+_Avoid_: Redirect rule, alias, old URL
+
 **Revision**:
 A snapshot of an entry's content at a point in time, used for tracing and rollback.
 _Avoid_: version, history
