@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import type { RichTextDocument } from "@jamcaa/core/content";
+import type { Category, RichTextDocument, Tag } from "@jamcaa/core/content";
 import { RichTextEditor } from "@jamcaa/editor";
 import { createHttpMediaAdapter } from "@jamcaa/editor/media";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ export interface PostDraft {
     excerpt: string | null;
     body: RichTextDocument;
     status: string;
+    categoryId: string;
 }
 
 export interface PostAddressSettings {
@@ -37,11 +38,17 @@ const postMedia = createHttpMediaAdapter({ collection: "post" });
 export function PostForm({
     post,
     mayPublish,
-    address
+    address,
+    categories,
+    tags,
+    selectedTagIds
 }: {
     post?: PostDraft;
     mayPublish: boolean;
     address: PostAddressSettings;
+    categories: Category[];
+    tags: Tag[];
+    selectedTagIds: string[];
 }) {
     const [state, action, pending] = useActionState<PostFormState, FormData>(savePost, {});
     const [title, setTitle] = useState(post?.title ?? "");
@@ -95,6 +102,51 @@ export function PostForm({
                 </Field>
 
                 <Field>
+                    <FieldLabel htmlFor="categoryId">Category</FieldLabel>
+                    <Select
+                        name="categoryId"
+                        defaultValue={post?.categoryId ?? categories[0]?.id}
+                        items={categories.map(category => ({ value: category.id, label: category.name }))}
+                        required
+                    >
+                        <SelectTrigger id="categoryId" className="w-full sm:w-72">
+                            <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {categories.map(category => (
+                                <SelectItem key={category.id} value={category.id}>
+                                    {category.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {categories.length === 0 ?
+                        <FieldDescription>Create a category before saving a Post.</FieldDescription>
+                    :   null}
+                </Field>
+
+                <Field>
+                    <FieldLabel>Tags</FieldLabel>
+                    {tags.length === 0 ?
+                        <FieldDescription>No tags are available yet.</FieldDescription>
+                    :   <div className="grid gap-2 sm:grid-cols-2">
+                            {tags.map(tag => (
+                                <label key={tag.id} className="flex items-center gap-2 text-sm font-normal">
+                                    <input
+                                        type="checkbox"
+                                        name="tagIds"
+                                        value={tag.id}
+                                        defaultChecked={selectedTagIds.includes(tag.id)}
+                                        className="size-4 rounded border-border"
+                                    />
+                                    {tag.name}
+                                </label>
+                            ))}
+                        </div>
+                    }
+                </Field>
+
+                <Field>
                     <FieldLabel id="body-label" htmlFor="body-editor">
                         Body
                     </FieldLabel>
@@ -130,7 +182,7 @@ export function PostForm({
                 :   null}
 
                 <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+                    <Button type="submit" disabled={pending || categories.length === 0} className="w-full sm:w-auto">
                         {pending ? "Saving…" : "Save"}
                     </Button>
                     <Button

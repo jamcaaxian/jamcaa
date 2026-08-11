@@ -12,6 +12,7 @@ export const coreCapabilities = {
     // Names here mirror what the admin plugin expects for its own endpoints.
     user: ["create", "list", "get", "update", "delete", "set-role", "set-password", "ban"],
     session: ["list", "revoke"],
+    taxonomy: ["read", "manage"],
     settings: ["read", "manage"]
 } as const;
 

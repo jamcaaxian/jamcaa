@@ -9,6 +9,8 @@ export interface PostSubmission {
     body: RichTextDocument;
     status: EntryStatus;
     slug: string;
+    categoryId: string;
+    tagIds: string[];
 }
 
 export function readPostSubmission(formData: FormData): PostSubmission | { error: string } {
@@ -26,6 +28,11 @@ export function readPostSubmission(formData: FormData): PostSubmission | { error
     }
 
     const candidate = String(formData.get("status") ?? "draft") as EntryStatus;
+    const categoryId = String(formData.get("categoryId") ?? "").trim();
+
+    if (!categoryId) {
+        return { error: "Select a category." };
+    }
 
     return {
         id: String(formData.get("id") ?? ""),
@@ -33,6 +40,11 @@ export function readPostSubmission(formData: FormData): PostSubmission | { error
         excerpt: String(formData.get("excerpt") ?? "").trim(),
         body,
         status: statuses.includes(candidate) ? candidate : "draft",
-        slug: String(formData.get("slug") ?? "")
+        slug: String(formData.get("slug") ?? ""),
+        categoryId,
+        tagIds: formData
+            .getAll("tagIds")
+            .map(value => String(value).trim())
+            .filter(Boolean)
     };
 }

@@ -18,6 +18,7 @@ type DeclaredValues<TFields extends FieldMap> = { [TName in RequiredNames<TField
 export type NewEntry<TFields extends FieldMap> = {
     slug: string;
     authorId: string;
+    categoryId: string;
     status?: EntryStatus;
     publishedAt?: Date | null;
 } & DeclaredValues<TFields>;
@@ -26,6 +27,8 @@ export type EntryChanges<TFields extends FieldMap> = Partial<NewEntry<TFields>>;
 
 export interface EntryQuery {
     status?: EntryStatus;
+    categoryId?: string;
+    tagId?: string;
     limit?: number;
     offset?: number;
 }
@@ -58,8 +61,9 @@ export function entryStore<TFields extends FieldMap>(options: {
     database: Database;
     collection: Collection<TFields>;
     table: SQLiteTable;
+    tagTable?: SQLiteTable;
 }): EntryStore<TFields> {
-    const { database, collection, table } = options;
+    const { database, collection, table, tagTable } = options;
 
     type Entry = EntryOf<Collection<TFields>>;
 
@@ -120,6 +124,25 @@ export function entryStore<TFields extends FieldMap>(options: {
 
             if (query.status !== undefined) {
                 conditions.push(eq(columnNamed(table, "status"), query.status));
+            }
+
+            if (query.categoryId !== undefined) {
+                conditions.push(eq(columnNamed(table, "categoryId"), query.categoryId));
+            }
+
+            if (query.tagId !== undefined) {
+                if (tagTable === undefined) {
+                    throw new Error(`Collection "${collection.name}" has no Tag relation table.`);
+                }
+
+                conditions.push(
+                    sql`EXISTS (
+                        SELECT 1
+                        FROM ${tagTable}
+                        WHERE ${columnNamed(tagTable, "entryId")} = ${columnNamed(table, "id")}
+                          AND ${columnNamed(tagTable, "tagId")} = ${query.tagId}
+                    )`
+                );
             }
 
             const rows = await database

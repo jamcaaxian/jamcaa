@@ -22,6 +22,8 @@ Rather than fight that, the two concerns are separated. **The assembled table is
 
 `Collection` is covariant in its fields, which cost a design constraint: `titleField` is narrowed to the declared keys while authoring but widens to `string` afterwards. Keeping `keyof TFields` on the resolved type made `Collection` invariant, and a specific collection could then not be passed to anything that accepts collections in general.
 
-A collection is checked the moment it is declared — names, collisions with the fields every entry already has, and the column budget. **D1 allows 100 columns per table**, of which the platform spends seven, so a declaration is refused at 94 fields with a message saying what the remaining budget is. This is the build-time validation ADR-0002 required, and it happens at import time so a site fails to start rather than failing when a migration runs.
+A collection is checked the moment it is declared — names, collisions with the fields every entry already has, and the column budget. **D1 allows 100 columns per table**, of which the platform spends eight including the Entry's Category relation, so a declaration is refused at 93 fields with a message saying what the remaining budget is. This is the build-time validation ADR-0002 required, and it happens at import time so a site fails to start rather than failing when a migration runs.
+
+The model also derives one Tag relation table per Collection. The internal table name starts with `_jamcaa_`, which a Collection name cannot use, and connects the Collection's real Entry table to the platform's Tag table with foreign keys.
 
 References are checked when the model is assembled rather than when a collection is declared, since a collection may legitimately point at one that has not been declared yet.

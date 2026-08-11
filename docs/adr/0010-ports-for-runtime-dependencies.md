@@ -10,4 +10,8 @@ Why the ports exist anyway: beyond leaving room for the community to contribute 
 
 Ports cost an extra layer of indirection and the maintenance of the interfaces themselves. In exchange, core logic may never reference runtime-specific globals or bindings directly and must go through a port. This constraint has to be enforced in review, or the ports will be hollowed out one shortcut at a time.
 
+The search port accepts a Collection, a literal query, optional Category or Tag filters, a result limit, and an opaque cursor. It returns Entry identifiers, plain-text match excerpts, and the next cursor. The D1 adapter owns MATCH syntax, ranking, snippets, and physical FTS table names; the Site resolves identifiers through the typed Entry store and adds public addresses and presentation.
+
 This also settles where tests live. The core is tested through substituted ports and owns no migrations, so anything that needs real tables — authentication, content queries, storage rules — is tested from a site's test suite, where the migrations actually are. Expect to find integration coverage under `apps/*/test`, not in `packages/core`; a core that reached into a particular site for its fixtures would contradict the boundary drawn in ADR-0001.
+
+FTS migration, trigger, backfill, and integrity coverage therefore lives in the Site test suite even though query construction and cursor rules are exercised through the port interface in core tests.

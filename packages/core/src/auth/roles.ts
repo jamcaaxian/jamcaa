@@ -40,6 +40,7 @@ export const systemRoles: SystemRole[] = [
             ],
             media: ["upload", "read", "delete-own", "delete-any"],
             comment: ["create", "moderate", "delete-any"],
+            taxonomy: ["read", "manage"],
             settings: ["read"]
         }
     },
@@ -50,6 +51,7 @@ export const systemRoles: SystemRole[] = [
         grants: {
             post: ["create", "read", "update-own", "delete-own", "publish-own"],
             media: ["upload", "read", "delete-own"],
+            taxonomy: ["read"],
             comment: ["create"]
         }
     },
@@ -57,7 +59,12 @@ export const systemRoles: SystemRole[] = [
         name: "contributor",
         label: "Contributor",
         description: "Writes their own content but cannot publish it.",
-        grants: { post: ["create", "read", "update-own", "delete-own"], media: ["upload", "read"], comment: ["create"] }
+        grants: {
+            post: ["create", "read", "update-own", "delete-own"],
+            media: ["upload", "read"],
+            taxonomy: ["read"],
+            comment: ["create"]
+        }
     },
     {
         name: "subscriber",
@@ -110,6 +117,31 @@ export async function seedSystemRoles(database: Database, catalogue: CapabilityC
 
         if (rows.length > 0) {
             await database.insert(roleCapability).values(rows);
+        }
+    }
+}
+
+/** Adds newly declared system grants without removing Site-specific changes. */
+export async function syncSystemRoleGrants(database: Database, catalogue: CapabilityCatalogue): Promise<void> {
+    for (const systemRole of systemRoles) {
+        const existing = await database
+            .select({ name: roleTable.name })
+            .from(roleTable)
+            .where(eq(roleTable.name, systemRole.name))
+            .get();
+
+        if (existing === undefined) {
+            continue;
+        }
+
+        const grants = resolveSystemGrants(catalogue, systemRole);
+        assertGrantsAreDeclared(catalogue, grants);
+        const rows = Object.entries(grants).flatMap(([resource, actions]) =>
+            actions.map(action => ({ roleName: systemRole.name, resource, action }))
+        );
+
+        if (rows.length > 0) {
+            await database.insert(roleCapability).values(rows).onConflictDoNothing();
         }
     }
 }

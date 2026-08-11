@@ -1,7 +1,7 @@
-import { drizzle, type DrizzleD1Database } from "drizzle-orm/d1";
+import { drizzle, type AnyD1Database, type DrizzleD1Database } from "drizzle-orm/d1";
 import * as schema from "./schema/index";
 
-export type Database = DrizzleD1Database<typeof schema>;
+export type Database = DrizzleD1Database<typeof schema> & { $client: AnyD1Database };
 
 /**
  * The core never reaches for a runtime binding itself — callers pass one in.

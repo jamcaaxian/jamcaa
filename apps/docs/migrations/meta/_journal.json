@@ -57,6 +57,13 @@
       "when": 1786373100000,
       "tag": "0007_canonical-empty-rich-text",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1786412112304,
+      "tag": "0008_taxonomy",
+      "breakpoints": true
     }
   ]
 }

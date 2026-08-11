@@ -6,4 +6,5 @@ export * from "./permalink";
 export * from "./rich-text";
 export * from "./slug";
 export * from "./system-fields";
+export * from "./taxonomy";
 export * from "./table";

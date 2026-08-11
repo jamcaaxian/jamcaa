@@ -4,7 +4,8 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
 import { getSettings } from "@jamcaa/core/settings";
 import { siteSettings } from "@/content/settings";
-import { posts } from "@/content/store";
+import { posts, postTagIds } from "@/content/store";
+import { taxonomy } from "@/content/taxonomy";
 import { mayTouch } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 import { DeletePostButton } from "../delete-post-button";
@@ -18,9 +19,12 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
 
     const { env } = getCloudflareContext();
     const database = createDatabase(env.DB);
-    const [entry, settings] = await Promise.all([
+    const terms = taxonomy(database);
+    const [entry, settings, categories, tags] = await Promise.all([
         posts(database).byId((await params).id),
-        getSettings(database, siteSettings)
+        getSettings(database, siteSettings),
+        terms.listCategories(),
+        terms.listTags()
     ]);
 
     if (entry === undefined) {
@@ -32,6 +36,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     }
 
     const mayPublish = await mayTouch(actor, "post", "publish", entry.authorId);
+    const selectedTagIds = await postTagIds(database, entry.id);
 
     return (
         <div className="space-y-6">
@@ -49,10 +54,14 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
                     slug: entry.slug,
                     excerpt: entry.excerpt,
                     body: entry.body,
-                    status: entry.status
+                    status: entry.status,
+                    categoryId: entry.categoryId
                 }}
                 mayPublish={mayPublish}
                 address={{ pattern: settings.get("permalink.post"), mayChooseSlug: mayPublish }}
+                categories={categories}
+                tags={tags}
+                selectedTagIds={selectedTagIds}
             />
         </div>
     );

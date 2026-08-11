@@ -7,7 +7,7 @@ A general-purpose publishing platform for content-driven websites. The core unde
 ### Platform and sites
 
 **Platform**:
-The reusable publishing core. It knows only about collections, entries, media, users, and rules.
+The reusable publishing core. It knows only about collections, entries, taxonomy, media, users, and rules.
 _Avoid_: framework, system, CMS
 
 **Site**:
@@ -43,6 +43,14 @@ _Avoid_: article, gallery, item
 **Taxonomy**:
 The system by which entries are classified. A category is hierarchical and an entry belongs to exactly one; a tag is flat and an entry may carry many.
 _Avoid_: tagging system, folder, channel
+
+Categories and tags belong to the Site rather than to one Collection. A category archive shows Entries assigned directly to that category; descendants remain separate archives.
+
+Category and tag names classify and browse Entries, but do not become part of an Entry's full-text content.
+
+**Search Result**:
+A published Entry found by matching its declared searchable Fields. It identifies the Entry and may carry a plain-text excerpt of the match; it is not another Entry.
+_Avoid_: search record, indexed document
 
 **Revision**:
 A snapshot of an entry's content at a point in time, used for tracing and rollback.

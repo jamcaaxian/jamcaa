@@ -95,7 +95,7 @@ describe("buildTable", () => {
     const columns = new Map(table.columns.map(column => [column.name, column]));
 
     it("gives every entry the fields the platform manages", () => {
-        for (const name of ["id", "slug", "status", "author_id", "created_at", "updated_at"]) {
+        for (const name of ["id", "slug", "status", "author_id", "category_id", "created_at", "updated_at"]) {
             expect(columns.has(name)).toBe(true);
         }
     });
@@ -165,6 +165,20 @@ describe("defineContentModel", () => {
 
         expect(model.collection("review")?.label).toBe("Review");
         expect(model.table("film")).toBeDefined();
+        expect(model.tagTable("film")).toBeDefined();
+    });
+
+    it("derives a Tag relation whose Entry side cascades", () => {
+        const model = defineContentModel([post]);
+        const relationTable = model.tagTable("post");
+
+        expect(relationTable).toBeDefined();
+
+        const relation = getTableConfig(relationTable!);
+
+        expect(relation.name).toBe("_jamcaa_post_tag");
+        expect(relation.foreignKeys).toHaveLength(2);
+        expect(relation.foreignKeys.some(key => key.onDelete === "cascade")).toBe(true);
     });
 });
 
@@ -188,6 +202,7 @@ describe("the type an entry takes", () => {
 
     it("includes what the platform manages", () => {
         expectTypeOf<Post["id"]>().toEqualTypeOf<string>();
+        expectTypeOf<Post["categoryId"]>().toEqualTypeOf<string>();
         expectTypeOf<Post["publishedAt"]>().toEqualTypeOf<Date | null>();
     });
 });

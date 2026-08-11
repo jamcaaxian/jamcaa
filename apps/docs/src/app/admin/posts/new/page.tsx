@@ -3,6 +3,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
 import { getSettings } from "@jamcaa/core/settings";
 import { siteSettings } from "@/content/settings";
+import { taxonomy } from "@/content/taxonomy";
 import { may, mayTouch } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 import { PostForm } from "../post-form";
@@ -18,9 +19,13 @@ export default async function NewPostPage() {
     }
 
     const { env } = getCloudflareContext();
-    const [mayPublish, settings] = await Promise.all([
+    const database = createDatabase(env.DB);
+    const terms = taxonomy(database);
+    const [mayPublish, settings, categories, tags] = await Promise.all([
         mayTouch(actor, "post", "publish", actor.id),
-        getSettings(createDatabase(env.DB), siteSettings)
+        getSettings(database, siteSettings),
+        terms.listCategories(),
+        terms.listTags()
     ]);
 
     return (
@@ -29,6 +34,9 @@ export default async function NewPostPage() {
             <PostForm
                 mayPublish={mayPublish}
                 address={{ pattern: settings.get("permalink.post"), mayChooseSlug: mayPublish }}
+                categories={categories}
+                tags={tags}
+                selectedTagIds={[]}
             />
         </div>
     );

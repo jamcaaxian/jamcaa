@@ -4,3 +4,4 @@ export * from "./auth";
 export * from "./media";
 export * from "./roles";
 export * from "./settings";
+export * from "./taxonomy";

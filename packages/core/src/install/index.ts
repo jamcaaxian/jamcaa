@@ -1,4 +1,4 @@
-import { coreCapabilities, seedSystemRoles, type CapabilityCatalogue } from "../auth";
+import { coreCapabilities, seedSystemRoles, syncSystemRoleGrants, type CapabilityCatalogue } from "../auth";
 import type { Database } from "../db/client";
 import { seedStorage, type BucketSeed } from "../media/install";
 import { coreSettings, type SettingCatalogue } from "../settings/definitions";
@@ -9,7 +9,7 @@ import { loadSettings, writeSettings } from "../settings/store";
  * never run. Sites are upgraded by running the same routine, not by remembering to
  * do something by hand.
  */
-export const INSTALL_VERSION = 1;
+export const INSTALL_VERSION = 2;
 
 export interface InstallPlan {
     buckets: readonly BucketSeed[];
@@ -38,6 +38,7 @@ export async function ensureInstalled(database: Database, plan: InstallPlan): Pr
     }
 
     await seedSystemRoles(database, plan.capabilities ?? coreCapabilities);
+    await syncSystemRoleGrants(database, plan.capabilities ?? coreCapabilities);
     await seedStorage(database, { buckets: plan.buckets, fallbackBucketId: plan.fallbackBucketId });
 
     await writeSettings(database, coreSettings, { "platform.installedVersion": INSTALL_VERSION });

@@ -1,12 +1,15 @@
 import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 import type { Collection } from "./collection";
 import { buildTable } from "./table";
+import { buildTagRelationTable } from "./taxonomy";
 
 export interface ContentModel<TCollections extends readonly Collection[] = readonly Collection[]> {
     readonly collections: TCollections;
     readonly tables: Readonly<Record<string, SQLiteTable>>;
+    readonly tagTables: Readonly<Record<string, SQLiteTable>>;
     collection(name: string): Collection | undefined;
     table(name: string): SQLiteTable | undefined;
+    tagTable(name: string): SQLiteTable | undefined;
 }
 
 /**
@@ -38,10 +41,21 @@ export function defineContentModel<const TCollections extends readonly Collectio
     }
 
     const tables: Record<string, SQLiteTable> = {};
+    const tagTables: Record<string, SQLiteTable> = {};
 
     for (const collection of collections) {
-        tables[collection.name] = buildTable(collection);
+        const table = buildTable(collection);
+
+        tables[collection.name] = table;
+        tagTables[collection.name] = buildTagRelationTable(collection.name, table);
     }
 
-    return { collections, tables, collection: name => byName.get(name), table: name => tables[name] };
+    return {
+        collections,
+        tables,
+        tagTables,
+        collection: name => byName.get(name),
+        table: name => tables[name],
+        tagTable: name => tagTables[name]
+    };
 }

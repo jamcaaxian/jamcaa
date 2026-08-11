@@ -4,7 +4,7 @@ A Site declares one permalink setting for each Collection. That setting is autho
 
 The platform compiles a configured pattern into two operations: building an address for an Entry and matching a requested path back to the tokens that identify one. Matching is exact for literal segments and validates date and Collection tokens after the Entry has been loaded. A Site supplies its Entry store and rendering, while the path semantics stay in the Worker-safe core.
 
-Static Site routes remain authoritative. A Site exposes published Entries through a catch-all page only after Next.js has given its static routes priority, so `/admin`, `/api`, `/media`, `/login`, `/setup`, and static files cannot be claimed by an Entry permalink.
+Static Site routes remain authoritative. A Site exposes published Entries through a catch-all page only after Next.js has given its static routes priority, so `/admin`, `/api`, `/category`, `/tag`, `/search`, `/media`, `/login`, `/setup`, and static files cannot be claimed by an Entry permalink.
 
 The Site validates the complete derived address before saving an Entry. When a generated or requested slug would place the Entry inside a reserved Site namespace, slug allocation advances to the next free, non-reserved candidate. This applies to both automatically generated and publisher-selected slugs, so the database cannot hold a Post whose canonical address is hidden behind a static route.
 

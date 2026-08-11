@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { integer, text } from "drizzle-orm/sqlite-core";
 import { user } from "../db/schema/auth";
+import { category } from "../db/schema/taxonomy";
 
 export const entryStatuses = ["draft", "published", "archived"] as const;
 
@@ -18,6 +19,9 @@ export function systemColumns() {
         authorId: text("author_id")
             .notNull()
             .references(() => user.id),
+        categoryId: text("category_id")
+            .notNull()
+            .references(() => category.id),
         createdAt: integer("created_at", { mode: "timestamp_ms" })
             .notNull()
             .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`),
@@ -35,6 +39,7 @@ export interface SystemFields {
     slug: string;
     status: EntryStatus;
     authorId: string;
+    categoryId: string;
     createdAt: Date;
     updatedAt: Date;
     publishedAt: Date | null;

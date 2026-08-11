@@ -8,7 +8,8 @@ import { toSlug } from "@jamcaa/core/content";
 import { getSettings } from "@jamcaa/core/settings";
 import { freePublicPostSlug } from "@/content/public-paths";
 import { siteSettings } from "@/content/settings";
-import { posts } from "@/content/store";
+import { posts, writePostWithTags } from "@/content/store";
+import { taxonomy } from "@/content/taxonomy";
 import { may, mayTouch, type Actor } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 import { readPostSubmission } from "./post-submission";
@@ -33,7 +34,7 @@ export async function savePost(_previous: PostFormState, formData: FormData): Pr
         return submission;
     }
 
-    const { id, title, excerpt, body, status } = submission;
+    const { id, title, excerpt, body, status, categoryId, tagIds } = submission;
     const existing = id ? await store.byId(id) : undefined;
 
     if (id && existing === undefined) {
@@ -46,6 +47,22 @@ export async function savePost(_previous: PostFormState, formData: FormData): Pr
 
     if (!allowed) {
         return { error: "You do not have permission to write this post." };
+    }
+
+    if (!(await may(actor, "taxonomy", "read"))) {
+        return { error: "You do not have permission to assign taxonomy." };
+    }
+
+    const terms = taxonomy(database);
+
+    if ((await terms.categoryById(categoryId)) === undefined) {
+        return { error: "The selected category no longer exists." };
+    }
+
+    for (const tagId of new Set(tagIds)) {
+        if ((await terms.tagById(tagId)) === undefined) {
+            return { error: "One of the selected tags no longer exists." };
+        }
     }
 
     const mayPublish = await mayTouch(actor, "post", "publish", owner);
@@ -80,9 +97,22 @@ export async function savePost(_previous: PostFormState, formData: FormData): Pr
     });
 
     if (existing) {
-        await store.update(existing.id, { title, excerpt, body, status, slug, publishedAt });
+        await writePostWithTags(
+            database,
+            tagIds,
+            async () => {
+                await store.update(existing.id, { title, excerpt, body, status, slug, publishedAt, categoryId });
+                return existing.id;
+            },
+            postId => postId
+        );
     } else {
-        await store.create({ title, excerpt, body, status, slug, publishedAt, authorId: actor.id });
+        await writePostWithTags(
+            database,
+            tagIds,
+            () => store.create({ title, excerpt, body, status, slug, publishedAt, authorId: actor.id, categoryId }),
+            created => created.id
+        );
     }
 
     revalidatePath("/", "layout");

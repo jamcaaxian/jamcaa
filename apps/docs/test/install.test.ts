@@ -52,6 +52,25 @@ describe("bringing a site up to date", () => {
         expect(buckets?.total).toBe(installPlan.buckets.length);
     });
 
+    it("adds new system grants without removing an existing Site grant", async () => {
+        await env.DB.prepare(
+            "INSERT INTO role (name, label, description, is_system) VALUES ('editor', 'Editor', 'Existing editor', 1)"
+        ).run();
+        await env.DB.prepare(
+            "INSERT INTO role_capability (role_name, resource, action) VALUES ('editor', 'newsletter', 'send')"
+        ).run();
+        await env.DB.prepare("INSERT INTO setting (key, value) VALUES ('platform.installedVersion', '1')").run();
+        forgetCachedSettings();
+
+        await ensureInstalled(database(), installPlan);
+
+        const grants = await env.DB.prepare(
+            "SELECT resource, action FROM role_capability WHERE role_name = 'editor' ORDER BY resource, action"
+        ).all<{ resource: string; action: string }>();
+        expect(grants.results).toContainEqual({ resource: "taxonomy", action: "manage" });
+        expect(grants.results).toContainEqual({ resource: "newsletter", action: "send" });
+    });
+
     it("records what it has run so the next visit is free", async () => {
         await ensureInstalled(database(), installPlan);
         forgetCachedSettings();

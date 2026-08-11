@@ -3,7 +3,10 @@ import { createAuth } from "@jamcaa/core/auth";
 import { richTextFromPlainText, type RichTextDocument } from "@jamcaa/core/content";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, expectTypeOf, it } from "vitest";
-import { posts } from "@/content/store";
+import { postTagIds, posts, replacePostTags, writePostWithTags } from "@/content/store";
+import { taxonomy } from "@/content/taxonomy";
+
+const categoryId = "jamcaa-default-category";
 
 function database() {
     return createDatabase(env.DB);
@@ -37,7 +40,10 @@ async function refusalFor(work: Promise<unknown>): Promise<string> {
 
 describe("the table a declaration produced", () => {
     beforeEach(async () => {
+        await env.DB.exec("DELETE FROM _jamcaa_post_tag");
         await env.DB.exec("DELETE FROM post");
+        await env.DB.exec("DELETE FROM tag");
+        await env.DB.exec("DELETE FROM category WHERE id <> 'jamcaa-default-category'");
         await env.DB.exec("DELETE FROM session");
         await env.DB.exec("DELETE FROM account");
         await env.DB.exec("DELETE FROM user");
@@ -70,8 +76,17 @@ describe("the table a declaration produced", () => {
             .run();
 
         for (const [index, source] of markdown.entries()) {
-            await env.DB.prepare("INSERT INTO post (id, slug, author_id, title, body) VALUES (?, ?, ?, ?, ?)")
-                .bind(`migration-${index}`, `migration-${index}`, "migration-author", `Migration ${index}`, source)
+            await env.DB.prepare(
+                "INSERT INTO post (id, slug, author_id, category_id, title, body) VALUES (?, ?, ?, ?, ?, ?)"
+            )
+                .bind(
+                    `migration-${index}`,
+                    `migration-${index}`,
+                    "migration-author",
+                    categoryId,
+                    `Migration ${index}`,
+                    source
+                )
                 .run();
         }
 
@@ -106,7 +121,7 @@ describe("the table a declaration produced", () => {
 
     it("keeps one slug to one entry", async () => {
         const authorId = await anAuthor();
-        const entry = { slug: "taken", authorId, title: "One", body: body() };
+        const entry = { slug: "taken", authorId, categoryId, title: "One", body: body() };
 
         await posts(database()).create(entry);
 
@@ -114,7 +129,7 @@ describe("the table a declaration produced", () => {
     });
 
     it("refuses an entry whose author does not exist", async () => {
-        const orphan = { slug: "orphan", authorId: "nobody", title: "Orphan", body: body() };
+        const orphan = { slug: "orphan", authorId: "nobody", categoryId, title: "Orphan", body: body() };
 
         expect(await refusalFor(posts(database()).create(orphan))).toMatch(/FOREIGN KEY constraint failed/i);
     });
@@ -122,7 +137,10 @@ describe("the table a declaration produced", () => {
 
 describe("reading and writing entries", () => {
     beforeEach(async () => {
+        await env.DB.exec("DELETE FROM _jamcaa_post_tag");
         await env.DB.exec("DELETE FROM post");
+        await env.DB.exec("DELETE FROM tag");
+        await env.DB.exec("DELETE FROM category WHERE id <> 'jamcaa-default-category'");
         await env.DB.exec("DELETE FROM session");
         await env.DB.exec("DELETE FROM account");
         await env.DB.exec("DELETE FROM user");
@@ -134,6 +152,7 @@ describe("reading and writing entries", () => {
         const created = await posts(database()).create({
             slug: "hello",
             authorId,
+            categoryId,
             title: "Hello",
             body: body("Hello")
         });
@@ -149,6 +168,7 @@ describe("reading and writing entries", () => {
             posts(database()).create({
                 slug: "invalid-body",
                 authorId,
+                categoryId,
                 title: "Invalid",
                 body: { type: "doc", content: [{ type: "html" }] } as unknown as RichTextDocument
             })
@@ -158,7 +178,13 @@ describe("reading and writing entries", () => {
     it("fills in what the platform manages", async () => {
         const authorId = await anAuthor();
 
-        const created = await posts(database()).create({ slug: "defaults", authorId, title: "D", body: body() });
+        const created = await posts(database()).create({
+            slug: "defaults",
+            authorId,
+            categoryId,
+            title: "D",
+            body: body()
+        });
 
         expect(created.status).toBe("draft");
         expect(created.createdAt).toBeInstanceOf(Date);
@@ -169,7 +195,7 @@ describe("reading and writing entries", () => {
     it("finds an entry by slug and by id", async () => {
         const authorId = await anAuthor();
         const store = posts(database());
-        const created = await store.create({ slug: "findable", authorId, title: "F", body: body() });
+        const created = await store.create({ slug: "findable", authorId, categoryId, title: "F", body: body() });
 
         expect((await store.bySlug("findable"))?.id).toBe(created.id);
         expect((await store.byId(created.id))?.slug).toBe("findable");
@@ -179,7 +205,7 @@ describe("reading and writing entries", () => {
     it("applies changes and leaves the rest alone", async () => {
         const authorId = await anAuthor();
         const store = posts(database());
-        const created = await store.create({ slug: "editable", authorId, title: "Before", body: body() });
+        const created = await store.create({ slug: "editable", authorId, categoryId, title: "Before", body: body() });
 
         await store.update(created.id, { title: "After", status: "published" });
 
@@ -191,21 +217,142 @@ describe("reading and writing entries", () => {
         const authorId = await anAuthor();
         const store = posts(database());
 
-        await store.create({ slug: "one", authorId, title: "One", body: body(), status: "published" });
-        await store.create({ slug: "two", authorId, title: "Two", body: body(), status: "draft" });
+        await store.create({ slug: "one", authorId, categoryId, title: "One", body: body(), status: "published" });
+        await store.create({ slug: "two", authorId, categoryId, title: "Two", body: body(), status: "draft" });
 
         expect(await store.list()).toHaveLength(2);
         expect((await store.list({ status: "published" })).map(entry => entry.slug)).toEqual(["one"]);
     });
 
+    it("narrows archives to direct Category ownership or Tag membership", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+        const terms = taxonomy(database());
+        const category = await terms.createCategory({ name: "Guides" });
+        const tag = await terms.createTag({ name: "Featured" });
+        const direct = await store.create({
+            slug: "direct",
+            authorId,
+            categoryId: category.id,
+            title: "Direct",
+            body: body(),
+            status: "published"
+        });
+        await store.create({
+            slug: "general",
+            authorId,
+            categoryId,
+            title: "General",
+            body: body(),
+            status: "published"
+        });
+        await replacePostTags(database(), direct.id, [tag.id]);
+
+        expect((await store.list({ status: "published", categoryId: category.id })).map(entry => entry.slug)).toEqual([
+            "direct"
+        ]);
+        expect((await store.list({ status: "published", tagId: tag.id })).map(entry => entry.slug)).toEqual(["direct"]);
+    });
+
+    it("cascades Tag membership when an Entry is removed", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+        const tag = await taxonomy(database()).createTag({ name: "Temporary" });
+        const created = await store.create({ slug: "tagged", authorId, categoryId, title: "Tagged", body: body() });
+        await replacePostTags(database(), created.id, [tag.id]);
+
+        await store.remove(created.id);
+
+        const relations = await env.DB.prepare("SELECT COUNT(*) AS count FROM _jamcaa_post_tag WHERE entry_id = ?")
+            .bind(created.id)
+            .first<{ count: number }>();
+        expect(relations?.count).toBe(0);
+    });
+
+    it("rolls back an Entry write when Tag membership is invalid", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+        const created = await store.create({
+            slug: "transactional",
+            authorId,
+            categoryId,
+            title: "Before",
+            body: body()
+        });
+        const tag = await taxonomy(database()).createTag({ name: "Valid" });
+        await replacePostTags(database(), created.id, [tag.id]);
+
+        await expect(
+            writePostWithTags(
+                database(),
+                ["missing-tag"],
+                async () => {
+                    await store.update(created.id, { title: "After" });
+                    return created.id;
+                },
+                postId => postId
+            )
+        ).rejects.toThrow();
+
+        expect((await store.byId(created.id))?.title).toBe("Before");
+        expect(await postTagIds(database(), created.id)).toEqual([tag.id]);
+    });
+
     it("removes an entry", async () => {
         const authorId = await anAuthor();
         const store = posts(database());
-        const created = await store.create({ slug: "doomed", authorId, title: "D", body: body() });
+        const created = await store.create({ slug: "doomed", authorId, categoryId, title: "D", body: body() });
 
         await store.remove(created.id);
 
         expect(await store.byId(created.id)).toBeUndefined();
+    });
+});
+
+describe("managing taxonomy", () => {
+    beforeEach(async () => {
+        await env.DB.exec("DELETE FROM _jamcaa_post_tag");
+        await env.DB.exec("DELETE FROM post");
+        await env.DB.exec("DELETE FROM tag");
+        await env.DB.exec("DELETE FROM category WHERE id <> 'jamcaa-default-category'");
+    });
+
+    it("creates hierarchical Categories and refuses a cycle", async () => {
+        const terms = taxonomy(database());
+        const parent = await terms.createCategory({ name: "Parent" });
+        const child = await terms.createCategory({ name: "Child", parentId: parent.id });
+
+        expect(await terms.categoryBySlug("child")).toMatchObject({ parentId: parent.id });
+        await expect(terms.updateCategory(parent.id, { parentId: child.id })).rejects.toThrow(/own descendant/i);
+    });
+
+    it("refuses to remove a Category that still has children or Entries", async () => {
+        const terms = taxonomy(database());
+        const parent = await terms.createCategory({ name: "Parent" });
+        await terms.createCategory({ name: "Child", parentId: parent.id });
+
+        await expect(terms.removeCategory(parent.id)).rejects.toThrow(/children first/i);
+
+        const assigned = await terms.createCategory({ name: "Assigned" });
+        const authorId = await anAuthor("taxonomy-author@example.com");
+        await posts(database()).create({
+            slug: "assigned",
+            authorId,
+            categoryId: assigned.id,
+            title: "Assigned",
+            body: body()
+        });
+
+        expect(await refusalFor(terms.removeCategory(assigned.id))).toMatch(/FOREIGN KEY constraint failed/i);
+    });
+
+    it("creates and updates a Tag through its slug", async () => {
+        const terms = taxonomy(database());
+        const created = await terms.createTag({ name: "First Tag" });
+
+        await terms.updateTag(created.id, { name: "Renamed Tag", slug: "renamed" });
+
+        expect(await terms.tagBySlug("renamed")).toMatchObject({ id: created.id, name: "Renamed Tag" });
     });
 });
 
@@ -216,6 +363,7 @@ describe("what the store promises the compiler", () => {
         expectTypeOf<NonNullable<Post>["title"]>().toEqualTypeOf<string>();
         expectTypeOf<NonNullable<Post>["body"]>().toEqualTypeOf<RichTextDocument>();
         expectTypeOf<NonNullable<Post>["excerpt"]>().toEqualTypeOf<string | null>();
+        expectTypeOf<NonNullable<Post>["categoryId"]>().toEqualTypeOf<string>();
         expectTypeOf<NonNullable<Post>["status"]>().toEqualTypeOf<"draft" | "published" | "archived">();
     });
 });

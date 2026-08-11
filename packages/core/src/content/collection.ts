@@ -8,7 +8,21 @@ const IDENTIFIER = /^[a-z][a-z0-9]*(?:[A-Z][a-z0-9]*)*$/;
 const COLLECTION_NAME = /^[a-z][a-z0-9_]*$/;
 
 /** Owned by the core's own migrations; a collection cannot claim them. */
-const RESERVED_TABLE_NAMES = new Set(["user", "session", "account", "verification", "role", "role_capability"]);
+const RESERVED_TABLE_NAMES = new Set([
+    "account",
+    "bucket",
+    "category",
+    "media",
+    "multipart_upload",
+    "role",
+    "role_capability",
+    "session",
+    "setting",
+    "storage_rule",
+    "tag",
+    "user",
+    "verification"
+]);
 
 export type FieldMap = Record<string, Field>;
 
