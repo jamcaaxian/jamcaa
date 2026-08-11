@@ -20,6 +20,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <html lang="en" suppressHydrationWarning>
             <head>
                 <link rel="icon" href="/favicon.svg" type="image/svg+xml"></link>
+                <link rel="alternate" type="application/feed+json" href="/feed.json" />
                 <ThemeScript />
             </head>
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

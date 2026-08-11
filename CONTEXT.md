@@ -56,6 +56,10 @@ _Avoid_: search record, indexed document
 A read-only, lightweight projection of a published Entry for public lists and feeds. It keeps the Entry's identity and declared summary Fields but omits long-form content; it is not another Entry and has no separate lifecycle.
 _Avoid_: card record, feed item, excerpt
 
+**Feed**:
+A machine-readable rendering of a Site's most recent published Entries, addressed by its own URL and intended for subscription rather than browsing. It carries the same Entry Summaries the public lists show; it is not a separate content store and adds nothing an Entry Summary does not already declare.
+_Avoid_: RSS, syndication, export
+
 **Revision**:
 A snapshot of an entry's content at a point in time, used for tracing and rollback.
 _Avoid_: version, history

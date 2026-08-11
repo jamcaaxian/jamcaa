@@ -6,6 +6,7 @@ const RESERVED_PATH_PREFIXES = new Set([
     "admin",
     "api",
     "category",
+    "feed.json",
     "login",
     "media",
     "search",
