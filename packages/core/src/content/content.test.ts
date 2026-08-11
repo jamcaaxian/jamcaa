@@ -7,6 +7,7 @@ import type { RichTextDocument } from "./rich-text";
 import { buildTable } from "./table";
 import { systemFieldNames } from "./system-fields";
 import type { EntrySummaryOf } from "./summaries";
+import { decodeEntrySummaryCursor, encodeEntrySummaryCursor } from "./summaries";
 
 const post = defineCollection({
     name: "post",
@@ -300,5 +301,16 @@ describe("the type an entry takes", () => {
         expectTypeOf<Summary["excerpt"]>().toEqualTypeOf<string | null>();
         expectTypeOf<Summary["status"]>().toEqualTypeOf<"published">();
         expectTypeOf<Summary>().not.toHaveProperty("body");
+    });
+});
+
+describe("the Entry Summary cursor", () => {
+    it("round-trips a position and refuses a forged one", () => {
+        const cursor = encodeEntrySummaryCursor({ publishedAt: 1_760_000_000_000, id: "entry-1" });
+
+        expect(decodeEntrySummaryCursor(cursor)).toEqual({ publishedAt: 1_760_000_000_000, id: "entry-1" });
+        expect(decodeEntrySummaryCursor(undefined)).toBeUndefined();
+        expect(() => decodeEntrySummaryCursor("not+a+cursor")).toThrow(/cursor is invalid/i);
+        expect(() => decodeEntrySummaryCursor(btoa('{"v":2,"p":1,"i":"a"}'))).toThrow(/cursor is invalid/i);
     });
 });

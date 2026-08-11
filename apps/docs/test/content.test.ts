@@ -364,6 +364,42 @@ describe("reading and writing entries", () => {
         await expect(summaries.list({ limit: 51 })).rejects.toThrow(/integer from 1 to 50/i);
     });
 
+    it("pages Entry Summaries by keyset without repeats or gaps", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+        const moment = new Date("2026-08-01T00:00:00.000Z");
+
+        for (const name of ["a", "b", "c", "d", "e"]) {
+            await store.create({
+                slug: `page-${name}`,
+                authorId,
+                categoryId,
+                title: name.toUpperCase(),
+                body: body(),
+                status: "published",
+                publishedAt: moment
+            });
+        }
+
+        const summaries = postSummaries(database());
+        const whole = await summaries.list({ limit: 50 });
+        const first = await summaries.list({ limit: 2 });
+        const second = await summaries.list({ limit: 2, cursor: first.nextCursor });
+        const third = await summaries.list({ limit: 2, cursor: second.nextCursor });
+        const seen = [...first.summaries, ...second.summaries, ...third.summaries].map(summary => summary.slug);
+
+        expect(first.nextCursor).toBeDefined();
+        expect(second.nextCursor).toBeDefined();
+        expect(third.nextCursor).toBeUndefined();
+        expect(seen).toEqual(whole.summaries.map(summary => summary.slug));
+        expect(new Set(seen).size).toBe(5);
+        expect(whole.nextCursor).toBeUndefined();
+    });
+
+    it("refuses an unreadable Entry Summary cursor", async () => {
+        await expect(postSummaries(database()).list({ cursor: "not+a+cursor" })).rejects.toThrow(/cursor is invalid/i);
+    });
+
     it("cascades Tag membership when an Entry is removed", async () => {
         const authorId = await anAuthor();
         const store = posts(database());

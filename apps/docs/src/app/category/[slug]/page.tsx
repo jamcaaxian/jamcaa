@@ -3,13 +3,21 @@ import { notFound } from "next/navigation";
 import { createDatabase } from "@jamcaa/core";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { PostList } from "@/components/public/post-list";
+import { NextPageLink } from "@/components/public/next-page-link";
+import { publicPostPage } from "@/content/public-listing";
 import { publicSiteSettings } from "@/content/public-site";
 import { postSummaries } from "@/content/store";
 import { taxonomy } from "@/content/taxonomy";
 
 export const dynamic = "force-dynamic";
 
-export default async function CategoryArchive({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CategoryArchive({
+    params,
+    searchParams
+}: {
+    params: Promise<{ slug: string }>;
+    searchParams: Promise<{ cursor?: string }>;
+}) {
     const { env } = getCloudflareContext();
     const database = createDatabase(env.DB);
     const category = await taxonomy(database).categoryBySlug((await params).slug);
@@ -18,8 +26,9 @@ export default async function CategoryArchive({ params }: { params: Promise<{ sl
         notFound();
     }
 
+    const cursor = (await searchParams).cursor;
     const [entries, settings] = await Promise.all([
-        postSummaries(database).list({ categoryId: category.id, limit: 20 }),
+        publicPostPage(() => postSummaries(database).list({ categoryId: category.id, limit: 20, cursor })),
         publicSiteSettings()
     ]);
 
@@ -39,6 +48,7 @@ export default async function CategoryArchive({ params }: { params: Promise<{ sl
                 timePattern={settings.get("format.time")}
                 emptyMessage="No published Posts belong directly to this Category."
             />
+            <NextPageLink path={`/category/${category.slug}`} cursor={entries.nextCursor} />
         </main>
     );
 }

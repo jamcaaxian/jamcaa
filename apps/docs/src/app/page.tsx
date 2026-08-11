@@ -2,15 +2,18 @@ import Link from "next/link";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
 import { PostList } from "@/components/public/post-list";
+import { NextPageLink } from "@/components/public/next-page-link";
+import { publicPostPage } from "@/content/public-listing";
 import { publicSiteSettings } from "@/content/public-site";
 import { postSummaries } from "@/content/store";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ cursor?: string }> }) {
     const { env } = getCloudflareContext();
+    const cursor = (await searchParams).cursor;
     const [entries, settings] = await Promise.all([
-        postSummaries(createDatabase(env.DB)).list({ limit: 20 }),
+        publicPostPage(() => postSummaries(createDatabase(env.DB)).list({ limit: 20, cursor })),
         publicSiteSettings()
     ]);
     const siteTitle = settings.get("site.title");
@@ -38,6 +41,7 @@ export default async function Home() {
                 timePattern={settings.get("format.time")}
                 emptyMessage="No Posts have been published yet."
             />
+            <NextPageLink path="/" cursor={entries.nextCursor} />
         </main>
     );
 }
