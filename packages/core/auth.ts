@@ -8,5 +8,5 @@ import { createAuth } from "./src/auth/index";
 export const auth = createAuth({
     database: undefined as never,
     secret: "schema-generation-placeholder-secret",
-    baseURL: "http://localhost:3000"
+    baseURL: "http://localhost:2727"
 });

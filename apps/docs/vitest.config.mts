@@ -17,7 +17,7 @@ export default defineConfig({
                 bindings: {
                     TEST_MIGRATIONS: await readD1Migrations(path.resolve("migrations")),
                     BETTER_AUTH_SECRET: "test-only-secret-at-least-32-characters",
-                    BETTER_AUTH_URL: "http://localhost:3000"
+                    BETTER_AUTH_URL: "http://localhost:2727"
                 }
             }
         }))

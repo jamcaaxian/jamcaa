@@ -4,9 +4,9 @@
     "private": true,
     "description": "Official documentation site, built with jamcaa itself",
     "scripts": {
-        "dev": "next dev",
+        "dev": "next dev --port 2727",
         "build": "next build",
-        "start": "next start",
+        "start": "next start --port 2727",
         "lint": "eslint",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",

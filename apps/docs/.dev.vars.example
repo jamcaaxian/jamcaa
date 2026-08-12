@@ -7,14 +7,14 @@ NEXTJS_ENV=development
 BETTER_AUTH_SECRET=
 
 # Base URL this app is served from.
-BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_URL=http://localhost:2727
 
 # The binding uploads through the server; a browser writing straight to the bucket
 # needs a signed address, and only the S3 API can produce one.
 # Cloudflare dashboard: R2 > API > Manage API tokens > Create token,
 # permission "Object Read & Write", scoped to this bucket.
 # Also add bucket CORS rules for every admin origin that performs direct PUTs,
-# including http://localhost:3000 while developing locally.
+# including http://localhost:2727 while developing locally.
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
