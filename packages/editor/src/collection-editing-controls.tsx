@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { EditingField, RichTextDocument } from "@jamcaa/core/content";
 import {
     defaultCollectionEditingControlMessages,
@@ -24,12 +24,264 @@ export interface CollectionEditingControlsProps {
     references?: Readonly<Record<string, readonly EditingControlOption[]>>;
     richText?: { media?: RichTextMediaAdapter; messages?: Partial<RichTextEditorMessages> };
     messages?: Partial<CollectionEditingControlMessages>;
+    registry?: EditingControlRegistry;
     onTextChange?(name: string, value: string): void;
+}
+
+/** Everything one Editing Control needs to render one declared Field. */
+export interface EditingControlContext {
+    field: EditingField;
+    value: EditingControlValue;
+    messages: CollectionEditingControlMessages;
+    choices?: CollectionEditingControlsProps["choices"];
+    references?: CollectionEditingControlsProps["references"];
+    richText?: CollectionEditingControlsProps["richText"];
+    onTextChange?: CollectionEditingControlsProps["onTextChange"];
+}
+
+export interface EditingControlDefinition {
+    /** Matches the Field kind the control renders. */
+    id: string;
+    /** Editing protocol versions this control understands. */
+    versions: readonly number[];
+    render(context: EditingControlContext): ReactNode;
+}
+
+export interface EditingControlRegistry {
+    control(field: EditingField): EditingControlDefinition;
+}
+
+const EDITING_PROTOCOL_VERSION = 1;
+
+/** One place where an input's name comes from, instead of per-control literals. */
+export function editingInputName(fieldName: string, part?: string): string {
+    return part === undefined ? fieldName : `${fieldName}--${part}`;
+}
+
+/**
+ * Resolves a Field kind to its control. Duplicate registrations fail at
+ * assembly; unknown kinds and unsupported protocol versions fail at render.
+ */
+export function createEditingControlRegistry(controls: readonly EditingControlDefinition[]): EditingControlRegistry {
+    const byId = new Map<string, EditingControlDefinition>();
+
+    for (const control of controls) {
+        if (byId.has(control.id)) {
+            throw new Error(`Editing Control "${control.id}" is registered twice.`);
+        }
+
+        byId.set(control.id, control);
+    }
+
+    return {
+        control(field) {
+            const definition = byId.get(field.kind);
+
+            if (definition === undefined) {
+                throw new Error(`No Editing Control is registered for kind "${field.kind}".`);
+            }
+
+            if (!definition.versions.includes(EDITING_PROTOCOL_VERSION)) {
+                throw new Error(
+                    `Editing Control "${field.kind}" does not support protocol version ${EDITING_PROTOCOL_VERSION}.`
+                );
+            }
+
+            return definition;
+        }
+    };
 }
 
 function stringValue(value: EditingControlValue): string {
     return typeof value === "string" || typeof value === "number" ? String(value) : "";
 }
+
+function commonInputProps(field: EditingField): {
+    "id": string;
+    "required": boolean;
+    "aria-describedby": string | undefined;
+} {
+    return {
+        "id": field.name,
+        "required": field.required,
+        "aria-describedby": field.description ? `${field.name}-description` : undefined
+    };
+}
+
+function TextControl({ context }: { context: EditingControlContext }) {
+    const { field, value, onTextChange } = context;
+
+    return (
+        <input
+            {...commonInputProps(field)}
+            className="jamcaa-editing-control"
+            name={editingInputName(field.name)}
+            defaultValue={stringValue(value)}
+            onChange={event => onTextChange?.(field.name, event.currentTarget.value)}
+        />
+    );
+}
+
+function MarkdownControl({ context }: { context: EditingControlContext }) {
+    const { field, value } = context;
+
+    return (
+        <textarea
+            {...commonInputProps(field)}
+            className="jamcaa-editing-control jamcaa-editing-control--multiline"
+            name={editingInputName(field.name)}
+            defaultValue={stringValue(value)}
+            rows={8}
+        />
+    );
+}
+
+function NumberControl({ context }: { context: EditingControlContext }) {
+    const { field, value } = context;
+
+    return (
+        <input
+            {...commonInputProps(field)}
+            className="jamcaa-editing-control"
+            type="number"
+            name={editingInputName(field.name)}
+            defaultValue={stringValue(value)}
+            step={field.kind === "number" && field.whole ? 1 : "any"}
+        />
+    );
+}
+
+function ToggleControl({ context }: { context: EditingControlContext }) {
+    const { field, value, messages } = context;
+    const [toggle, setToggle] = useState(
+        value === true ? "true"
+        : value === false ? "false"
+        : ""
+    );
+
+    return (
+        <select
+            {...commonInputProps(field)}
+            className="jamcaa-editing-control"
+            name={editingInputName(field.name)}
+            value={toggle}
+            onChange={event => setToggle(event.currentTarget.value)}
+        >
+            {!field.required ?
+                <option value="">{messages.toggleUnset}</option>
+            :   null}
+            <option value="true">{messages.toggleYes}</option>
+            <option value="false">{messages.toggleNo}</option>
+        </select>
+    );
+}
+
+function MomentControl({ context }: { context: EditingControlContext }) {
+    const { field, value } = context;
+    const initialMoment = momentInputValue(value);
+    const [moment, setMoment] = useState(initialMoment);
+    const [momentIso, setMomentIso] = useState(() => momentSubmissionValue(initialMoment));
+
+    return (
+        <>
+            <input type="hidden" name={editingInputName(field.name)} value={momentIso} />
+            <input
+                {...commonInputProps(field)}
+                className="jamcaa-editing-control"
+                type="datetime-local"
+                value={moment}
+                onChange={event => {
+                    const next = event.currentTarget.value;
+                    setMoment(next);
+                    setMomentIso(momentSubmissionValue(next));
+                }}
+            />
+        </>
+    );
+}
+
+function ChoiceControl({ context }: { context: EditingControlContext }) {
+    const { field, value, choices, messages } = context;
+    const labels = new Map(
+        field.kind === "choice" ? choices?.[field.name]?.map(option => [option.value, option.label]) : []
+    );
+
+    return (
+        <select
+            {...commonInputProps(field)}
+            className="jamcaa-editing-control"
+            name={editingInputName(field.name)}
+            defaultValue={stringValue(value)}
+        >
+            {!field.required ?
+                <option value="">{messages.none}</option>
+            :   null}
+            {field.kind === "choice" ?
+                field.choices.map(choice => (
+                    <option key={choice} value={choice}>
+                        {labels.get(choice) ?? choice}
+                    </option>
+                ))
+            :   null}
+        </select>
+    );
+}
+
+function ReferenceControl({ context }: { context: EditingControlContext }) {
+    const { field, value, references, messages } = context;
+    const options = field.kind === "reference" ? (references?.[field.collection] ?? []) : [];
+
+    return (
+        <select
+            {...commonInputProps(field)}
+            className="jamcaa-editing-control"
+            name={editingInputName(field.name)}
+            defaultValue={stringValue(value)}
+        >
+            {!field.required ?
+                <option value="">{messages.none}</option>
+            :   null}
+            {options.map(option => (
+                <option key={option.value} value={option.value}>
+                    {option.label}
+                </option>
+            ))}
+        </select>
+    );
+}
+
+function RichTextControl({ context }: { context: EditingControlContext }) {
+    const { field, value, richText } = context;
+
+    return (
+        <RichTextEditor
+            name={editingInputName(field.name)}
+            label={field.label}
+            labelledBy={`${field.name}-label`}
+            defaultValue={value as RichTextDocument | undefined}
+            media={richText?.media}
+            messages={richText?.messages}
+        />
+    );
+}
+
+/** The controls every built-in Field kind resolves to. */
+export const builtInEditingControls: readonly EditingControlDefinition[] = [
+    { id: "text", versions: [EDITING_PROTOCOL_VERSION], render: context => <TextControl context={context} /> },
+    { id: "markdown", versions: [EDITING_PROTOCOL_VERSION], render: context => <MarkdownControl context={context} /> },
+    { id: "number", versions: [EDITING_PROTOCOL_VERSION], render: context => <NumberControl context={context} /> },
+    { id: "toggle", versions: [EDITING_PROTOCOL_VERSION], render: context => <ToggleControl context={context} /> },
+    { id: "moment", versions: [EDITING_PROTOCOL_VERSION], render: context => <MomentControl context={context} /> },
+    { id: "choice", versions: [EDITING_PROTOCOL_VERSION], render: context => <ChoiceControl context={context} /> },
+    {
+        id: "reference",
+        versions: [EDITING_PROTOCOL_VERSION],
+        render: context => <ReferenceControl context={context} />
+    },
+    { id: "richText", versions: [EDITING_PROTOCOL_VERSION], render: context => <RichTextControl context={context} /> }
+];
+
+const defaultEditingControlRegistry = createEditingControlRegistry(builtInEditingControls);
 
 export function momentInputValue(value: EditingControlValue): string {
     const date =
@@ -56,145 +308,6 @@ export function momentSubmissionValue(value: string): string {
     return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 }
 
-function ScalarControl({
-    field,
-    value,
-    choices,
-    references,
-    messages,
-    onTextChange
-}: {
-    field: Exclude<EditingField, { kind: "richText" }>;
-    value: EditingControlValue;
-    choices: CollectionEditingControlsProps["choices"];
-    references: CollectionEditingControlsProps["references"];
-    messages: CollectionEditingControlMessages;
-    onTextChange: CollectionEditingControlsProps["onTextChange"];
-}) {
-    const [toggle, setToggle] = useState(
-        value === true ? "true"
-        : value === false ? "false"
-        : ""
-    );
-    const initialMoment = momentInputValue(value);
-    const [moment, setMoment] = useState(initialMoment);
-    const [momentIso, setMomentIso] = useState(() => momentSubmissionValue(initialMoment));
-    const common = {
-        "id": field.name,
-        "required": field.required,
-        "aria-describedby": field.description ? `${field.name}-description` : undefined
-    };
-
-    switch (field.kind) {
-        case "text":
-            return (
-                <input
-                    {...common}
-                    className="jamcaa-editing-control"
-                    name={field.name}
-                    defaultValue={stringValue(value)}
-                    onChange={event => onTextChange?.(field.name, event.currentTarget.value)}
-                />
-            );
-        case "markdown":
-            return (
-                <textarea
-                    {...common}
-                    className="jamcaa-editing-control jamcaa-editing-control--multiline"
-                    name={field.name}
-                    defaultValue={stringValue(value)}
-                    rows={8}
-                />
-            );
-        case "number":
-            return (
-                <input
-                    {...common}
-                    className="jamcaa-editing-control"
-                    type="number"
-                    name={field.name}
-                    defaultValue={stringValue(value)}
-                    step={field.whole ? 1 : "any"}
-                />
-            );
-        case "toggle":
-            return (
-                <select
-                    {...common}
-                    className="jamcaa-editing-control"
-                    name={field.name}
-                    value={toggle}
-                    onChange={event => setToggle(event.currentTarget.value)}
-                >
-                    {!field.required ?
-                        <option value="">{messages.toggleUnset}</option>
-                    :   null}
-                    <option value="true">{messages.toggleYes}</option>
-                    <option value="false">{messages.toggleNo}</option>
-                </select>
-            );
-        case "moment":
-            return (
-                <>
-                    <input type="hidden" name={field.name} value={momentIso} />
-                    <input
-                        {...common}
-                        className="jamcaa-editing-control"
-                        type="datetime-local"
-                        value={moment}
-                        onChange={event => {
-                            const next = event.currentTarget.value;
-                            setMoment(next);
-                            setMomentIso(momentSubmissionValue(next));
-                        }}
-                    />
-                </>
-            );
-        case "choice": {
-            const labels = new Map(choices?.[field.name]?.map(option => [option.value, option.label]));
-
-            return (
-                <select
-                    {...common}
-                    className="jamcaa-editing-control"
-                    name={field.name}
-                    defaultValue={stringValue(value)}
-                >
-                    {!field.required ?
-                        <option value="">{messages.none}</option>
-                    :   null}
-                    {field.choices.map(choice => (
-                        <option key={choice} value={choice}>
-                            {labels.get(choice) ?? choice}
-                        </option>
-                    ))}
-                </select>
-            );
-        }
-        case "reference": {
-            const options = references?.[field.collection] ?? [];
-
-            return (
-                <select
-                    {...common}
-                    className="jamcaa-editing-control"
-                    name={field.name}
-                    defaultValue={stringValue(value)}
-                >
-                    {!field.required ?
-                        <option value="">{messages.none}</option>
-                    :   null}
-                    {options.map(option => (
-                        <option key={option.value} value={option.value}>
-                            {option.label}
-                        </option>
-                    ))}
-                </select>
-            );
-        }
-    }
-}
-
 export function CollectionEditingControls({
     fields,
     values = {},
@@ -202,12 +315,14 @@ export function CollectionEditingControls({
     references,
     richText,
     messages,
+    registry = defaultEditingControlRegistry,
     onTextChange
 }: CollectionEditingControlsProps) {
     const copy = { ...defaultCollectionEditingControlMessages, ...messages };
 
     return fields.map(field => {
         const descriptionId = `${field.name}-description`;
+        const definition = registry.control(field);
 
         return (
             <div className="jamcaa-editing-field" key={field.name}>
@@ -218,24 +333,15 @@ export function CollectionEditingControls({
                 >
                     {field.label}
                 </label>
-                {field.kind === "richText" ?
-                    <RichTextEditor
-                        name={field.name}
-                        label={field.label}
-                        labelledBy={`${field.name}-label`}
-                        defaultValue={values[field.name] as RichTextDocument | undefined}
-                        media={richText?.media}
-                        messages={richText?.messages}
-                    />
-                :   <ScalarControl
-                        field={field}
-                        value={values[field.name]}
-                        choices={choices}
-                        references={references}
-                        messages={copy}
-                        onTextChange={onTextChange}
-                    />
-                }
+                {definition.render({
+                    field,
+                    value: values[field.name],
+                    messages: copy,
+                    choices,
+                    references,
+                    richText,
+                    onTextChange
+                })}
                 {field.description ?
                     <p className="jamcaa-editing-field__description" id={descriptionId}>
                         {field.description}

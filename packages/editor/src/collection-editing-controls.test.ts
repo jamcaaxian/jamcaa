@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CollectionEditingControls, momentInputValue, momentSubmissionValue } from "./collection-editing-controls";
+import {
+    CollectionEditingControls,
+    createEditingControlRegistry,
+    momentInputValue,
+    momentSubmissionValue
+} from "./collection-editing-controls";
 import { defaultCollectionEditingControlMessages } from "./messages";
 
 describe("Collection Editing Controls", () => {
@@ -53,5 +58,49 @@ describe("Collection Editing Controls", () => {
 
         expect(markup).toContain('<option value="draft">Working copy</option>');
         expect(markup).toContain('<option value="published">Live</option>');
+    });
+
+    it("refuses duplicate control registrations at assembly", () => {
+        const control = { id: "text", versions: [1], render: () => null };
+
+        expect(() => createEditingControlRegistry([control, { ...control }])).toThrow(/registered twice/i);
+    });
+
+    it("renders a scalar control with its name after the shared input attributes", () => {
+        const markup = renderToStaticMarkup(
+            createElement(CollectionEditingControls, {
+                fields: [{ name: "title", label: "Title", required: true, kind: "text", description: "The title" }]
+            })
+        );
+
+        expect(markup).toContain(
+            'id="title" required="" aria-describedby="title-description" class="jamcaa-editing-control" name="title"'
+        );
+    });
+
+    it("renders a moment field with a single named control", () => {
+        const markup = renderToStaticMarkup(
+            createElement(CollectionEditingControls, {
+                fields: [{ name: "publishedAt", label: "Published at", required: false, kind: "moment" }]
+            })
+        );
+
+        expect(markup).toContain('type="hidden" name="publishedAt"');
+        expect(markup.match(/name="publishedAt"/g)).toHaveLength(1);
+    });
+
+    it("refuses unknown kinds and unsupported protocol versions at render", () => {
+        const registry = createEditingControlRegistry([
+            { id: "text", versions: [1], render: () => null },
+            { id: "toggle", versions: [2], render: () => null }
+        ]);
+
+        expect(() =>
+            registry.control({ name: "score", label: "Score", required: false, kind: "number", whole: false })
+        ).toThrow(/No Editing Control is registered for kind "number"/i);
+        expect(() =>
+            registry.control({ name: "featured", label: "Featured", required: false, kind: "toggle" })
+        ).toThrow(/does not support protocol version 1/i);
+        expect(() => registry.control({ name: "title", label: "Title", required: false, kind: "text" })).not.toThrow();
     });
 });
