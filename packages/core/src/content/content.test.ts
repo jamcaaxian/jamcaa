@@ -213,7 +213,7 @@ const withLoose = defineCollection({
 
 describe("defineContentModel", () => {
     it("refuses two collections with one name", () => {
-        expect(() => defineContentModel([post, post])).toThrow(/both named "post"/);
+        expect(() => defineContentModel({ collections: [post, post] })).toThrow(/both named "post"/);
     });
 
     it("refuses a reference to a collection nobody declared", () => {
@@ -224,7 +224,7 @@ describe("defineContentModel", () => {
             fields: { title: text({ required: true }), subject: reference({ to: "film" }) }
         });
 
-        expect(() => defineContentModel([orphan])).toThrow(/no collection declares/);
+        expect(() => defineContentModel({ collections: [orphan] })).toThrow(/no collection declares/);
     });
 
     it("accepts a reference once its target is declared", () => {
@@ -241,7 +241,7 @@ describe("defineContentModel", () => {
             fields: { title: text({ required: true }), subject: reference({ to: "film" }) }
         });
 
-        const model = defineContentModel([film, review]);
+        const model = defineContentModel({ collections: [film, review] });
 
         expect(model.collection("review")?.label).toBe("Review");
         expect(model.table("film")).toBeDefined();
@@ -249,7 +249,7 @@ describe("defineContentModel", () => {
     });
 
     it("derives a Tag relation whose Entry side cascades", () => {
-        const model = defineContentModel([post]);
+        const model = defineContentModel({ collections: [post] });
         const relationTable = model.tagTable("post");
 
         expect(relationTable).toBeDefined();

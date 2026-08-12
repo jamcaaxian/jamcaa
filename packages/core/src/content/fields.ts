@@ -4,6 +4,22 @@ import { builtinContractVersions, compileField, revisionCodecV1, slot } from "./
 
 export type FieldKind = "text" | "markdown" | "richText" | "number" | "toggle" | "moment" | "choice" | "reference";
 
+/** The kinds the Platform compiles itself; every other kind needs a Field Type. */
+export const builtinFieldKinds: readonly FieldKind[] = [
+    "text",
+    "markdown",
+    "richText",
+    "number",
+    "toggle",
+    "moment",
+    "choice",
+    "reference"
+];
+
+export function isBuiltinFieldKind(kind: string): kind is FieldKind {
+    return (builtinFieldKinds as readonly string[]).includes(kind);
+}
+
 export interface FieldOptions {
     /** Shown above the control in the admin. Defaults to the field name, humanised. */
     label?: string;
@@ -11,8 +27,10 @@ export interface FieldOptions {
     required?: boolean;
 }
 
-export interface Field<TValue = unknown, TKind extends FieldKind = FieldKind> {
+export interface Field<TValue = unknown, TKind extends string = string> {
     readonly kind: TKind;
+    /** The kind the Editing Control registry dispatches by. Defaults to kind. */
+    readonly editingKind?: string;
     readonly label: string | undefined;
     readonly description: string | undefined;
     readonly required: boolean;
@@ -28,7 +46,7 @@ export interface Field<TValue = unknown, TKind extends FieldKind = FieldKind> {
     readonly parse?: (value: unknown) => TValue;
 }
 
-export type FieldValue<TField> = TField extends Field<infer TValue, FieldKind> ? TValue : never;
+export type FieldValue<TField> = TField extends Field<infer TValue, string> ? TValue : never;
 
 export type SearchableFieldKind = Extract<FieldKind, "text" | "markdown" | "richText">;
 
@@ -36,7 +54,7 @@ export type SearchableFieldKind = Extract<FieldKind, "text" | "markdown" | "rich
 export type SummaryFieldKind = Exclude<FieldKind, "markdown" | "richText">;
 
 /** A field is nullable unless it was declared with `required: true`. */
-type Held<TValue, TOptions extends FieldOptions> = TOptions extends { required: true } ? TValue : TValue | null;
+export type Held<TValue, TOptions extends FieldOptions> = TOptions extends { required: true } ? TValue : TValue | null;
 
 function base<const TKind extends FieldKind>(kind: TKind, options: FieldOptions | undefined) {
     return { kind, label: options?.label, description: options?.description, required: options?.required ?? false };

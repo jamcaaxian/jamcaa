@@ -89,7 +89,7 @@ const fieldCapsule: unique symbol = Symbol("jamcaa.field-capsule");
 
 export type CompiledField = Field & { readonly [fieldCapsule]: FieldCapsule };
 
-export function compileField<TField extends Field, TValue = unknown>(
+export function compileField<TField extends Field<unknown, string>, TValue = unknown>(
     field: TField,
     capsule: FieldCapsule<TValue>
 ): TField & { readonly [fieldCapsule]: FieldCapsule<TValue> } {

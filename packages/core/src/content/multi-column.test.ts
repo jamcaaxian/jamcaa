@@ -5,6 +5,7 @@ import { createDatabase } from "../db/client";
 import { defineCollection } from "./collection";
 import { declaredFieldStorage, entryStore } from "./entries";
 import { compileField, capsuleOf, revisionCodecV1, slot } from "./field-capsule";
+import { defineFieldType } from "./field-types";
 import { canonicalFieldValue } from "./field-values";
 import { decodePhysicalCells, physicalLayout } from "./field-layout";
 import { text, type Field } from "./fields";
@@ -18,6 +19,57 @@ interface GeoPoint {
     longitude: number;
 }
 
+function realBuilder(name: string) {
+    return sqliteReal(name);
+}
+
+const geoPointCapsule = {
+    slots: () => ({
+        latitude: slot({ affinity: "real", buildColumn: (name: string) => realBuilder(name) }),
+        longitude: slot({ affinity: "real", buildColumn: (name: string) => realBuilder(name) })
+    }),
+    encode: (value: GeoPoint) => ({ latitude: value.latitude, longitude: value.longitude }),
+    decode: (cells: Record<string, unknown>) => ({ latitude: cells.latitude, longitude: cells.longitude }),
+    snapshotValue: (value: GeoPoint) => ({ latitude: value.latitude, longitude: value.longitude }),
+    valueFromSnapshot: (value: unknown) => value,
+    ...revisionCodecV1(
+        (value: GeoPoint) => ({ latitude: value.latitude, longitude: value.longitude }),
+        value => value
+    ),
+    storageVersion: () => 1,
+    searchVersion: () => 1,
+    submissionValue: (raw: string) => JSON.parse(raw) as unknown,
+    isBlankSubmission: (raw: string) => raw.trim().length === 0,
+    isRequiredValueMissing: () => false,
+    editingExtras: () => undefined,
+    searchText: () => undefined
+};
+
+function parseGeoPoint(value: unknown): GeoPoint {
+    if (typeof value !== "object" || value === null) {
+        throw new Error("A geo point Field needs coordinates.");
+    }
+
+    const point = value as { latitude?: unknown; longitude?: unknown };
+
+    if (
+        typeof point.latitude !== "number"
+        || !Number.isFinite(point.latitude)
+        || typeof point.longitude !== "number"
+        || !Number.isFinite(point.longitude)
+    ) {
+        throw new Error("A geo point Field needs finite coordinates.");
+    }
+
+    return { latitude: point.latitude, longitude: point.longitude };
+}
+
+const geoPointType = defineFieldType<GeoPoint>({
+    kind: "@test/geo-point",
+    parse: parseGeoPoint,
+    capsule: geoPointCapsule
+});
+
 /** A test-only compound Field: one logical value, two physical slots. */
 function geoPoint(options: { required?: boolean } = {}): Field<GeoPoint | null, "number"> {
     const required = options.required ?? false;
@@ -30,51 +82,10 @@ function geoPoint(options: { required?: boolean } = {}): Field<GeoPoint | null, 
             label: undefined,
             description: undefined,
             required,
-            parse: value => {
-                if (typeof value !== "object" || value === null) {
-                    throw new Error("A geo point Field needs coordinates.");
-                }
-
-                const point = value as { latitude?: unknown; longitude?: unknown };
-
-                if (
-                    typeof point.latitude !== "number"
-                    || !Number.isFinite(point.latitude)
-                    || typeof point.longitude !== "number"
-                    || !Number.isFinite(point.longitude)
-                ) {
-                    throw new Error("A geo point Field needs finite coordinates.");
-                }
-
-                return { latitude: point.latitude, longitude: point.longitude };
-            }
+            parse: parseGeoPoint
         },
-        {
-            slots: () => ({
-                latitude: slot({ affinity: "real", buildColumn: name => realBuilder(name) }),
-                longitude: slot({ affinity: "real", buildColumn: name => realBuilder(name) })
-            }),
-            encode: (value: GeoPoint) => ({ latitude: value.latitude, longitude: value.longitude }),
-            decode: cells => ({ latitude: cells.latitude, longitude: cells.longitude }),
-            snapshotValue: (value: GeoPoint) => ({ latitude: value.latitude, longitude: value.longitude }),
-            valueFromSnapshot: value => value,
-            ...revisionCodecV1(
-                (value: GeoPoint) => ({ latitude: value.latitude, longitude: value.longitude }),
-                value => value
-            ),
-            storageVersion: () => 1,
-            searchVersion: () => 1,
-            submissionValue: raw => JSON.parse(raw) as unknown,
-            isBlankSubmission: raw => raw.trim().length === 0,
-            isRequiredValueMissing: () => false,
-            editingExtras: () => undefined,
-            searchText: () => undefined
-        }
+        geoPointCapsule
     );
-}
-
-function realBuilder(name: string) {
-    return sqliteReal(name);
 }
 
 const place = defineCollection({
@@ -85,7 +96,7 @@ const place = defineCollection({
     summary: { fields: ["title", "location"] }
 });
 
-const model = defineContentModel([place]);
+const model = defineContentModel({ collections: [place], fieldTypes: [geoPointType] });
 const table = model.table("place")!;
 
 const revisionTable = buildRevisionTable(place.name, table);

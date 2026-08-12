@@ -1,4 +1,4 @@
-import type { Field, FieldValue, SearchableFieldKind, SummaryFieldKind } from "./fields";
+import type { Field, FieldKind, FieldValue, SearchableFieldKind, SummaryFieldKind } from "./fields";
 import { capsuleOf } from "./field-capsule";
 import { physicalLayout } from "./field-layout";
 import { systemFieldNames, type SystemFields } from "./system-fields";
@@ -29,12 +29,20 @@ const RESERVED_TABLE_NAMES = new Set([
 export type FieldMap = Record<string, Field>;
 
 export type SearchableFieldName<TFields extends FieldMap> = {
-    [TName in keyof TFields]: TFields[TName]["kind"] extends SearchableFieldKind ? TName : never;
+    [TName in keyof TFields]: TFields[TName]["kind"] extends FieldKind ?
+        TFields[TName]["kind"] extends SearchableFieldKind ?
+            TName
+        :   never
+    :   TName;
 }[keyof TFields]
     & string;
 
 export type SummaryFieldName<TFields extends FieldMap> = {
-    [TName in keyof TFields]: TFields[TName]["kind"] extends SummaryFieldKind ? TName : never;
+    [TName in keyof TFields]: TFields[TName]["kind"] extends FieldKind ?
+        TFields[TName]["kind"] extends SummaryFieldKind ?
+            TName
+        :   never
+    :   TName;
 }[keyof TFields]
     & string;
 

@@ -1,20 +1,25 @@
 import type { Collection, FieldMap } from "./collection";
 import { canonicalFieldValue } from "./field-values";
 import { capsuleOf } from "./field-capsule";
-import type { FieldValue } from "./fields";
+import { isBuiltinFieldKind, type FieldValue } from "./fields";
 
-interface EditingFieldBase {
+export interface EditingField {
     name: string;
     label: string;
     description?: string;
     required: boolean;
+    kind: string;
+    /** The kind the Editing Control registry dispatches by. Absent on built-ins. */
+    editingKind?: string;
+    /** number fields only. */
+    whole?: boolean;
+    /** choice fields only. */
+    choices?: readonly string[];
+    /** reference fields only. */
+    collection?: string;
+    /** Serializable extras a third-party Field Type contributes. */
+    extras?: Record<string, unknown>;
 }
-
-export type EditingField =
-    | (EditingFieldBase & { kind: "text" | "markdown" | "richText" | "toggle" | "moment" })
-    | (EditingFieldBase & { kind: "number"; whole: boolean })
-    | (EditingFieldBase & { kind: "choice"; choices: readonly string[] })
-    | (EditingFieldBase & { kind: "reference"; collection: string });
 
 type CollectionFieldValues<TCollection extends Collection> = {
     [TName in keyof TCollection["fields"]]: FieldValue<TCollection["fields"][TName]>;
@@ -46,15 +51,17 @@ export function editingFields<TFields extends FieldMap>(collection: Collection<T
             name,
             label: field.label ?? humanise(name),
             ...(field.description === undefined ? {} : { description: field.description }),
-            required: field.required
+            required: field.required,
+            kind: field.kind,
+            ...(field.editingKind === undefined ? {} : { editingKind: field.editingKind })
         };
 
         const extras = capsuleOf(field).editingExtras();
+        const dispatchKind = field.editingKind ?? field.kind;
 
-        return (
-            extras === undefined ?
-                { ...common, kind: field.kind }
-            :   { ...common, kind: field.kind, ...extras }) as EditingField;
+        return extras === undefined || isBuiltinFieldKind(dispatchKind) ?
+                { ...extras, ...common }
+            :   { ...common, extras };
     });
 }
 

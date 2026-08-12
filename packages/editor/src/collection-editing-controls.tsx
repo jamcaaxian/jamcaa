@@ -75,15 +75,16 @@ export function createEditingControlRegistry(controls: readonly EditingControlDe
 
     return {
         control(field) {
-            const definition = byId.get(field.kind);
+            const dispatchKind = field.editingKind ?? field.kind;
+            const definition = byId.get(dispatchKind);
 
             if (definition === undefined) {
-                throw new Error(`No Editing Control is registered for kind "${field.kind}".`);
+                throw new Error(`No Editing Control is registered for kind "${dispatchKind}".`);
             }
 
             if (!definition.versions.includes(EDITING_PROTOCOL_VERSION)) {
                 throw new Error(
-                    `Editing Control "${field.kind}" does not support protocol version ${EDITING_PROTOCOL_VERSION}.`
+                    `Editing Control "${dispatchKind}" does not support protocol version ${EDITING_PROTOCOL_VERSION}.`
                 );
             }
 
@@ -146,7 +147,7 @@ function NumberControl({ context }: { context: EditingControlContext }) {
             type="number"
             name={editingInputName(field.name)}
             defaultValue={stringValue(value)}
-            step={field.kind === "number" && field.whole ? 1 : "any"}
+            step={field.whole ? 1 : "any"}
         />
     );
 }
@@ -203,7 +204,7 @@ function MomentControl({ context }: { context: EditingControlContext }) {
 function ChoiceControl({ context }: { context: EditingControlContext }) {
     const { field, value, choices, messages } = context;
     const labels = new Map(
-        field.kind === "choice" ? choices?.[field.name]?.map(option => [option.value, option.label]) : []
+        field.choices !== undefined ? choices?.[field.name]?.map(option => [option.value, option.label]) : []
     );
 
     return (
@@ -216,7 +217,7 @@ function ChoiceControl({ context }: { context: EditingControlContext }) {
             {!field.required ?
                 <option value="">{messages.none}</option>
             :   null}
-            {field.kind === "choice" ?
+            {field.choices !== undefined ?
                 field.choices.map(choice => (
                     <option key={choice} value={choice}>
                         {labels.get(choice) ?? choice}
@@ -229,7 +230,7 @@ function ChoiceControl({ context }: { context: EditingControlContext }) {
 
 function ReferenceControl({ context }: { context: EditingControlContext }) {
     const { field, value, references, messages } = context;
-    const options = field.kind === "reference" ? (references?.[field.collection] ?? []) : [];
+    const options = field.collection !== undefined ? (references?.[field.collection] ?? []) : [];
 
     return (
         <select
@@ -329,7 +330,7 @@ export function CollectionEditingControls({
                 <label
                     className="jamcaa-editing-field__label"
                     id={`${field.name}-label`}
-                    htmlFor={field.kind === "richText" ? `${field.name}-editor` : field.name}
+                    htmlFor={(field.editingKind ?? field.kind) === "richText" ? `${field.name}-editor` : field.name}
                 >
                     {field.label}
                 </label>

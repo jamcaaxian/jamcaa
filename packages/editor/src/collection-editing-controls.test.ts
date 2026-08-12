@@ -78,6 +78,26 @@ describe("Collection Editing Controls", () => {
         );
     });
 
+    it("renders a third-party field through a built-in control", () => {
+        const markup = renderToStaticMarkup(
+            createElement(CollectionEditingControls, {
+                fields: [
+                    {
+                        name: "state",
+                        label: "State",
+                        required: true,
+                        kind: "@acme/state",
+                        editingKind: "choice",
+                        choices: ["draft", "published"]
+                    }
+                ]
+            })
+        );
+
+        expect(markup).toContain('<option value="draft">draft</option>');
+        expect(markup).toContain('<option value="published">published</option>');
+    });
+
     it("renders a moment field with a single named control", () => {
         const markup = renderToStaticMarkup(
             createElement(CollectionEditingControls, {
