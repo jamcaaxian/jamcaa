@@ -1,13 +1,47 @@
 import { describe, expect, it } from "vitest";
-import { createElement } from "react";
+import { createElement, Fragment, useState, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
     CollectionEditingControls,
     createEditingControlRegistry,
     momentInputValue,
-    momentSubmissionValue
+    momentSubmissionValue,
+    type EditingControlContext,
+    type EditingControlValue
 } from "./collection-editing-controls";
 import { defaultCollectionEditingControlMessages } from "./messages";
+
+function GeoPointControl({ context }: { context: EditingControlContext }): ReactNode {
+    const { field, value } = context;
+    const initial = value as { latitude: number; longitude: number } | undefined;
+    const [point, setPoint] = useState(initial);
+
+    return createElement(
+        Fragment,
+        null,
+        createElement("input", { type: "hidden", name: field.name, value: JSON.stringify(point ?? null) }),
+        createElement("input", {
+            "aria-label": "Latitude",
+            "type": "number",
+            "value": point?.latitude ?? "",
+            "onChange": (event: { currentTarget: { value: string } }) =>
+                setPoint(current => ({
+                    latitude: Number(event.currentTarget.value),
+                    longitude: current?.longitude ?? 0
+                }))
+        }),
+        createElement("input", {
+            "aria-label": "Longitude",
+            "type": "number",
+            "value": point?.longitude ?? "",
+            "onChange": (event: { currentTarget: { value: string } }) =>
+                setPoint(current => ({
+                    latitude: current?.latitude ?? 0,
+                    longitude: Number(event.currentTarget.value)
+                }))
+        })
+    );
+}
 
 describe("Collection Editing Controls", () => {
     it("formats moments for datetime-local without changing the represented local time", () => {
@@ -96,6 +130,24 @@ describe("Collection Editing Controls", () => {
 
         expect(markup).toContain('<option value="draft">draft</option>');
         expect(markup).toContain('<option value="published">published</option>');
+    });
+
+    it("renders a compound third-party control installed in the Site registry", () => {
+        const registry = createEditingControlRegistry([
+            { id: "@test/geo-point", versions: [1], render: context => createElement(GeoPointControl, { context }) }
+        ]);
+        const markup = renderToStaticMarkup(
+            createElement(CollectionEditingControls, {
+                fields: [{ name: "location", label: "Location", required: false, kind: "@test/geo-point" }],
+                values: { location: { latitude: 31.23, longitude: 121.47 } as unknown as EditingControlValue },
+                registry
+            })
+        );
+
+        expect(markup).toContain('type="hidden" name="location"');
+        expect(markup.match(/name="location"/g)).toHaveLength(1);
+        expect(markup).toContain('aria-label="Latitude"');
+        expect(markup).toContain('aria-label="Longitude"');
     });
 
     it("renders a moment field with a single named control", () => {

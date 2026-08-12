@@ -158,11 +158,20 @@ export function defineCollection<
                 fail(name, `the Field "${fieldName}" has no searchable text representation.`);
             }
 
-            if (!(text.slot in capsuleOf(field).slots())) {
-                fail(
-                    name,
-                    `the Field "${fieldName}" has a Search text expression over the unknown slot "${text.slot}".`
-                );
+            if (text.type === "columns-text" && text.slots.length === 0) {
+                fail(name, `the Field "${fieldName}" has a Search text expression with no slots.`);
+            }
+
+            const expressionSlots = text.type === "columns-text" ? text.slots : [text.slot];
+            const fieldSlots = capsuleOf(field).slots();
+
+            for (const slot of expressionSlots) {
+                if (!(slot in fieldSlots)) {
+                    fail(
+                        name,
+                        `the Field "${fieldName}" has a Search text expression over the unknown slot "${slot}".`
+                    );
+                }
             }
 
             if (seen.has(fieldName)) {

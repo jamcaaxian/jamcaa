@@ -25,6 +25,14 @@ export function evaluateSearchText(
 
             return value === null || value === undefined ? "" : richTextToPlainText(value as RichTextDocument);
         }
+        case "columns-text":
+            return expression.slots
+                .map(slot => {
+                    const value = cells[slot];
+
+                    return value === null || value === undefined ? "" : String(value);
+                })
+                .join(" ");
         default: {
             const unknown: never = expression;
 
@@ -82,6 +90,8 @@ export function compileSearchText(
             return `coalesce(${resolveColumn(expression.slot)}, '')`;
         case "rich-text":
             return richTextSql(resolveColumn(expression.slot));
+        case "columns-text":
+            return expression.slots.map(slot => `coalesce(${resolveColumn(slot)}, '')`).join(" || ' ' || ");
         default: {
             const unknown: never = expression;
 

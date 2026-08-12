@@ -138,7 +138,7 @@ describe("search migration workflow", () => {
         const tampered = {
             ...descriptor,
             fields: descriptor.fields.map(field =>
-                field.name === "title" ? { ...field, expression: { type: "rich-text", slot: "value" } } : field
+                field.name === "title" ? { ...field, expression: { type: "rich-text", slot: "value" } as const } : field
             )
         };
         const manifest: SearchMigrationManifest = {
@@ -200,7 +200,7 @@ describe("search migration workflow", () => {
         const tampered = {
             ...descriptor,
             fields: descriptor.fields.map(field =>
-                field.name === "title" ? { ...field, expression: { type: "rich-text", slot: "value" } } : field
+                field.name === "title" ? { ...field, expression: { type: "rich-text", slot: "value" } as const } : field
             )
         };
         const manifest: SearchMigrationManifest = {

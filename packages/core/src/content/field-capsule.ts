@@ -16,7 +16,10 @@ export interface StorageSlot {
 export type StorageSlots = Readonly<Record<string, StorageSlot>>;
 
 /** The restricted Search text expression a Field contributes. */
-export type FieldSearchText = { type: "column-text"; slot: string } | { type: "rich-text"; slot: string };
+export type FieldSearchText =
+    | { type: "column-text"; slot: string }
+    | { type: "rich-text"; slot: string }
+    | { type: "columns-text"; slots: readonly string[] };
 
 export function slot(definition: StorageSlot): StorageSlot {
     return definition;

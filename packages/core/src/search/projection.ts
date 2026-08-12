@@ -1,4 +1,4 @@
-import { capsuleOf } from "../content/field-capsule";
+import { capsuleOf, type FieldSearchText } from "../content/field-capsule";
 import type { Collection } from "../content/collection";
 import { physicalLayout } from "../content/field-layout";
 import { compileSearchText, evaluateSearchText } from "./expression";
@@ -56,7 +56,7 @@ export interface SearchFieldArtifact {
     storageVersion: number;
     searchVersion: number;
     columns: readonly string[];
-    expression: { type: string; slot: string };
+    expression: FieldSearchText;
 }
 
 export interface SearchArtifactDescriptor {
