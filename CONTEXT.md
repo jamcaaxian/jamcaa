@@ -64,6 +64,10 @@ _Avoid_: RSS, syndication, export
 An exact public path retained after an Entry's canonical address changes. It belongs to that Entry and resolves directly to the Entry's current canonical address while the Entry is published.
 _Avoid_: Redirect rule, alias, old URL
 
+**Preview**:
+An authenticated reader-facing rendering of an Entry's latest successfully saved state. It does not publish the Entry and is not a shareable public address.
+_Avoid_: Draft link, preview token, staging page
+
 **Revision**:
 A snapshot of an entry's content at a point in time, used for tracing and rollback.
 _Avoid_: version, history

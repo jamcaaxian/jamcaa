@@ -9,6 +9,7 @@ const RESERVED_PATH_PREFIXES = new Set([
     "feed.json",
     "login",
     "media",
+    "preview",
     "search",
     "setup",
     "tag"

@@ -10,13 +10,27 @@ export interface PublicPost {
     createdAt: Date;
 }
 
-export function PostContent({ post, publishedLabel }: { post: PublicPost; publishedLabel: string }) {
-    const publishedAt = post.publishedAt ?? post.createdAt;
+export function PostContent({
+    post,
+    publishedLabel,
+    statusLabel = "Published",
+    statusMoment,
+    backAddress = "/",
+    backLabel = "All Posts"
+}: {
+    post: PublicPost;
+    publishedLabel: string;
+    statusLabel?: string;
+    statusMoment?: Date;
+    backAddress?: string;
+    backLabel?: string;
+}) {
+    const displayedAt = statusMoment ?? post.publishedAt ?? post.createdAt;
 
     return (
         <main id="main-content" className="mx-auto min-h-dvh max-w-3xl px-4 py-14 sm:px-6 sm:py-24">
-            <Link href="/" className="text-muted-foreground hover:text-foreground text-sm">
-                ← All Posts
+            <Link href={backAddress} className="text-muted-foreground hover:text-foreground text-sm">
+                ← {backLabel}
             </Link>
             <article className="mt-10">
                 <header className="mb-10 space-y-4">
@@ -25,7 +39,7 @@ export function PostContent({ post, publishedLabel }: { post: PublicPost; publis
                         <p className="text-muted-foreground text-lg leading-8">{post.excerpt}</p>
                     :   null}
                     <p className="text-muted-foreground text-sm">
-                        Published <time dateTime={publishedAt.toISOString()}>{publishedLabel}</time>
+                        {statusLabel} <time dateTime={displayedAt.toISOString()}>{publishedLabel}</time>
                     </p>
                 </header>
                 <RichTextContent

@@ -23,6 +23,7 @@ describe("public entry paths", () => {
         expect(isReservedPublicAddress("/admin/example")).toBe(true);
         expect(isReservedPublicAddress("/category/example")).toBe(true);
         expect(isReservedPublicAddress("/media/example")).toBe(true);
+        expect(isReservedPublicAddress("/preview/posts/example")).toBe(true);
         expect(isReservedPublicAddress("/search")).toBe(true);
         expect(isReservedPublicAddress("/tag/example")).toBe(true);
         expect(isReservedPublicAddress("/feed.json")).toBe(true);
@@ -31,6 +32,7 @@ describe("public entry paths", () => {
         expect(isReservedPublicAddress("/writing/example")).toBe(false);
         expect(checkPublicPermalink("/admin/{slug}")).toMatch(/belongs to the Site/);
         expect(checkPublicPermalink("/feed.json/{slug}")).toMatch(/belongs to the Site/);
+        expect(checkPublicPermalink("/preview/{slug}")).toMatch(/belongs to the Site/);
         expect(checkPublicPermalink("/writing/{slug}")).toBeUndefined();
     });
 
