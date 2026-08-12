@@ -1,4 +1,5 @@
 import type { Field, FieldValue, SearchableFieldKind, SummaryFieldKind } from "./fields";
+import { physicalLayout } from "./field-layout";
 import { systemFieldNames, type SystemFields } from "./system-fields";
 
 /** D1 refuses a table with more than this many columns. */
@@ -154,14 +155,14 @@ export function defineCollection<
         }
     }
 
-    const columns = systemFieldNames.length + fieldNames.length;
+    const physical = physicalLayout(name, fields);
 
-    if (columns > MAX_COLUMNS) {
+    if (physical.total > MAX_COLUMNS) {
         fail(
             name,
-            `it would need ${columns} columns and D1 allows ${MAX_COLUMNS}. `
+            `it would need ${physical.total} columns and D1 allows ${MAX_COLUMNS}. `
                 + `${systemFieldNames.length} of those belong to every entry, leaving `
-                + `${MAX_COLUMNS - systemFieldNames.length} for declared fields.`
+                + `${MAX_COLUMNS - systemFieldNames.length} columns for declared Fields.`
         );
     }
 

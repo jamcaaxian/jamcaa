@@ -17,16 +17,6 @@ export function canonicalFieldValue(field: Field, value: unknown): unknown {
     return field.parse(value);
 }
 
-export function fieldDatabaseValue(field: Field, value: unknown): string | number | null {
-    const canonical = canonicalFieldValue(field, value);
-
-    if (canonical === null) {
-        return null;
-    }
-
-    return capsuleOf(field).databaseValue(canonical);
-}
-
 export function fieldSnapshotValue(field: Field, value: unknown): unknown {
     const canonical = canonicalFieldValue(field, value);
 

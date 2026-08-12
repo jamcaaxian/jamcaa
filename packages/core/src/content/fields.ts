@@ -1,11 +1,6 @@
-import {
-    integer as sqliteInteger,
-    real as sqliteReal,
-    text as sqliteText,
-    type SQLiteColumnBuilderBase
-} from "drizzle-orm/sqlite-core";
+import { integer as sqliteInteger, real as sqliteReal, text as sqliteText } from "drizzle-orm/sqlite-core";
 import { parseRichText, isRichTextEmpty, type RichTextDocument } from "./rich-text";
-import { compileField } from "./field-capsule";
+import { compileField, slot } from "./field-capsule";
 
 export type FieldKind = "text" | "markdown" | "richText" | "number" | "toggle" | "moment" | "choice" | "reference";
 
@@ -47,15 +42,6 @@ function base<const TKind extends FieldKind>(kind: TKind, options: FieldOptions 
     return { kind, label: options?.label, description: options?.description, required: options?.required ?? false };
 }
 
-function column<TBuilder extends SQLiteColumnBuilderBase & { notNull(): SQLiteColumnBuilderBase }>(
-    builder: TBuilder,
-    required: boolean
-): SQLiteColumnBuilderBase {
-    // notNull() narrows the builder's type, which a table assembled at runtime
-    // cannot track. The declaration stays the source of truth for what a value holds.
-    return required ? builder.notNull() : builder;
-}
-
 /** A single line of plain text: titles, slugs, names. */
 export function text<const TOptions extends FieldOptions = FieldOptions>(
     options?: TOptions
@@ -74,8 +60,9 @@ export function text<const TOptions extends FieldOptions = FieldOptions>(
             }
         },
         {
-            buildColumn: name => column(sqliteText(name), definition.required),
-            databaseValue: (value: string) => value,
+            slots: () => ({ value: slot({ affinity: "text", buildColumn: name => sqliteText(name) }) }),
+            encode: (value: string) => ({ value }),
+            decode: cells => cells.value,
             snapshotValue: (value: string) => value,
             valueFromSnapshot: value => value,
             submissionValue: raw => raw.trim(),
@@ -104,8 +91,9 @@ export function markdown<const TOptions extends FieldOptions = FieldOptions>(
             }
         },
         {
-            buildColumn: name => column(sqliteText(name), definition.required),
-            databaseValue: (value: string) => value,
+            slots: () => ({ value: slot({ affinity: "text", buildColumn: name => sqliteText(name) }) }),
+            encode: (value: string) => ({ value }),
+            decode: cells => cells.value,
             snapshotValue: (value: string) => value,
             valueFromSnapshot: value => value,
             submissionValue: raw => raw,
@@ -125,9 +113,14 @@ export function richText<const TOptions extends FieldOptions = FieldOptions>(
     return compileField(
         { ...definition, parse: value => parseRichText(value) },
         {
-            buildColumn: name =>
-                column(sqliteText(name, { mode: "json" }).$type<RichTextDocument>(), definition.required),
-            databaseValue: (value: RichTextDocument) => JSON.stringify(value),
+            slots: () => ({
+                value: slot({
+                    affinity: "text",
+                    buildColumn: name => sqliteText(name, { mode: "json" }).$type<RichTextDocument>()
+                })
+            }),
+            encode: (value: RichTextDocument) => ({ value: JSON.stringify(value) }),
+            decode: cells => cells.value,
             snapshotValue: (value: RichTextDocument) => value,
             valueFromSnapshot: value => value,
             submissionValue: raw => JSON.parse(raw) as unknown,
@@ -166,8 +159,14 @@ export function number<const TOptions extends NumberOptions = NumberOptions>(
             }
         },
         {
-            buildColumn: name => column(whole ? sqliteInteger(name) : sqliteReal(name), definition.required),
-            databaseValue: (value: number) => value,
+            slots: () => ({
+                value: slot({
+                    affinity: whole ? "integer" : "real",
+                    buildColumn: name => (whole ? sqliteInteger(name) : sqliteReal(name))
+                })
+            }),
+            encode: (value: number) => ({ value }),
+            decode: cells => cells.value,
             snapshotValue: (value: number) => value,
             valueFromSnapshot: value => value,
             submissionValue: raw => Number(raw),
@@ -196,8 +195,11 @@ export function toggle<const TOptions extends FieldOptions = FieldOptions>(
             }
         },
         {
-            buildColumn: name => column(sqliteInteger(name, { mode: "boolean" }), definition.required),
-            databaseValue: (value: boolean) => (value ? 1 : 0),
+            slots: () => ({
+                value: slot({ affinity: "integer", buildColumn: name => sqliteInteger(name, { mode: "boolean" }) })
+            }),
+            encode: (value: boolean) => ({ value: value ? 1 : 0 }),
+            decode: cells => cells.value,
             snapshotValue: (value: boolean) => value,
             valueFromSnapshot: value => value,
             submissionValue: raw =>
@@ -229,8 +231,11 @@ export function moment<const TOptions extends FieldOptions = FieldOptions>(
             }
         },
         {
-            buildColumn: name => column(sqliteInteger(name, { mode: "timestamp_ms" }), definition.required),
-            databaseValue: (value: Date) => value.getTime(),
+            slots: () => ({
+                value: slot({ affinity: "integer", buildColumn: name => sqliteInteger(name, { mode: "timestamp_ms" }) })
+            }),
+            encode: (value: Date) => ({ value: value.getTime() }),
+            decode: cells => cells.value,
             snapshotValue: (value: Date) => value.getTime(),
             valueFromSnapshot: value => (typeof value === "number" ? new Date(value) : value),
             submissionValue: raw => new Date(raw),
@@ -266,9 +271,14 @@ export function choice<
             }
         },
         {
-            buildColumn: name =>
-                column(sqliteText(name, { enum: options.of as [TChoice, ...TChoice[]] }), definition.required),
-            databaseValue: (value: string) => value,
+            slots: () => ({
+                value: slot({
+                    affinity: "text",
+                    buildColumn: name => sqliteText(name, { enum: options.of as [TChoice, ...TChoice[]] })
+                })
+            }),
+            encode: (value: string) => ({ value }),
+            decode: cells => cells.value,
             snapshotValue: (value: string) => value,
             valueFromSnapshot: value => value,
             submissionValue: raw => raw,
@@ -303,8 +313,9 @@ export function reference<const TOptions extends ReferenceOptions = ReferenceOpt
             }
         },
         {
-            buildColumn: name => column(sqliteText(name), definition.required),
-            databaseValue: (value: string) => value,
+            slots: () => ({ value: slot({ affinity: "text", buildColumn: name => sqliteText(name) }) }),
+            encode: (value: string) => ({ value }),
+            decode: cells => cells.value,
             snapshotValue: (value: string) => value,
             valueFromSnapshot: value => value,
             submissionValue: raw => raw.trim(),

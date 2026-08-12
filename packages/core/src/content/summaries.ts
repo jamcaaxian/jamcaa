@@ -2,6 +2,9 @@ import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import type { SQLiteColumn, SQLiteTable } from "drizzle-orm/sqlite-core";
 import type { Database } from "../db/client";
 import type { Collection, EntryOf } from "./collection";
+import { type SQLiteCell } from "./field-capsule";
+import { canonicalFieldValue } from "./field-values";
+import { decodePhysicalCells, physicalLayout } from "./field-layout";
 import type { ContentModel } from "./model";
 import type { SystemFields } from "./system-fields";
 
@@ -149,9 +152,22 @@ export function entrySummaryReader<TCollection extends Collection>(options: {
         "updatedAt",
         "publishedAt"
     ] as const;
-    const selected = Object.fromEntries(
-        [...systemFields, ...collection.summary.fields].map(fieldName => [fieldName, columnNamed(table, fieldName)])
-    );
+    const summaryFields = collection.summary.fields;
+    const layout = physicalLayout(collection.name, collection.fields);
+    const selectedEntries: [string, SQLiteColumn][] = systemFields.map(fieldName => [
+        fieldName,
+        columnNamed(table, fieldName)
+    ]);
+
+    for (const fieldName of summaryFields) {
+        const item = layout.byField[fieldName]!;
+
+        for (const key of item.keys) {
+            selectedEntries.push([key, columnNamed(table, key)]);
+        }
+    }
+
+    const selected = Object.fromEntries(selectedEntries);
 
     return {
         async list(query = {}) {
@@ -189,7 +205,34 @@ export function entrySummaryReader<TCollection extends Collection>(options: {
                 .orderBy(desc(publicationMoment), desc(columnNamed(table, "id")))
                 .limit(limit + 1);
 
-            const page = rows.slice(0, limit) as EntrySummaryOf<TCollection>[];
+            const page = rows.slice(0, limit).map(row => {
+                const parsed: Record<string, unknown> = { ...row };
+
+                for (const fieldName of summaryFields) {
+                    const item = layout.byField[fieldName]!;
+
+                    if (item.keys.length === 1 && item.keys[0] === fieldName) {
+                        continue;
+                    }
+
+                    const cells: Record<string, SQLiteCell> = {};
+
+                    for (let index = 0; index < item.slotNames.length; index += 1) {
+                        cells[item.slotNames[index]!] = row[item.keys[index]!] as SQLiteCell;
+                    }
+
+                    parsed[fieldName] = canonicalFieldValue(
+                        collection.fields[fieldName]!,
+                        decodePhysicalCells(collection.fields[fieldName]!, cells)
+                    );
+
+                    for (const key of item.keys) {
+                        delete parsed[key];
+                    }
+                }
+
+                return parsed;
+            }) as EntrySummaryOf<TCollection>[];
             const last = page.at(-1);
 
             return {

@@ -2,10 +2,11 @@ import { and, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
 import type { SQLiteColumn, SQLiteTable } from "drizzle-orm/sqlite-core";
 import type { Database } from "../db/client";
 import type { Collection, EntryOf, FieldMap } from "./collection";
-import { canonicalFieldValue, fieldDatabaseValue } from "./field-values";
+import { capsuleOf, type SQLiteCell } from "./field-capsule";
+import { canonicalFieldValue } from "./field-values";
+import { decodePhysicalCells, physicalLayout } from "./field-layout";
 import type { FieldValue } from "./fields";
 import type { EntryStatus } from "./system-fields";
-import { toColumnName } from "./table";
 
 type RequiredNames<TFields extends FieldMap> = {
     [TName in keyof TFields]: null extends FieldValue<TFields[TName]> ? never : TName;
@@ -54,7 +55,7 @@ export interface DeclaredFieldStorage {
     columns: string;
     placeholders: string;
     assignments: string;
-    bindings: readonly (string | number | null)[];
+    bindings: readonly (string | number | Uint8Array | null)[];
 }
 
 function quoted(name: string): string {
@@ -82,19 +83,31 @@ export function declaredFieldStorage<TCollection extends Collection>(
     collection: TCollection,
     source: DeclaredValuesOf<TCollection>
 ): DeclaredFieldStorage {
-    const declared = Object.entries(collection.fields).map(([fieldName, field]) => ({
-        field,
-        fieldName,
-        columnName: toColumnName(fieldName)
-    }));
-
+    const layout = physicalLayout(collection.name, collection.fields);
     const values = declaredValues(collection, source);
+    const columns: string[] = [];
+    const bindings: (string | number | Uint8Array | null)[] = [];
+
+    for (const item of layout.fields) {
+        const field = collection.fields[item.fieldName]!;
+        const canonical = values[item.fieldName];
+
+        columns.push(...item.columns.map(column => quoted(column)));
+
+        if (canonical === null) {
+            bindings.push(...item.slotNames.map(() => null));
+        } else {
+            const encoded = capsuleOf(field).encode(canonical as never);
+
+            bindings.push(...item.slotNames.map(slotName => encoded[slotName] ?? null));
+        }
+    }
 
     return {
-        columns: declared.map(item => quoted(item.columnName)).join(", "),
-        placeholders: declared.map(() => "?").join(", "),
-        assignments: declared.map(item => `${quoted(item.columnName)} = ?`).join(", "),
-        bindings: declared.map(item => fieldDatabaseValue(item.field, values[item.fieldName]))
+        columns: columns.join(", "),
+        placeholders: columns.map(() => "?").join(", "),
+        assignments: columns.map(column => `${column} = ?`).join(", "),
+        bindings
     };
 }
 
@@ -120,6 +133,7 @@ export function entryStore<TFields extends FieldMap>(options: {
     tagTable?: SQLiteTable;
 }): EntryStore<TFields> {
     const { database, collection, table, tagTable } = options;
+    const layout = physicalLayout(collection.name, collection.fields);
 
     type Entry = EntryOf<Collection<TFields>>;
 
@@ -127,14 +141,75 @@ export function entryStore<TFields extends FieldMap>(options: {
         const parsed = { ...values };
 
         for (const [fieldName, field] of Object.entries(collection.fields)) {
-            if (!(fieldName in values)) {
+            const item = layout.byField[fieldName]!;
+
+            if (item.keys.length === 1 && item.keys[0] === fieldName) {
+                if (fieldName in values) {
+                    parsed[fieldName] = canonicalFieldValue(field, values[fieldName]);
+                }
+
                 continue;
             }
 
-            parsed[fieldName] = canonicalFieldValue(field, values[fieldName]);
+            const cells: Record<string, SQLiteCell> = {};
+            let present = true;
+
+            for (let index = 0; index < item.slotNames.length; index += 1) {
+                const key = item.keys[index]!;
+
+                if (!(key in values)) {
+                    present = false;
+                    break;
+                }
+
+                cells[item.slotNames[index]!] = values[key] as SQLiteCell;
+            }
+
+            if (present) {
+                parsed[fieldName] = canonicalFieldValue(field, decodePhysicalCells(field, cells));
+
+                for (const key of item.keys) {
+                    delete parsed[key];
+                }
+            }
         }
 
         return parsed;
+    }
+
+    /** Spreads one logical value into the physical slot keys a write needs. */
+    function physicalValues(entry: Record<string, unknown>) {
+        const result = { ...entry };
+
+        for (const [fieldName, field] of Object.entries(collection.fields)) {
+            const item = layout.byField[fieldName]!;
+
+            if (item.keys.length === 1 && item.keys[0] === fieldName) {
+                if (fieldName in result) {
+                    result[fieldName] = canonicalFieldValue(field, result[fieldName]);
+                }
+
+                continue;
+            }
+
+            if (!(fieldName in result)) {
+                continue;
+            }
+
+            const canonical = canonicalFieldValue(field, result[fieldName]);
+            const encoded =
+                canonical === null ?
+                    Object.fromEntries(item.slotNames.map(slotName => [slotName, null]))
+                :   capsuleOf(field).encode(canonical as never);
+
+            delete result[fieldName];
+
+            for (const slotName of item.slotNames) {
+                result[`${fieldName}__${slotName}`] = encoded[slotName] ?? null;
+            }
+        }
+
+        return result;
     }
 
     const asEntries = (rows: Record<string, unknown>[]) => rows.map(parseDeclaredValues) as Entry[];
@@ -149,7 +224,7 @@ export function entryStore<TFields extends FieldMap>(options: {
         async create(entry) {
             const id = crypto.randomUUID();
 
-            await database.insert(table).values({ ...parseDeclaredValues(entry), id });
+            await database.insert(table).values({ ...physicalValues(entry), id });
 
             const created = await one(eq(columnNamed(table, "id"), id));
 
@@ -163,7 +238,7 @@ export function entryStore<TFields extends FieldMap>(options: {
         async update(id, changes) {
             await database
                 .update(table)
-                .set({ ...parseDeclaredValues(changes), updatedAt: new Date() })
+                .set({ ...physicalValues(changes), updatedAt: new Date() })
                 .where(eq(columnNamed(table, "id"), id));
         },
 

@@ -1,15 +1,36 @@
 import type { SQLiteColumnBuilderBase } from "drizzle-orm/sqlite-core";
 import type { Field } from "./fields";
 
+export type SQLiteAffinity = "text" | "integer" | "real" | "blob";
+
+/** What D1 accepts as one bound value. */
+export type SQLiteCell = string | number | Uint8Array | null;
+
+export interface StorageSlot {
+    readonly affinity: SQLiteAffinity;
+    /** Whether this slot may hold null inside a non-null logical value. */
+    readonly nullable?: true;
+    buildColumn(name: string): SQLiteColumnBuilderBase;
+}
+
+export type StorageSlots = Readonly<Record<string, StorageSlot>>;
+
+export function slot(definition: StorageSlot): StorageSlot {
+    return definition;
+}
+
 /**
  * Hidden, Worker-safe behavior compiled for one Field kind. Core owns the
  * dispatch sites; implementation details such as Drizzle stay out of the public
  * Field interface.
  */
 export interface FieldCapsule<TValue = unknown> {
-    buildColumn(name: string): SQLiteColumnBuilderBase;
-    /** Non-null canonical value -> D1 binding. */
-    databaseValue(value: TValue): string | number | null;
+    /** Physical slots in canonical order. Single-slot Fields use the name "value". */
+    slots(): StorageSlots;
+    /** Non-null canonical value -> one cell per slot, no extra keys. */
+    encode(value: TValue): Record<string, SQLiteCell>;
+    /** Slot cells of a non-null logical value -> represented value, before Field.parse. */
+    decode(cells: Record<string, SQLiteCell>): unknown;
     /** Non-null canonical value -> Revision v1 payload. */
     snapshotValue(value: TValue): unknown;
     /** Revision v1 payload -> represented value, before Field.parse. */
