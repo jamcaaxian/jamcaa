@@ -59,6 +59,10 @@ describe("bringing a site up to date", () => {
         await env.DB.prepare(
             "INSERT INTO role_capability (role_name, resource, action) VALUES ('editor', 'newsletter', 'send')"
         ).run();
+        await env.DB.prepare(
+            "INSERT INTO role_capability (role_name, resource, action) VALUES ('editor', 'settings', 'read')"
+        ).run();
+        await env.DB.exec("DELETE FROM role_capability WHERE role_name = 'editor' AND resource = 'settings'");
         await env.DB.prepare("INSERT INTO setting (key, value) VALUES ('platform.installedVersion', '1')").run();
         forgetCachedSettings();
 
@@ -69,6 +73,33 @@ describe("bringing a site up to date", () => {
         ).all<{ resource: string; action: string }>();
         expect(grants.results).toContainEqual({ resource: "taxonomy", action: "manage" });
         expect(grants.results).toContainEqual({ resource: "newsletter", action: "send" });
+        expect(grants.results).not.toContainEqual({ resource: "settings", action: "read" });
+    });
+
+    it("adds only Role recovery grants when upgrading a version 2 site", async () => {
+        await ensureInstalled(database(), installPlan);
+        await env.DB.exec(
+            "DELETE FROM role_capability WHERE (role_name = 'admin' AND resource = 'settings' AND action = 'manage') OR (role_name = 'editor' AND resource = 'settings' AND action = 'read')"
+        );
+        await env.DB.prepare(
+            "INSERT INTO role_capability (role_name, resource, action) VALUES ('editor', 'newsletter', 'send')"
+        ).run();
+        await env.DB.exec("DELETE FROM role_capability WHERE resource = 'role'");
+        await env.DB.prepare("UPDATE setting SET value = '2' WHERE key = 'platform.installedVersion'").run();
+        forgetCachedSettings();
+
+        await ensureInstalled(database(), installPlan);
+
+        const grants = await env.DB.prepare(
+            "SELECT role_name AS roleName, resource, action FROM role_capability ORDER BY role_name, resource, action"
+        ).all<{ roleName: string; resource: string; action: string }>();
+
+        expect(grants.results).toContainEqual({ roleName: "admin", resource: "role", action: "read" });
+        expect(grants.results).toContainEqual({ roleName: "admin", resource: "role", action: "manage" });
+        expect(grants.results).not.toContainEqual({ roleName: "admin", resource: "settings", action: "manage" });
+        expect(grants.results).not.toContainEqual({ roleName: "editor", resource: "settings", action: "read" });
+        expect(grants.results).toContainEqual({ roleName: "editor", resource: "newsletter", action: "send" });
+        expect(grants.results.some(grant => grant.roleName !== "admin" && grant.resource === "role")).toBe(false);
     });
 
     it("records what it has run so the next visit is free", async () => {

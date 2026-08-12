@@ -121,39 +121,15 @@ export async function seedSystemRoles(database: Database, catalogue: CapabilityC
     }
 }
 
-/** Adds newly declared system grants without removing Site-specific changes. */
-export async function syncSystemRoleGrants(database: Database, catalogue: CapabilityCatalogue): Promise<void> {
-    for (const systemRole of systemRoles) {
-        const existing = await database
-            .select({ name: roleTable.name })
-            .from(roleTable)
-            .where(eq(roleTable.name, systemRole.name))
-            .get();
-
-        if (existing === undefined) {
-            continue;
-        }
-
-        const grants = resolveSystemGrants(catalogue, systemRole);
-        assertGrantsAreDeclared(catalogue, grants);
-        const rows = Object.entries(grants).flatMap(([resource, actions]) =>
-            actions.map(action => ({ roleName: systemRole.name, resource, action }))
-        );
-
-        if (rows.length > 0) {
-            await database.insert(roleCapability).values(rows).onConflictDoNothing();
-        }
-    }
-}
-
 /** Reads every role and its grants out of the database. */
 export async function loadRoleGrants(database: Database): Promise<Record<string, CapabilityGrants>> {
+    const roles = await database.select({ name: roleTable.name }).from(roleTable).all();
     const rows = await database
         .select({ roleName: roleCapability.roleName, resource: roleCapability.resource, action: roleCapability.action })
         .from(roleCapability)
         .all();
 
-    const grants: Record<string, CapabilityGrants> = {};
+    const grants: Record<string, CapabilityGrants> = Object.fromEntries(roles.map(role => [role.name, {}]));
 
     for (const row of rows) {
         const forRole = (grants[row.roleName] ??= {});

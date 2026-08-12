@@ -16,10 +16,14 @@ This split looks odd at first glance, so it is worth stating why neither half si
 
 ## Consequences
 
-Grants are read on nearly every authenticated request, so they are cached in memory per worker instance with a short expiry. **An administrator's change to a role therefore takes effect within the cache lifetime rather than instantly**, and instances that have not yet expired keep serving the previous grants. This is a deliberate trade against querying on every request; permission edits are not expected to need immediate global effect.
+Grants are read on nearly every authenticated request, so they are cached in memory per worker instance with a short expiry. A Role change clears the cache in the Worker instance that accepted it, while other instances may keep serving the previous grants until their cache expires. This is a deliberate trade against querying on every request; permission edits are not expected to need immediate global effect.
 
-An unseeded database falls back to the system roles defined in code, so a fresh installation is usable before anyone has configured anything.
+Only an unseeded database falls back to the system Roles defined in code. Once Role rows exist, a Role with no capability rows is deliberately a zero-capability Role rather than an instruction to restore code defaults.
 
 Grants naming a resource or action that no catalogue declares are rejected when written, rather than being silently ignored at check time.
+
+System Role grants are replaced atomically. The Administrator's `role:read` and `role:manage` capabilities are recovery grants and cannot be removed, including by a forged request, so an operator can always inspect and repair Role capabilities.
+
+Installation upgrades add capability grants as explicit versioned deltas. They do not synchronize the current default grant set over an existing Site, because doing so would restore capabilities an operator intentionally removed.
 
 The access controller builds roles from plain objects when called, with no build-time step, which is what makes database-defined roles possible at all. A future version of that library that resolved roles statically would break this decision.

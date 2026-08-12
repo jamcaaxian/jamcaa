@@ -61,4 +61,5 @@ export * from "./bootstrap";
 export * from "./capabilities";
 export * from "./permissions";
 export * from "./role-cache";
+export * from "./role-grants";
 export * from "./roles";

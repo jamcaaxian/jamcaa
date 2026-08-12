@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, HardDrive, Image as ImageIcon, Settings, Tags } from "lucide-react";
+import { FileText, HardDrive, Image as ImageIcon, Settings, ShieldCheck, Tags } from "lucide-react";
 import {
     Sidebar,
     SidebarContent,
@@ -30,6 +30,7 @@ const sections = [
     {
         label: "Configuration",
         items: [
+            { title: "Roles", href: "/admin/roles", icon: ShieldCheck },
             { title: "Storage", href: "/admin/storage", icon: HardDrive },
             { title: "Settings", href: "/admin/settings", icon: Settings }
         ]

@@ -4,7 +4,9 @@ import {
     coreCapabilities,
     forgetCachedRoleGrants,
     getRoleGrants,
+    inspectSystemRoleGrants,
     loadRoleGrants,
+    replaceSystemRoleGrants,
     ROLE_CACHE_TTL_MS,
     seedSystemRoles,
     systemRoles
@@ -40,7 +42,7 @@ describe("system roles", () => {
         await seedSystemRoles(database(), coreCapabilities);
 
         const grants = await loadRoleGrants(database());
-        expect(grants.editor).toBeUndefined();
+        expect(grants.editor).toEqual({});
     });
 
     it("grants the administrator the whole catalogue", async () => {
@@ -120,6 +122,15 @@ describe("role grant cache", () => {
         expect(grants?.contributor).toBeDefined();
     });
 
+    it("keeps a seeded role with no grants instead of falling back to defaults", async () => {
+        await seedSystemRoles(database(), coreCapabilities);
+        await env.DB.exec("DELETE FROM role_capability WHERE role_name = 'contributor'");
+
+        const grants = await getRoleGrants(database());
+
+        expect(grants?.contributor).toEqual({});
+    });
+
     it("keeps serving the previous grants until the entry expires", async () => {
         await seedSystemRoles(database(), coreCapabilities);
         const start = Date.now();
@@ -148,5 +159,59 @@ describe("role grant cache", () => {
 
         const grants = await getRoleGrants(database(), start);
         expect(grants?.subscriber?.post).toContain("create");
+    });
+});
+
+describe("system role grant editor", () => {
+    beforeEach(async () => {
+        forgetCachedRoleGrants();
+        await env.DB.exec("DELETE FROM role_capability");
+        await env.DB.exec("DELETE FROM role");
+        await seedSystemRoles(database(), coreCapabilities);
+    });
+
+    it("inspects the declared capabilities and current system Role grants", async () => {
+        const model = await inspectSystemRoleGrants(database(), coreCapabilities);
+
+        expect(model.catalogue.role).toEqual(["read", "manage"]);
+        expect(model.roles.find(role => role.name === "contributor")?.grants.post).toContain("create");
+    });
+
+    it("atomically replaces one system Role's grants and clears the current cache", async () => {
+        const start = Date.now();
+        await getRoleGrants(database(), start);
+
+        await replaceSystemRoleGrants(database(), coreCapabilities, "contributor", { post: ["read"], role: ["read"] });
+
+        await expect(getRoleGrants(database(), start)).resolves.toMatchObject({
+            contributor: { post: ["read"], role: ["read"] }
+        });
+    });
+
+    it("refuses unknown capabilities without changing existing grants", async () => {
+        const before = await loadRoleGrants(database());
+
+        await expect(
+            replaceSystemRoleGrants(database(), coreCapabilities, "contributor", { post: ["destroy"] })
+        ).rejects.toThrow(/Unknown capability action/);
+
+        await expect(loadRoleGrants(database())).resolves.toEqual(before);
+    });
+
+    it("refuses a Role that is not a system Role", async () => {
+        await env.DB.prepare(
+            "INSERT INTO role (name, label, description, is_system) VALUES ('custom', 'Custom', NULL, 0)"
+        ).run();
+
+        await expect(
+            replaceSystemRoleGrants(database(), coreCapabilities, "custom", { post: ["read"] })
+        ).rejects.toThrow(/system Role/);
+    });
+
+    it("keeps the administrator's Role recovery capabilities even when omitted", async () => {
+        await replaceSystemRoleGrants(database(), coreCapabilities, "admin", { post: ["read"] });
+
+        const grants = await loadRoleGrants(database());
+        expect(grants.admin).toEqual({ post: ["read"], role: ["manage", "read"] });
     });
 });

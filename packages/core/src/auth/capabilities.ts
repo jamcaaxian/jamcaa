@@ -13,7 +13,8 @@ export const coreCapabilities = {
     user: ["create", "list", "get", "update", "delete", "set-role", "set-password", "ban"],
     session: ["list", "revoke"],
     taxonomy: ["read", "manage"],
-    settings: ["read", "manage"]
+    settings: ["read", "manage"],
+    role: ["read", "manage"]
 } as const;
 
 export type CapabilityCatalogue = Record<string, readonly string[]>;
