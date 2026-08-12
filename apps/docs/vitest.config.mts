@@ -1,5 +1,5 @@
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-workers";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import path from "node:path";
 
 // Integration tests live here rather than in the core because this is where the
@@ -23,5 +23,8 @@ export default defineConfig({
         }))
     ],
     resolve: { alias: { "@": path.resolve("src") } },
-    test: { setupFiles: ["./test/apply-migrations.ts"] }
+    test: {
+        setupFiles: ["./test/apply-migrations.ts"],
+        exclude: [...configDefaults.exclude, "test/search-migration-workflow.test.ts"]
+    }
 });

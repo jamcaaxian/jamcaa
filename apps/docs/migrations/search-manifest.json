@@ -1,0 +1,12 @@
+{
+    "version": 1,
+    "records": [
+        {
+            "collection": "post",
+            "migration": "0009_search.sql",
+            "artifactSha256": "45af5c407574b20866100f2a2ffa3593dfefef6f4164f042521f15e321b96c9a",
+            "migrationSha256": "d002840524ce90e0aac6f7c51666649cdaf86fedf235cb48e9fa0096325f7aa9",
+            "status": "active"
+        }
+    ]
+}
