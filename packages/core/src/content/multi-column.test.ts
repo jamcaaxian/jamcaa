@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDatabase } from "../db/client";
 import { defineCollection } from "./collection";
 import { declaredFieldStorage, entryStore } from "./entries";
-import { compileField, revisionCodecV1, slot } from "./field-capsule";
+import { compileField, capsuleOf, revisionCodecV1, slot } from "./field-capsule";
 import { canonicalFieldValue } from "./field-values";
 import { decodePhysicalCells, physicalLayout } from "./field-layout";
 import { text, type Field } from "./fields";
@@ -65,7 +65,8 @@ function geoPoint(options: { required?: boolean } = {}): Field<GeoPoint | null, 
             submissionValue: raw => JSON.parse(raw) as unknown,
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,
-            editingExtras: () => undefined
+            editingExtras: () => undefined,
+            searchText: () => undefined
         }
     );
 }
@@ -447,6 +448,24 @@ describe("multi-column Field layouts", () => {
             .run();
 
         await expect(revisions.byId(stored.id, "future-format")).rejects.toThrow(/format version 3 is not known/i);
+    });
+
+    it("refuses a Search text expression over an unknown slot at declaration time", () => {
+        const base = text({ required: true });
+        const bogus = compileField(base, {
+            ...capsuleOf(base),
+            searchText: () => ({ type: "column-text", slot: "other" })
+        });
+
+        expect(() =>
+            defineCollection({
+                name: "bogus_search",
+                label: "Bogus",
+                plural: "Bogus",
+                fields: { title: bogus },
+                search: { fields: ["title"] }
+            })
+        ).toThrow(/unknown slot "other"/i);
     });
 
     it("rebuilds one logical value in an Entry Summary from every slot", async () => {

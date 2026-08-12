@@ -15,6 +15,9 @@ export interface StorageSlot {
 
 export type StorageSlots = Readonly<Record<string, StorageSlot>>;
 
+/** The restricted Search text expression a Field contributes. */
+export type FieldSearchText = { type: "column-text"; slot: string } | { type: "rich-text"; slot: string };
+
 export function slot(definition: StorageSlot): StorageSlot {
     return definition;
 }
@@ -69,6 +72,8 @@ export interface FieldCapsule<TValue = unknown> {
     isRequiredValueMissing(value: unknown): boolean;
     /** Serializable extras appended to the Editing descriptor. */
     editingExtras(): Record<string, unknown> | undefined;
+    /** The restricted Search text expression, or undefined when not searchable. */
+    searchText(): FieldSearchText | undefined;
 }
 
 const fieldCapsule: unique symbol = Symbol("jamcaa.field-capsule");

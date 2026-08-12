@@ -72,7 +72,8 @@ export function text<const TOptions extends FieldOptions = FieldOptions>(
             submissionValue: raw => raw.trim(),
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: value => value === "",
-            editingExtras: () => undefined
+            editingExtras: () => undefined,
+            searchText: () => ({ type: "column-text", slot: "value" })
         }
     );
 }
@@ -107,7 +108,8 @@ export function markdown<const TOptions extends FieldOptions = FieldOptions>(
             submissionValue: raw => raw,
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: value => value === "",
-            editingExtras: () => undefined
+            editingExtras: () => undefined,
+            searchText: () => ({ type: "column-text", slot: "value" })
         }
     );
 }
@@ -138,7 +140,8 @@ export function richText<const TOptions extends FieldOptions = FieldOptions>(
             submissionValue: raw => JSON.parse(raw) as unknown,
             isBlankSubmission: raw => raw.length === 0,
             isRequiredValueMissing: value => isRichTextEmpty(value as RichTextDocument),
-            editingExtras: () => undefined
+            editingExtras: () => undefined,
+            searchText: () => ({ type: "rich-text", slot: "value" })
         }
     );
 }
@@ -188,7 +191,8 @@ export function number<const TOptions extends NumberOptions = NumberOptions>(
             submissionValue: raw => Number(raw),
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,
-            editingExtras: () => ({ whole })
+            editingExtras: () => ({ whole }),
+            searchText: () => undefined
         }
     );
 }
@@ -228,7 +232,8 @@ export function toggle<const TOptions extends FieldOptions = FieldOptions>(
                 : undefined,
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,
-            editingExtras: () => undefined
+            editingExtras: () => undefined,
+            searchText: () => undefined
         }
     );
 }
@@ -265,7 +270,8 @@ export function moment<const TOptions extends FieldOptions = FieldOptions>(
             submissionValue: raw => new Date(raw),
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,
-            editingExtras: () => undefined
+            editingExtras: () => undefined,
+            searchText: () => undefined
         }
     );
 }
@@ -312,7 +318,8 @@ export function choice<
             submissionValue: raw => raw,
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,
-            editingExtras: () => ({ choices: options.of })
+            editingExtras: () => ({ choices: options.of }),
+            searchText: () => undefined
         }
     );
 }
@@ -353,7 +360,8 @@ export function reference<const TOptions extends ReferenceOptions = ReferenceOpt
             submissionValue: raw => raw.trim(),
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,
-            editingExtras: () => ({ collection: options.to })
+            editingExtras: () => ({ collection: options.to }),
+            searchText: () => undefined
         }
     );
 }

@@ -1,4 +1,5 @@
 import type { Field, FieldValue, SearchableFieldKind, SummaryFieldKind } from "./fields";
+import { capsuleOf } from "./field-capsule";
 import { physicalLayout } from "./field-layout";
 import { systemFieldNames, type SystemFields } from "./system-fields";
 
@@ -143,8 +144,17 @@ export function defineCollection<
                 fail(name, `the searchable Field "${fieldName}" is not one of its Fields.`);
             }
 
-            if (!(["text", "markdown", "richText"] as const).includes(field.kind as SearchableFieldKind)) {
+            const text = capsuleOf(field).searchText();
+
+            if (text === undefined) {
                 fail(name, `the Field "${fieldName}" has no searchable text representation.`);
+            }
+
+            if (!(text.slot in capsuleOf(field).slots())) {
+                fail(
+                    name,
+                    `the Field "${fieldName}" has a Search text expression over the unknown slot "${text.slot}".`
+                );
             }
 
             if (seen.has(fieldName)) {
