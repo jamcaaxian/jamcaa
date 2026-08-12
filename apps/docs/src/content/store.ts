@@ -1,24 +1,17 @@
 import {
+    entryRevisionStore,
     entryStore,
     entrySummaryReader,
     formerAddressStore,
-    revisionStore,
     tagMembershipStore,
     writeEntryWithTags
 } from "@jamcaa/core/content";
-import type { EntryStatus, RichTextDocument } from "@jamcaa/core/content";
+import type { EntryRevisionSnapshot } from "@jamcaa/core/content";
 import type { Database } from "@jamcaa/core/db";
 import { post } from "./collections";
 import { contentModel, formerPostAddressTable, postRevisionTable, postTable, postTagTable } from "./schema";
 
-export interface PostRevisionSnapshot {
-    slug: string;
-    status: EntryStatus;
-    publishedAt: number | null;
-    categoryId: string;
-    fields: { title: string; excerpt: string | null; body: RichTextDocument };
-    tagIds: string[];
-}
+export type PostRevisionSnapshot = EntryRevisionSnapshot<typeof post>;
 
 export function posts(database: Database) {
     return entryStore({ database, collection: post, table: postTable, tagTable: postTagTable });
@@ -33,7 +26,7 @@ export function formerPostAddresses(database: Database) {
 }
 
 export function postRevisions(database: Database) {
-    return revisionStore<PostRevisionSnapshot>(database, postRevisionTable);
+    return entryRevisionStore({ database, collection: post, table: postRevisionTable });
 }
 
 export async function postTagIds(database: Database, postId: string): Promise<string[]> {

@@ -2,8 +2,10 @@ import { and, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
 import type { SQLiteColumn, SQLiteTable } from "drizzle-orm/sqlite-core";
 import type { Database } from "../db/client";
 import type { Collection, EntryOf, FieldMap } from "./collection";
+import { canonicalFieldValue, fieldDatabaseValue } from "./field-values";
 import type { FieldValue } from "./fields";
 import type { EntryStatus } from "./system-fields";
+import { toColumnName } from "./table";
 
 type RequiredNames<TFields extends FieldMap> = {
     [TName in keyof TFields]: null extends FieldValue<TFields[TName]> ? never : TName;
@@ -13,6 +15,10 @@ type OptionalNames<TFields extends FieldMap> = Exclude<keyof TFields, RequiredNa
 
 type DeclaredValues<TFields extends FieldMap> = { [TName in RequiredNames<TFields>]: FieldValue<TFields[TName]> } & {
     [TName in OptionalNames<TFields>]?: FieldValue<TFields[TName]>;
+};
+
+export type DeclaredValuesOf<TCollection extends Collection> = {
+    [TName in keyof TCollection["fields"]]: FieldValue<TCollection["fields"][TName]>;
 };
 
 export type NewEntry<TFields extends FieldMap> = {
@@ -44,6 +50,54 @@ export interface EntryStore<TFields extends FieldMap> {
     list(query?: EntryQuery): Promise<EntryOf<Collection<TFields>>[]>;
 }
 
+export interface DeclaredFieldStorage {
+    columns: string;
+    placeholders: string;
+    assignments: string;
+    bindings: readonly (string | number | null)[];
+}
+
+function quoted(name: string): string {
+    return `"${name.replaceAll('"', '""')}"`;
+}
+
+export function declaredValues<TCollection extends Collection>(
+    collection: TCollection,
+    source: Readonly<Record<string, unknown>>
+): DeclaredValuesOf<TCollection> {
+    const values: Record<string, unknown> = {};
+
+    for (const [fieldName, field] of Object.entries(collection.fields)) {
+        if (!(fieldName in source)) {
+            throw new Error(`The Entry is missing its declared Field "${fieldName}".`);
+        }
+
+        values[fieldName] = canonicalFieldValue(field, source[fieldName]);
+    }
+
+    return values as DeclaredValuesOf<TCollection>;
+}
+
+export function declaredFieldStorage<TCollection extends Collection>(
+    collection: TCollection,
+    source: DeclaredValuesOf<TCollection>
+): DeclaredFieldStorage {
+    const declared = Object.entries(collection.fields).map(([fieldName, field]) => ({
+        field,
+        fieldName,
+        columnName: toColumnName(fieldName)
+    }));
+
+    const values = declaredValues(collection, source);
+
+    return {
+        columns: declared.map(item => quoted(item.columnName)).join(", "),
+        placeholders: declared.map(() => "?").join(", "),
+        assignments: declared.map(item => `${quoted(item.columnName)} = ?`).join(", "),
+        bindings: declared.map(item => fieldDatabaseValue(item.field, values[item.fieldName]))
+    };
+}
+
 function columnNamed(table: SQLiteTable, name: string): SQLiteColumn {
     const column = getTableColumns(table)[name];
 
@@ -73,11 +127,11 @@ export function entryStore<TFields extends FieldMap>(options: {
         const parsed = { ...values };
 
         for (const [fieldName, field] of Object.entries(collection.fields)) {
-            if (!(fieldName in values) || values[fieldName] === null || field.parse === undefined) {
+            if (!(fieldName in values)) {
                 continue;
             }
 
-            parsed[fieldName] = field.parse(values[fieldName]);
+            parsed[fieldName] = canonicalFieldValue(field, values[fieldName]);
         }
 
         return parsed;

@@ -1,26 +1,31 @@
-import { toSlug, type EntryOf, type EntryStatus, type RichTextDocument } from "@jamcaa/core/content";
+import {
+    declaredFieldStorage,
+    declaredValues,
+    entryRevisionSnapshot,
+    toSlug,
+    type DeclaredValuesOf,
+    type EntryOf,
+    type EntryStatus
+} from "@jamcaa/core/content";
 import type { Database } from "@jamcaa/core/db";
 import { compareAndIncrementPublicAddressRevision, comparePublicAddressRevision } from "./public-address-revision";
 import { publicPostAddresses } from "./public-addresses";
 import { freePublicPostSlug, postAddress } from "./public-paths";
 import { postAddressState } from "./settings";
-import { formerPostAddresses, postRevisions, posts, writePostWithTags, type PostRevisionSnapshot } from "./store";
+import { formerPostAddresses, postRevisions, posts, writePostWithTags } from "./store";
 import { taxonomy } from "./taxonomy";
 import { post } from "./collections";
 
 type Post = EntryOf<typeof post>;
 
-export interface DesiredPostState {
+export type DesiredPostState = {
     id?: string;
-    title: string;
-    excerpt: string | null;
-    body: RichTextDocument;
     status: EntryStatus;
     slug: string;
     categoryId: string;
     tagIds: readonly string[];
     publishedAt?: Date | null;
-}
+} & DeclaredValuesOf<typeof post>;
 
 export interface CommitPostStateOptions {
     database: Database;
@@ -35,17 +40,6 @@ export interface RestorePostRevisionOptions {
     mayPublish: boolean;
     entryId: string;
     revisionId: string;
-}
-
-function revisionSnapshot(entry: Post, tagIds: readonly string[]): PostRevisionSnapshot {
-    return {
-        slug: entry.slug,
-        status: entry.status,
-        publishedAt: entry.publishedAt?.getTime() ?? null,
-        categoryId: entry.categoryId,
-        fields: { title: entry.title, excerpt: entry.excerpt, body: entry.body },
-        tagIds: [...new Set(tagIds)].sort()
-    };
 }
 
 async function assertTaxonomyExists(database: Database, categoryId: string, tagIds: readonly string[]) {
@@ -67,11 +61,13 @@ function nextUpdatedAt(current: Post | undefined): Date {
 }
 
 function insertPostStatement(database: Database, entry: Post): D1PreparedStatement {
+    const fields = declaredFieldStorage(post, entry);
+
     return database.$client
         .prepare(
             "INSERT INTO post "
-                + "(id, slug, status, author_id, category_id, created_at, updated_at, published_at, title, excerpt, body) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                + `(id, slug, status, author_id, category_id, created_at, updated_at, published_at, ${fields.columns}) `
+                + `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${fields.placeholders})`
         )
         .bind(
             entry.id,
@@ -82,19 +78,19 @@ function insertPostStatement(database: Database, entry: Post): D1PreparedStateme
             entry.createdAt.getTime(),
             entry.updatedAt.getTime(),
             entry.publishedAt?.getTime() ?? null,
-            entry.title,
-            entry.excerpt,
-            JSON.stringify(entry.body)
+            ...fields.bindings
         );
 }
 
 function updatePostStatement(database: Database, before: Post, after: Post): D1PreparedStatement {
+    const fields = declaredFieldStorage(post, after);
+
     return database.$client
         .prepare(
             "UPDATE post SET "
                 + "slug = ?, status = ?, "
                 + "category_id = CASE WHEN updated_at = ? THEN ? ELSE NULL END, "
-                + "updated_at = ?, published_at = ?, title = ?, excerpt = ?, body = ? "
+                + `updated_at = ?, published_at = ?, ${fields.assignments} `
                 + "WHERE id = ?"
         )
         .bind(
@@ -104,9 +100,7 @@ function updatePostStatement(database: Database, before: Post, after: Post): D1P
             after.categoryId,
             after.updatedAt.getTime(),
             after.publishedAt?.getTime() ?? null,
-            after.title,
-            after.excerpt,
-            JSON.stringify(after.body),
+            ...fields.bindings,
             after.id
         );
 }
@@ -168,6 +162,7 @@ export async function commitPostState(options: CommitPostStateOptions): Promise<
         }
     });
     const updatedAt = nextUpdatedAt(current);
+    const fields = declaredValues(post, desired);
     const stored: Post =
         current === undefined ?
             {
@@ -179,9 +174,7 @@ export async function commitPostState(options: CommitPostStateOptions): Promise<
                 createdAt,
                 updatedAt,
                 publishedAt,
-                title: desired.title,
-                excerpt: desired.excerpt,
-                body: desired.body
+                ...fields
             }
         :   {
                 ...current,
@@ -190,9 +183,7 @@ export async function commitPostState(options: CommitPostStateOptions): Promise<
                 categoryId: desired.categoryId,
                 updatedAt,
                 publishedAt,
-                title: desired.title,
-                excerpt: desired.excerpt,
-                body: desired.body
+                ...fields
             };
     const changesAddress =
         current === undefined
@@ -234,7 +225,7 @@ export async function commitPostState(options: CommitPostStateOptions): Promise<
         },
         entry => entry.id,
         async (entry, storedTagIds) => [
-            postRevisions(database).prepareAppend(entry.id, revisionSnapshot(entry, storedTagIds)).statement
+            postRevisions(database).prepareAppend(entry.id, entryRevisionSnapshot(post, entry, storedTagIds)).statement
         ]
     );
 }
@@ -271,9 +262,7 @@ export async function restorePostRevision(options: RestorePostRevisionOptions): 
         mayPublish: options.mayPublish,
         desired: {
             id: options.entryId,
-            title: source.snapshot.fields.title,
-            excerpt: source.snapshot.fields.excerpt,
-            body: source.snapshot.fields.body,
+            ...source.snapshot.fields,
             status: source.snapshot.status,
             slug: source.snapshot.slug,
             categoryId: source.snapshot.categoryId,

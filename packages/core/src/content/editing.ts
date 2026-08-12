@@ -1,4 +1,5 @@
 import type { Collection, FieldMap } from "./collection";
+import { canonicalFieldValue } from "./field-values";
 import type { Field, FieldValue } from "./fields";
 import { isRichTextEmpty } from "./rich-text";
 
@@ -138,12 +139,10 @@ export function parseCollectionSubmission<TCollection extends Collection>(
 
         try {
             const represented = valueFor(field, raw);
-            const parsed = field.parse?.(represented);
+            const parsed = canonicalFieldValue(field, represented);
 
-            if (parsed === undefined || (field.required && isRequiredValueMissing(field, parsed))) {
-                const code = parsed === undefined ? "invalid" : "required";
-
-                issues.push({ field: fieldName as keyof TCollection["fields"] & string, code });
+            if (field.required && isRequiredValueMissing(field, parsed)) {
+                issues.push({ field: fieldName as keyof TCollection["fields"] & string, code: "required" });
             } else {
                 values[fieldName] = parsed;
             }

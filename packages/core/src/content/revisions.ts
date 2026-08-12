@@ -10,6 +10,10 @@ import {
     type SQLiteTable
 } from "drizzle-orm/sqlite-core";
 import type { Database } from "../db/client";
+import type { Collection, EntryOf } from "./collection";
+import { declaredValues, type DeclaredValuesOf } from "./entries";
+import { fieldSnapshotValue, fieldValueFromSnapshot } from "./field-values";
+import type { EntryStatus } from "./system-fields";
 
 export function buildRevisionTable(collectionName: string, entryTable: SQLiteTable) {
     const entryId = getTableColumns(entryTable).id;
@@ -57,9 +61,39 @@ export interface RevisionStore<TSnapshot> {
     byId(entryId: string, revisionId: string): Promise<Revision<TSnapshot> | undefined>;
 }
 
+interface RevisionCodec<TSnapshot> {
+    encode(snapshot: TSnapshot): unknown;
+    decode(snapshot: unknown): TSnapshot;
+}
+
+export interface EntryRevisionSnapshot<TCollection extends Collection> {
+    slug: string;
+    status: EntryStatus;
+    publishedAt: number | null;
+    categoryId: string;
+    fields: DeclaredValuesOf<TCollection>;
+    tagIds: string[];
+}
+
+export function entryRevisionSnapshot<TCollection extends Collection>(
+    collection: TCollection,
+    entry: EntryOf<TCollection>,
+    tagIds: readonly string[]
+): EntryRevisionSnapshot<TCollection> {
+    return {
+        slug: entry.slug,
+        status: entry.status,
+        publishedAt: entry.publishedAt?.getTime() ?? null,
+        categoryId: entry.categoryId,
+        fields: declaredValues(collection, entry),
+        tagIds: [...new Set(tagIds)].sort()
+    };
+}
+
 export function revisionStore<TSnapshot>(
     database: Database,
-    table: ReturnType<typeof buildRevisionTable>
+    table: ReturnType<typeof buildRevisionTable>,
+    codec: RevisionCodec<TSnapshot> = { encode: snapshot => snapshot, decode: snapshot => snapshot as TSnapshot }
 ): RevisionStore<TSnapshot> {
     const tableName = `"${getTableName(table).replaceAll('"', '""')}"`;
 
@@ -68,7 +102,7 @@ export function revisionStore<TSnapshot>(
             id: row.id,
             entryId: row.entryId,
             formatVersion: row.formatVersion,
-            snapshot: JSON.parse(row.snapshot) as TSnapshot,
+            snapshot: codec.decode(JSON.parse(row.snapshot) as unknown),
             createdAt: row.createdAt
         };
     }
@@ -92,7 +126,7 @@ export function revisionStore<TSnapshot>(
                 `INSERT INTO ${tableName} `
                     + "(id, entry_id, format_version, snapshot, created_at) VALUES (?, ?, ?, ?, ?)"
             )
-            .bind(id, entryId, revision.formatVersion, JSON.stringify(snapshot), createdAt.getTime());
+            .bind(id, entryId, revision.formatVersion, JSON.stringify(codec.encode(snapshot)), createdAt.getTime());
 
         return { revision, statement };
     }
@@ -119,4 +153,56 @@ export function revisionStore<TSnapshot>(
 
         byId
     };
+}
+
+export function entryRevisionStore<TCollection extends Collection>(options: {
+    database: Database;
+    table: ReturnType<typeof buildRevisionTable>;
+    collection: TCollection;
+}): RevisionStore<EntryRevisionSnapshot<TCollection>> {
+    const { collection, database, table } = options;
+
+    return revisionStore(database, table, {
+        encode(snapshot) {
+            const fields: Record<string, unknown> = {};
+
+            for (const [fieldName, field] of Object.entries(collection.fields)) {
+                fields[fieldName] = fieldSnapshotValue(field, snapshot.fields[fieldName]);
+            }
+
+            return { ...snapshot, fields };
+        },
+        decode(value) {
+            if (typeof value !== "object" || value === null) {
+                throw new Error("The Revision snapshot is not an object.");
+            }
+
+            const snapshot = value as Record<string, unknown>;
+            const encodedFields = snapshot.fields;
+
+            if (typeof encodedFields !== "object" || encodedFields === null) {
+                throw new Error("The Revision snapshot has no declared Fields.");
+            }
+
+            const fields: Record<string, unknown> = {};
+
+            for (const [fieldName, field] of Object.entries(collection.fields)) {
+                if (!(fieldName in encodedFields)) {
+                    if (field.required) {
+                        throw new Error(`The Revision snapshot is missing the required Field "${fieldName}".`);
+                    }
+
+                    fields[fieldName] = null;
+                    continue;
+                }
+
+                fields[fieldName] = fieldValueFromSnapshot(
+                    field,
+                    (encodedFields as Record<string, unknown>)[fieldName]
+                );
+            }
+
+            return { ...snapshot, fields } as unknown as EntryRevisionSnapshot<TCollection>;
+        }
+    });
 }
