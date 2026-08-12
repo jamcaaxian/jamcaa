@@ -69,8 +69,12 @@ An authenticated reader-facing rendering of an Entry's latest successfully saved
 _Avoid_: Draft link, preview token, staging page
 
 **Revision**:
-A snapshot of an entry's content at a point in time, used for tracing and rollback.
+A saved, immutable snapshot of an Entry's restorable editing state and Tag membership. Each successful create, update, or Restore appends one Revision; Revisions are removed only with their Entry.
 _Avoid_: version, history
+
+**Restore**:
+Submitting a historical Revision as the desired state of its current Entry. Current capabilities, Taxonomy, publication, and address rules still apply, and success appends a new Revision rather than changing the source Revision.
+_Avoid_: rollback, revert
 
 ### Media and storage
 

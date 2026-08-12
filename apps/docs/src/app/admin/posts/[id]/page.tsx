@@ -48,6 +48,13 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
                     <Button
                         variant="outline"
                         nativeButton={false}
+                        render={<Link href={`/admin/posts/${encodeURIComponent(entry.id)}/revisions`} />}
+                    >
+                        Revisions
+                    </Button>
+                    <Button
+                        variant="outline"
+                        nativeButton={false}
                         render={
                             <Link
                                 href={`/preview/posts/${encodeURIComponent(entry.id)}`}

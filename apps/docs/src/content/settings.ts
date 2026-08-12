@@ -11,7 +11,11 @@ import {
     type SettingValues
 } from "@jamcaa/core/settings";
 import { post } from "./collections";
-import { compareAndIncrementPublicAddressRevision, publicAddressRevision } from "./public-address-revision";
+import {
+    compareAndIncrementPublicAddressRevision,
+    publicAddressRevision,
+    publicAddressState
+} from "./public-address-revision";
 import { publicPostAddresses } from "./public-addresses";
 import { checkPublicPermalink } from "./public-paths";
 import { contentModel } from "./schema";
@@ -22,6 +26,23 @@ const postPermalink = permalinks[`permalink.${post.name}`]!;
 const sitePermalinks = { ...permalinks, [`permalink.${post.name}`]: { ...postPermalink, check: checkPublicPermalink } };
 
 export const siteSettings = mergeSettings(coreSettings, sitePermalinks);
+
+export async function postAddressState(database: Database): Promise<{ pattern: string; revision: number }> {
+    const state = await publicAddressState(database, "permalink.post");
+    let raw: unknown;
+
+    if (state.settingValue !== undefined) {
+        try {
+            raw = JSON.parse(state.settingValue);
+        } catch {
+            raw = undefined;
+        }
+    }
+
+    const held = readSettingValue(postPermalink, raw);
+
+    return { pattern: typeof held === "string" ? held : postPermalink.default, revision: state.revision };
+}
 
 export async function writeSiteSettings(
     database: Database,
@@ -63,11 +84,12 @@ export async function writeSiteSettings(
     }
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
-        const before = await loadSettings(database, siteSettings);
-        const beforePermalink = before.get("permalink.post");
         const touchesAddress = typeof nextPermalink === "string";
+        const addressState = touchesAddress ? await postAddressState(database) : undefined;
+        const beforePermalink =
+            addressState?.pattern ?? (await loadSettings(database, siteSettings)).get("permalink.post");
         const changesAddress = touchesAddress && nextPermalink !== beforePermalink;
-        const revision = touchesAddress ? await publicAddressRevision(database) : undefined;
+        const revision = addressState?.revision;
         const addressStatements =
             changesAddress ?
                 await publicPostAddresses(database).permalinkChangeStatements(beforePermalink, nextPermalink)

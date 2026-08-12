@@ -62,22 +62,30 @@ export function tagMembershipStore(database: Database, relationTable: SQLiteTabl
         },
 
         async replaceForEntry(entryId: string, tagIds: readonly string[]): Promise<void> {
-            const unique = [...new Set(tagIds)];
-            const statements = [database.$client.prepare(`DELETE FROM ${tableName} WHERE entry_id = ?`).bind(entryId)];
-
-            if (unique.length > 0) {
-                const values = unique.map(() => "(?, ?)").join(", ");
-                const bindings = unique.flatMap(tagId => [entryId, tagId]);
-                statements.push(
-                    database.$client
-                        .prepare(`INSERT INTO ${tableName} (entry_id, tag_id) VALUES ${values}`)
-                        .bind(...bindings)
-                );
-            }
-
-            await database.$client.batch(statements);
+            await database.$client.batch(tagMembershipStatements(database, relationTable, entryId, tagIds));
         }
     };
+}
+
+export function tagMembershipStatements(
+    database: Database,
+    relationTable: SQLiteTable,
+    entryId: string,
+    tagIds: readonly string[]
+): D1PreparedStatement[] {
+    const tableName = quoteIdentifier(getTableName(relationTable));
+    const unique = [...new Set(tagIds)];
+    const statements = [database.$client.prepare(`DELETE FROM ${tableName} WHERE entry_id = ?`).bind(entryId)];
+
+    if (unique.length > 0) {
+        const values = unique.map(() => "(?, ?)").join(", ");
+        const bindings = unique.flatMap(tagId => [entryId, tagId]);
+        statements.push(
+            database.$client.prepare(`INSERT INTO ${tableName} (entry_id, tag_id) VALUES ${values}`).bind(...bindings)
+        );
+    }
+
+    return statements;
 }
 
 function termSlug(name: string, slug: string | undefined): string {
@@ -257,22 +265,19 @@ export async function writeEntryWithTags<T>(options: {
     database: Database;
     relationTable: SQLiteTable;
     tagIds: readonly string[];
-    writeEntry: () => Promise<T>;
+    prepareEntry: () => Promise<{ entry: T; statements: readonly D1PreparedStatement[] }>;
     entryId: (entry: T) => string;
+    afterStored?: (entry: T, tagIds: readonly string[]) => Promise<readonly D1PreparedStatement[]>;
 }): Promise<T> {
-    await options.database.$client.exec("BEGIN IMMEDIATE");
+    const prepared = await options.prepareEntry();
+    const entryId = options.entryId(prepared.entry);
+    const afterStored = (await options.afterStored?.(prepared.entry, options.tagIds)) ?? [];
 
-    try {
-        const entry = await options.writeEntry();
-        await tagMembershipStore(options.database, options.relationTable).replaceForEntry(
-            options.entryId(entry),
-            options.tagIds
-        );
-        await options.database.$client.exec("COMMIT");
+    await options.database.$client.batch([
+        ...prepared.statements,
+        ...tagMembershipStatements(options.database, options.relationTable, entryId, options.tagIds),
+        ...afterStored
+    ]);
 
-        return entry;
-    } catch (error) {
-        await options.database.$client.exec("ROLLBACK");
-        throw error;
-    }
+    return prepared.entry;
 }

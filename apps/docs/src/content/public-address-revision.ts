@@ -14,6 +14,22 @@ function revisionValue(value: string | undefined): number {
     return Number(value);
 }
 
+export async function publicAddressState(
+    database: Database,
+    settingKey: string
+): Promise<{ revision: number; settingValue: string | undefined }> {
+    const row = await database.$client
+        .prepare(
+            "SELECT "
+                + "(SELECT value FROM setting WHERE key = ?) AS settingValue, "
+                + "(SELECT value FROM setting WHERE key = ?) AS revisionValue"
+        )
+        .bind(settingKey, REVISION_KEY)
+        .first<{ settingValue: string | null; revisionValue: string | null }>();
+
+    return { revision: revisionValue(row?.revisionValue ?? undefined), settingValue: row?.settingValue ?? undefined };
+}
+
 export async function publicAddressRevision(database: Database): Promise<number> {
     const row = await database.$client
         .prepare("SELECT value FROM setting WHERE key = ?")
@@ -35,6 +51,19 @@ export function compareAndIncrementPublicAddressRevision(database: Database, exp
                 "UPDATE setting SET value = CASE WHEN value = ? THEN CAST(CAST(value AS INTEGER) + 1 AS TEXT) ELSE NULL END, updated_at = ? WHERE key = ?"
             )
             .bind(String(expected), now, REVISION_KEY)
+    ];
+}
+
+export function comparePublicAddressRevision(database: Database, expected: number): D1PreparedStatement[] {
+    const now = Date.now();
+
+    return [
+        database.$client
+            .prepare("INSERT INTO setting (key, value, updated_at) VALUES (?, '0', ?) ON CONFLICT(key) DO NOTHING")
+            .bind(REVISION_KEY, now),
+        database.$client
+            .prepare("UPDATE setting SET value = CASE WHEN value = ? THEN value ELSE NULL END WHERE key = ?")
+            .bind(String(expected), REVISION_KEY)
     ];
 }
 

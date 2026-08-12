@@ -4,13 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
-import { toSlug } from "@jamcaa/core/content";
-import { loadSettings } from "@jamcaa/core/settings";
-import { incrementPublicAddressRevision } from "@/content/public-address-revision";
-import { publicPostAddresses } from "@/content/public-addresses";
-import { freePublicPostSlug, postAddress } from "@/content/public-paths";
-import { siteSettings } from "@/content/settings";
-import { formerPostAddresses, posts, writePostWithTags } from "@/content/store";
+import { compareAndIncrementPublicAddressRevision, publicAddressRevision } from "@/content/public-address-revision";
+import { commitPostState } from "@/content/post-writes";
+import { posts, writePostWithTags } from "@/content/store";
 import { taxonomy } from "@/content/taxonomy";
 import { may, mayTouch, type Actor } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
@@ -68,121 +64,20 @@ export async function savePost(_previous: PostFormState, formData: FormData): Pr
     }
 
     const mayPublish = await mayTouch(actor, "post", "publish", owner);
+    const requestsPublished = status === "published";
+    const takesPublishedOffline = existing?.status === "published" && status !== "published";
 
     // Checked on the server because the form only hides what it must not offer.
-    if (status === "published" && !mayPublish) {
-        return { error: "You may write this post, but not publish it." };
+    if (!mayPublish && (requestsPublished || takesPublishedOffline)) {
+        return { error: "You may write this post, but not change whether it is published." };
     }
 
-    const addresses = publicPostAddresses(database);
-
-    if (existing) {
-        await writePostWithTags(
-            database,
-            tagIds,
-            async () => {
-                const current = await store.byId(existing.id);
-
-                if (current === undefined) {
-                    throw new Error("That post no longer exists.");
-                }
-
-                const pattern = (await loadSettings(database, siteSettings)).get("permalink.post");
-                const publishedAt =
-                    status === "published" ? (current.publishedAt ?? new Date())
-                    : status === "draft" ? null
-                    : (current.publishedAt ?? null);
-                const wantedSlug = toSlug(mayPublish ? submission.slug || title : current.slug || title);
-
-                if (!wantedSlug) {
-                    throw new Error("That title produces no address. Give the post a slug of its own.");
-                }
-
-                const slug = await freePublicPostSlug({
-                    wanted: wantedSlug,
-                    pattern,
-                    publishedAt,
-                    createdAt: current.createdAt,
-                    isTaken: async candidate => {
-                        const taken = await store.bySlug(candidate);
-                        const formerOwner = await formerPostAddresses(database).entryAt(
-                            postAddress(pattern, { slug: candidate, publishedAt, createdAt: current.createdAt })
-                        );
-
-                        return (
-                            (taken !== undefined && taken.id !== current.id)
-                            || (formerOwner !== undefined && formerOwner !== current.id)
-                        );
-                    }
-                });
-                const changes = { title, excerpt, body, status, slug, publishedAt, categoryId };
-
-                await addresses.recordEntryChange(current, { ...current, ...changes }, pattern);
-                await store.update(current.id, changes);
-
-                if (
-                    current.slug !== slug
-                    || current.status !== status
-                    || current.publishedAt?.getTime() !== publishedAt?.getTime()
-                ) {
-                    await incrementPublicAddressRevision(database);
-                }
-
-                return current.id;
-            },
-            postId => postId
-        );
-    } else {
-        await writePostWithTags(
-            database,
-            tagIds,
-            async () => {
-                const pattern = (await loadSettings(database, siteSettings)).get("permalink.post");
-                const publishedAt = status === "published" ? new Date() : null;
-                const createdAt = new Date();
-                const wantedSlug = toSlug(submission.slug || title);
-
-                if (!wantedSlug) {
-                    throw new Error("That title produces no address. Give the post a slug of its own.");
-                }
-
-                const slug = await freePublicPostSlug({
-                    wanted: wantedSlug,
-                    pattern,
-                    publishedAt,
-                    createdAt,
-                    isTaken: async candidate => {
-                        const taken = await store.bySlug(candidate);
-                        const formerOwner = await formerPostAddresses(database).entryAt(
-                            postAddress(pattern, { slug: candidate, publishedAt, createdAt })
-                        );
-
-                        return taken !== undefined || formerOwner !== undefined;
-                    }
-                });
-
-                await addresses.assertCurrentAvailable(
-                    undefined,
-                    postAddress(pattern, { slug, publishedAt, createdAt })
-                );
-
-                const created = await store.create({
-                    title,
-                    excerpt,
-                    body,
-                    status,
-                    slug,
-                    publishedAt,
-                    authorId: actor.id,
-                    categoryId
-                });
-
-                await incrementPublicAddressRevision(database);
-                return created;
-            },
-            created => created.id
-        );
-    }
+    await commitPostState({
+        database,
+        actorId: actor.id,
+        mayPublish,
+        desired: { id: existing?.id, title, excerpt, body, status, slug: submission.slug, categoryId, tagIds }
+    });
 
     revalidatePath("/", "layout");
     redirect("/admin/posts");
@@ -201,18 +96,31 @@ export async function deletePost(formData: FormData): Promise<void> {
         throw new Error("You do not have permission to delete this post.");
     }
 
+    const expectedAddressRevision = await publicAddressRevision(database);
+
     await writePostWithTags(
         database,
         [],
         async () => {
             const current = await store.byId(id);
 
-            if (current !== undefined) {
-                await store.remove(id);
-                await incrementPublicAddressRevision(database);
+            if (current === undefined) {
+                return { entry: id, statements: [] };
             }
 
-            return id;
+            return {
+                entry: id,
+                statements: [
+                    database.$client
+                        .prepare(
+                            "UPDATE post SET category_id = CASE WHEN updated_at = ? THEN category_id ELSE NULL END "
+                                + "WHERE id = ?"
+                        )
+                        .bind(current.updatedAt.getTime(), id),
+                    database.$client.prepare("DELETE FROM post WHERE id = ?").bind(id),
+                    ...compareAndIncrementPublicAddressRevision(database, expectedAddressRevision)
+                ]
+            };
         },
         postId => postId
     );

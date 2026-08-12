@@ -5,8 +5,10 @@ import { richTextFromPlainText } from "@jamcaa/core/content";
 import { loadSettings } from "@jamcaa/core/settings";
 import {
     compareAndIncrementPublicAddressRevision,
+    comparePublicAddressRevision,
     incrementPublicAddressRevision,
-    publicAddressRevision
+    publicAddressRevision,
+    publicAddressState
 } from "@/content/public-address-revision";
 import { publicPostAddresses } from "@/content/public-addresses";
 import { siteSettings, writeSiteSettings } from "@/content/settings";
@@ -154,6 +156,22 @@ describe("public Post address lifecycle", () => {
         });
     });
 
+    it("reads the permalink and public address revision from one database snapshot", async () => {
+        await database.$client.batch([
+            database.$client
+                .prepare("INSERT INTO setting (key, value, updated_at) VALUES (?, ?, ?)")
+                .bind("permalink.post", JSON.stringify("/journal/{slug}"), 1),
+            database.$client
+                .prepare("INSERT INTO setting (key, value, updated_at) VALUES (?, ?, ?)")
+                .bind("platform.publicAddressRevision", "7", 1)
+        ]);
+
+        await expect(publicAddressState(database, "permalink.post")).resolves.toEqual({
+            settingValue: JSON.stringify("/journal/{slug}"),
+            revision: 7
+        });
+    });
+
     it("retains the intermediate canonical address when permalink changes race", async () => {
         const entry = await published("first");
 
@@ -228,5 +246,23 @@ describe("public Post address lifecycle", () => {
         await expect(
             database.$client.prepare("SELECT value FROM setting WHERE key = 'site.title'").first()
         ).resolves.toBeNull();
+    });
+
+    it("rolls back content-only address cleanup when its permalink snapshot is stale", async () => {
+        const entry = await published("first");
+        await formerPostAddresses(database).retain(entry.id, "/former");
+        await incrementPublicAddressRevision(database);
+
+        await expect(
+            database.$client.batch([
+                database.$client
+                    .prepare("DELETE FROM _jamcaa_post_former_address WHERE entry_id = ? AND path = ?")
+                    .bind(entry.id, "/former"),
+                ...comparePublicAddressRevision(database, 0)
+            ])
+        ).rejects.toThrow();
+
+        await expect(formerPostAddresses(database).pathsFor(entry.id)).resolves.toEqual(["/former"]);
+        await expect(publicAddressRevision(database)).resolves.toBe(1);
     });
 });

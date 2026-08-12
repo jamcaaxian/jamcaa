@@ -84,9 +84,10 @@ export function publicPostAddresses(database: Database) {
         assertCurrentAvailable,
         retain,
 
-        async recordEntryChange(before: Post, after: Post, pattern: string): Promise<void> {
+        async entryChangeStatements(before: Post, after: Post, pattern: string): Promise<D1PreparedStatement[]> {
             const beforeAddress = postAddress(pattern, before);
             const afterAddress = postAddress(pattern, after);
+            const statements: D1PreparedStatement[] = [];
 
             await assertCurrentAvailable(before.id, afterAddress);
 
@@ -95,11 +96,40 @@ export function publicPostAddresses(database: Database) {
                 && (beforeAddress !== afterAddress || after.status !== "published")
                 && !isReservedPublicAddress(beforeAddress)
             ) {
-                await retain(before.id, beforeAddress, pattern);
+                const currentOwner = (await currentOwners(pattern)).get(beforeAddress);
+
+                if (currentOwner !== undefined && currentOwner !== before.id) {
+                    throw new Error(`The Former Address ${beforeAddress} is another Entry's canonical address.`);
+                }
+
+                statements.push(
+                    database.$client
+                        .prepare(
+                            "INSERT INTO _jamcaa_post_former_address (path, entry_id) VALUES (?, ?) "
+                                + "ON CONFLICT(path) DO UPDATE SET entry_id = CASE "
+                                + "WHEN _jamcaa_post_former_address.entry_id = excluded.entry_id "
+                                + "THEN excluded.entry_id ELSE NULL END"
+                        )
+                        .bind(beforeAddress, before.id)
+                );
             }
 
             if (after.status === "published") {
-                await former.forget(before.id, afterAddress);
+                statements.push(
+                    database.$client
+                        .prepare("DELETE FROM _jamcaa_post_former_address WHERE entry_id = ? AND path = ?")
+                        .bind(before.id, afterAddress)
+                );
+            }
+
+            return statements;
+        },
+
+        async recordEntryChange(before: Post, after: Post, pattern: string): Promise<void> {
+            const statements = await this.entryChangeStatements(before, after, pattern);
+
+            if (statements.length > 0) {
+                await database.$client.batch(statements);
             }
         },
 

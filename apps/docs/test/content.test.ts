@@ -475,8 +475,14 @@ describe("reading and writing entries", () => {
                 database(),
                 ["missing-tag"],
                 async () => {
-                    await store.update(created.id, { title: "After" });
-                    return created.id;
+                    return {
+                        entry: created.id,
+                        statements: [
+                            database()
+                                .$client.prepare("UPDATE post SET title = ?, updated_at = ? WHERE id = ?")
+                                .bind("After", Date.now(), created.id)
+                        ]
+                    };
                 },
                 postId => postId
             )

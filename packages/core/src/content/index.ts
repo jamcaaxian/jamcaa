@@ -4,6 +4,7 @@ export * from "./fields";
 export * from "./former-addresses";
 export * from "./model";
 export * from "./permalink";
+export * from "./revisions";
 export * from "./rich-text";
 export * from "./slug";
 export * from "./summaries";
