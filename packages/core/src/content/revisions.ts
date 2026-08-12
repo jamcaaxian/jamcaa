@@ -12,8 +12,12 @@ import {
 import type { Database } from "../db/client";
 import type { Collection, EntryOf } from "./collection";
 import { declaredValues, type DeclaredValuesOf } from "./entries";
-import { fieldSnapshotValue, fieldValueFromSnapshot } from "./field-values";
+import { capsuleOf } from "./field-capsule";
+import { canonicalFieldValue, fieldValueFromSnapshot } from "./field-values";
 import type { EntryStatus } from "./system-fields";
+
+/** Revisions written from now on carry per-Field codec envelopes. */
+const REVISION_FORMAT_VERSION = 2;
 
 export function buildRevisionTable(collectionName: string, entryTable: SQLiteTable) {
     const entryId = getTableColumns(entryTable).id;
@@ -63,7 +67,7 @@ export interface RevisionStore<TSnapshot> {
 
 interface RevisionCodec<TSnapshot> {
     encode(snapshot: TSnapshot): unknown;
-    decode(snapshot: unknown): TSnapshot;
+    decode(snapshot: unknown, formatVersion: number): TSnapshot;
 }
 
 export interface EntryRevisionSnapshot<TCollection extends Collection> {
@@ -102,7 +106,7 @@ export function revisionStore<TSnapshot>(
             id: row.id,
             entryId: row.entryId,
             formatVersion: row.formatVersion,
-            snapshot: codec.decode(JSON.parse(row.snapshot) as unknown),
+            snapshot: codec.decode(JSON.parse(row.snapshot) as unknown, row.formatVersion),
             createdAt: row.createdAt
         };
     }
@@ -120,7 +124,7 @@ export function revisionStore<TSnapshot>(
     function prepareAppend(entryId: string, snapshot: TSnapshot) {
         const id = crypto.randomUUID();
         const createdAt = new Date();
-        const revision = { id, entryId, formatVersion: 1, snapshot, createdAt };
+        const revision = { id, entryId, formatVersion: REVISION_FORMAT_VERSION, snapshot, createdAt };
         const statement = database.$client
             .prepare(
                 `INSERT INTO ${tableName} `
@@ -167,12 +171,23 @@ export function entryRevisionStore<TCollection extends Collection>(options: {
             const fields: Record<string, unknown> = {};
 
             for (const [fieldName, field] of Object.entries(collection.fields)) {
-                fields[fieldName] = fieldSnapshotValue(field, snapshot.fields[fieldName]);
+                const canonical = canonicalFieldValue(field, snapshot.fields[fieldName]);
+
+                fields[fieldName] =
+                    canonical === null ? null : (
+                        {
+                            $field: {
+                                kind: field.kind,
+                                codec: capsuleOf(field).revisionVersion(),
+                                value: capsuleOf(field).revisionEncode(canonical as never)
+                            }
+                        }
+                    );
             }
 
             return { ...snapshot, fields };
         },
-        decode(value) {
+        decode(value, formatVersion) {
             if (typeof value !== "object" || value === null) {
                 throw new Error("The Revision snapshot is not an object.");
             }
@@ -182,6 +197,10 @@ export function entryRevisionStore<TCollection extends Collection>(options: {
 
             if (typeof encodedFields !== "object" || encodedFields === null) {
                 throw new Error("The Revision snapshot has no declared Fields.");
+            }
+
+            if (formatVersion !== 1 && formatVersion !== 2) {
+                throw new Error(`The Revision snapshot format version ${formatVersion} is not known.`);
             }
 
             const fields: Record<string, unknown> = {};
@@ -196,9 +215,40 @@ export function entryRevisionStore<TCollection extends Collection>(options: {
                     continue;
                 }
 
-                fields[fieldName] = fieldValueFromSnapshot(
+                const raw = (encodedFields as Record<string, unknown>)[fieldName];
+
+                if (formatVersion === 1) {
+                    fields[fieldName] = fieldValueFromSnapshot(field, raw);
+                    continue;
+                }
+
+                if (raw === null) {
+                    fields[fieldName] = canonicalFieldValue(field, null);
+                    continue;
+                }
+
+                const coded =
+                    typeof raw === "object" && raw !== null ?
+                        ((raw as Record<string, unknown>).$field as Record<string, unknown> | null | undefined)
+                    :   undefined;
+
+                if (typeof coded !== "object" || coded === null) {
+                    throw new Error(`The Revision snapshot Field "${fieldName}" has no codec envelope.`);
+                }
+
+                if (coded.kind !== field.kind) {
+                    throw new Error(
+                        `The Revision snapshot Field "${fieldName}" belongs to ${String(coded.kind)} rather than ${field.kind}.`
+                    );
+                }
+
+                if (typeof coded.codec !== "number") {
+                    throw new Error(`The Revision snapshot Field "${fieldName}" has no codec version.`);
+                }
+
+                fields[fieldName] = canonicalFieldValue(
                     field,
-                    (encodedFields as Record<string, unknown>)[fieldName]
+                    capsuleOf(field).revisionDecode(coded.codec, coded.value)
                 );
             }
 

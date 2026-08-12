@@ -4,11 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDatabase } from "../db/client";
 import { defineCollection } from "./collection";
 import { declaredFieldStorage, entryStore } from "./entries";
-import { compileField, slot } from "./field-capsule";
+import { compileField, revisionCodecV1, slot } from "./field-capsule";
 import { canonicalFieldValue } from "./field-values";
 import { decodePhysicalCells, physicalLayout } from "./field-layout";
 import { text, type Field } from "./fields";
 import { defineContentModel } from "./model";
+import { buildRevisionTable, entryRevisionSnapshot, entryRevisionStore } from "./revisions";
 import { entrySummaryReader } from "./summaries";
 import { buildTable } from "./table";
 
@@ -57,6 +58,10 @@ function geoPoint(options: { required?: boolean } = {}): Field<GeoPoint | null, 
             decode: cells => ({ latitude: cells.latitude, longitude: cells.longitude }),
             snapshotValue: (value: GeoPoint) => ({ latitude: value.latitude, longitude: value.longitude }),
             valueFromSnapshot: value => value,
+            ...revisionCodecV1(
+                (value: GeoPoint) => ({ latitude: value.latitude, longitude: value.longitude }),
+                value => value
+            ),
             submissionValue: raw => JSON.parse(raw) as unknown,
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,
@@ -80,6 +85,8 @@ const place = defineCollection({
 const model = defineContentModel([place]);
 const table = model.table("place")!;
 
+const revisionTable = buildRevisionTable(place.name, table);
+
 const createPlaceTable = `CREATE TABLE place (
     id TEXT PRIMARY KEY NOT NULL,
     slug TEXT NOT NULL,
@@ -96,15 +103,27 @@ const createPlaceTable = `CREATE TABLE place (
     home__longitude REAL NOT NULL
 )`;
 
+const createRevisionTable = `CREATE TABLE _jamcaa_place_revision (
+    ordinal INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL UNIQUE,
+    entry_id TEXT NOT NULL,
+    format_version INTEGER NOT NULL,
+    snapshot TEXT NOT NULL CHECK (json_valid(snapshot)),
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (entry_id) REFERENCES place(id) ON DELETE CASCADE
+)`;
+
 function database() {
     return createDatabase(env.DB);
 }
 
 beforeAll(async () => {
     await env.DB.prepare(createPlaceTable).run();
+    await env.DB.prepare(createRevisionTable).run();
 });
 
 afterAll(async () => {
+    await env.DB.prepare("DROP TABLE IF EXISTS _jamcaa_place_revision").run();
     await env.DB.prepare("DROP TABLE IF EXISTS place").run();
 });
 
@@ -253,6 +272,181 @@ describe("multi-column Field layouts", () => {
                 '"title" = ?, "location__latitude" = ?, "location__longitude" = ?, "home__latitude" = ?, "home__longitude" = ?',
             bindings: ["Shanghai", 31.23, 121.47, 1, 2]
         });
+    });
+
+    it("round-trips a compound Field through Revision format v2 envelopes", async () => {
+        const store = entryStore({ database: database(), collection: place, table });
+        const stored = await store.create({
+            slug: "revisioned",
+            authorId: "author-1",
+            categoryId: "category-1",
+            title: "Revisioned",
+            location: { latitude: 31.23, longitude: 121.47 },
+            home: { latitude: 30.7, longitude: 121.5 }
+        });
+        const revisions = entryRevisionStore({ database: database(), collection: place, table: revisionTable });
+        const appended = await revisions.append(
+            stored.id,
+            entryRevisionSnapshot(place, stored, ["tag-2", "tag-1", "tag-2"])
+        );
+        const raw = await env.DB.prepare("SELECT format_version, snapshot FROM _jamcaa_place_revision WHERE id = ?")
+            .bind(appended.id)
+            .first<{ format_version: number; snapshot: string }>();
+
+        expect(raw?.format_version).toBe(2);
+        const encoded = JSON.parse(raw!.snapshot) as { fields: Record<string, unknown> };
+
+        expect(encoded.fields.location).toEqual({
+            $field: { kind: "@test/geo-point", codec: 1, value: { latitude: 31.23, longitude: 121.47 } }
+        });
+        await expect(revisions.byId(stored.id, appended.id)).resolves.toMatchObject({
+            snapshot: { fields: { location: { latitude: 31.23, longitude: 121.47 } } }
+        });
+    });
+
+    it("keeps Revision format v1 rows readable through the legacy path", async () => {
+        const store = entryStore({ database: database(), collection: place, table });
+        const stored = await store.create({
+            slug: "legacy",
+            authorId: "author-1",
+            categoryId: "category-1",
+            title: "Legacy",
+            location: { latitude: 31.23, longitude: 121.47 },
+            home: { latitude: 30.7, longitude: 121.5 }
+        });
+        const revisions = entryRevisionStore({ database: database(), collection: place, table: revisionTable });
+
+        await env.DB.prepare(
+            "INSERT INTO _jamcaa_place_revision (id, entry_id, format_version, snapshot, created_at) VALUES (?, ?, ?, ?, ?)"
+        )
+            .bind(
+                "legacy-revision",
+                stored.id,
+                1,
+                JSON.stringify({
+                    slug: "shanghai",
+                    status: "draft",
+                    publishedAt: null,
+                    categoryId: "category-1",
+                    fields: {
+                        title: "Shanghai",
+                        location: { latitude: 31.23, longitude: 121.47 },
+                        home: { latitude: 30.7, longitude: 121.5 }
+                    },
+                    tagIds: []
+                }),
+                Date.now()
+            )
+            .run();
+
+        await expect(revisions.byId(stored.id, "legacy-revision")).resolves.toMatchObject({
+            snapshot: { fields: { location: { latitude: 31.23, longitude: 121.47 } } }
+        });
+    });
+
+    it("refuses kind mismatches and unknown codecs in Revision v2 rows", async () => {
+        const store = entryStore({ database: database(), collection: place, table });
+        const stored = await store.create({
+            slug: "guarded",
+            authorId: "author-1",
+            categoryId: "category-1",
+            title: "Guarded",
+            location: null,
+            home: { latitude: 1, longitude: 2 }
+        });
+        const revisions = entryRevisionStore({ database: database(), collection: place, table: revisionTable });
+
+        await env.DB.prepare(
+            "INSERT INTO _jamcaa_place_revision (id, entry_id, format_version, snapshot, created_at) VALUES (?, ?, ?, ?, ?)"
+        )
+            .bind(
+                "wrong-kind",
+                stored.id,
+                2,
+                JSON.stringify({
+                    slug: "shanghai",
+                    status: "draft",
+                    publishedAt: null,
+                    categoryId: "category-1",
+                    fields: { title: { $field: { kind: "moment", codec: 1, value: 1 } }, location: null, home: null },
+                    tagIds: []
+                }),
+                Date.now()
+            )
+            .run();
+
+        await expect(revisions.byId(stored.id, "wrong-kind")).rejects.toThrow(/belongs to moment rather than text/i);
+
+        await env.DB.prepare(
+            "INSERT INTO _jamcaa_place_revision (id, entry_id, format_version, snapshot, created_at) VALUES (?, ?, ?, ?, ?)"
+        )
+            .bind(
+                "unknown-codec",
+                stored.id,
+                2,
+                JSON.stringify({
+                    slug: "shanghai",
+                    status: "draft",
+                    publishedAt: null,
+                    categoryId: "category-1",
+                    fields: {
+                        title: { $field: { kind: "text", codec: 7, value: "Shanghai" } },
+                        location: null,
+                        home: null
+                    },
+                    tagIds: []
+                }),
+                Date.now()
+            )
+            .run();
+
+        await expect(revisions.byId(stored.id, "unknown-codec")).rejects.toThrow(/codec 7 is not known/i);
+
+        await env.DB.prepare(
+            "INSERT INTO _jamcaa_place_revision (id, entry_id, format_version, snapshot, created_at) VALUES (?, ?, ?, ?, ?)"
+        )
+            .bind(
+                "no-envelope",
+                stored.id,
+                2,
+                JSON.stringify({
+                    slug: "guarded",
+                    status: "draft",
+                    publishedAt: null,
+                    categoryId: "category-1",
+                    fields: { title: "bare value", location: null, home: null },
+                    tagIds: []
+                }),
+                Date.now()
+            )
+            .run();
+
+        await expect(revisions.byId(stored.id, "no-envelope")).rejects.toThrow(/has no codec envelope/i);
+
+        await env.DB.prepare(
+            "INSERT INTO _jamcaa_place_revision (id, entry_id, format_version, snapshot, created_at) VALUES (?, ?, ?, ?, ?)"
+        )
+            .bind(
+                "future-format",
+                stored.id,
+                3,
+                JSON.stringify({
+                    slug: "guarded",
+                    status: "draft",
+                    publishedAt: null,
+                    categoryId: "category-1",
+                    fields: {
+                        title: { $field: { kind: "text", codec: 1, value: "Guarded" } },
+                        location: null,
+                        home: null
+                    },
+                    tagIds: []
+                }),
+                Date.now()
+            )
+            .run();
+
+        await expect(revisions.byId(stored.id, "future-format")).rejects.toThrow(/format version 3 is not known/i);
     });
 
     it("rebuilds one logical value in an Entry Summary from every slot", async () => {

@@ -1,6 +1,6 @@
 import { integer as sqliteInteger, real as sqliteReal, text as sqliteText } from "drizzle-orm/sqlite-core";
 import { parseRichText, isRichTextEmpty, type RichTextDocument } from "./rich-text";
-import { compileField, slot } from "./field-capsule";
+import { compileField, revisionCodecV1, slot } from "./field-capsule";
 
 export type FieldKind = "text" | "markdown" | "richText" | "number" | "toggle" | "moment" | "choice" | "reference";
 
@@ -65,6 +65,10 @@ export function text<const TOptions extends FieldOptions = FieldOptions>(
             decode: cells => cells.value,
             snapshotValue: (value: string) => value,
             valueFromSnapshot: value => value,
+            ...revisionCodecV1(
+                (value: string) => value,
+                value => value
+            ),
             submissionValue: raw => raw.trim(),
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: value => value === "",
@@ -96,6 +100,10 @@ export function markdown<const TOptions extends FieldOptions = FieldOptions>(
             decode: cells => cells.value,
             snapshotValue: (value: string) => value,
             valueFromSnapshot: value => value,
+            ...revisionCodecV1(
+                (value: string) => value,
+                value => value
+            ),
             submissionValue: raw => raw,
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: value => value === "",
@@ -123,6 +131,10 @@ export function richText<const TOptions extends FieldOptions = FieldOptions>(
             decode: cells => cells.value,
             snapshotValue: (value: RichTextDocument) => value,
             valueFromSnapshot: value => value,
+            ...revisionCodecV1(
+                (value: RichTextDocument) => value,
+                value => value
+            ),
             submissionValue: raw => JSON.parse(raw) as unknown,
             isBlankSubmission: raw => raw.length === 0,
             isRequiredValueMissing: value => isRichTextEmpty(value as RichTextDocument),
@@ -169,6 +181,10 @@ export function number<const TOptions extends NumberOptions = NumberOptions>(
             decode: cells => cells.value,
             snapshotValue: (value: number) => value,
             valueFromSnapshot: value => value,
+            ...revisionCodecV1(
+                (value: number) => value,
+                value => value
+            ),
             submissionValue: raw => Number(raw),
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,
@@ -202,6 +218,10 @@ export function toggle<const TOptions extends FieldOptions = FieldOptions>(
             decode: cells => cells.value,
             snapshotValue: (value: boolean) => value,
             valueFromSnapshot: value => value,
+            ...revisionCodecV1(
+                (value: boolean) => value,
+                value => value
+            ),
             submissionValue: raw =>
                 raw === "true" ? true
                 : raw === "false" ? false
@@ -238,6 +258,10 @@ export function moment<const TOptions extends FieldOptions = FieldOptions>(
             decode: cells => cells.value,
             snapshotValue: (value: Date) => value.getTime(),
             valueFromSnapshot: value => (typeof value === "number" ? new Date(value) : value),
+            ...revisionCodecV1(
+                (value: Date) => value.getTime(),
+                value => (typeof value === "number" ? new Date(value) : value)
+            ),
             submissionValue: raw => new Date(raw),
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,
@@ -281,6 +305,10 @@ export function choice<
             decode: cells => cells.value,
             snapshotValue: (value: string) => value,
             valueFromSnapshot: value => value,
+            ...revisionCodecV1(
+                (value: string) => value,
+                value => value
+            ),
             submissionValue: raw => raw,
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,
@@ -318,6 +346,10 @@ export function reference<const TOptions extends ReferenceOptions = ReferenceOpt
             decode: cells => cells.value,
             snapshotValue: (value: string) => value,
             valueFromSnapshot: value => value,
+            ...revisionCodecV1(
+                (value: string) => value,
+                value => value
+            ),
             submissionValue: raw => raw.trim(),
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,

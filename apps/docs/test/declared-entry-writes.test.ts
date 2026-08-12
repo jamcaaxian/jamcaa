@@ -251,28 +251,25 @@ describe("declared Entry writes", () => {
             tagIds: string[];
         };
 
-        expect(raw?.format_version).toBe(1);
+        expect(raw?.format_version).toBe(2);
         expect(encoded).toEqual({
             slug: stored.slug,
             status: stored.status,
             publishedAt: stored.publishedAt?.getTime() ?? null,
             categoryId: stored.categoryId,
             fields: {
-                title: stored.title,
-                longNote: stored.longNote,
-                body: stored.body,
-                score: stored.score,
-                count: stored.count,
-                featured: stored.featured,
-                happenedAt: stored.happenedAt?.getTime() ?? null,
-                state: stored.state,
-                parent: stored.parent
+                title: { $field: { kind: "text", codec: 1, value: stored.title } },
+                longNote: { $field: { kind: "markdown", codec: 1, value: stored.longNote } },
+                body: { $field: { kind: "richText", codec: 1, value: stored.body } },
+                score: { $field: { kind: "number", codec: 1, value: stored.score } },
+                count: { $field: { kind: "number", codec: 1, value: stored.count } },
+                featured: { $field: { kind: "toggle", codec: 1, value: stored.featured } },
+                happenedAt: { $field: { kind: "moment", codec: 1, value: stored.happenedAt?.getTime() ?? null } },
+                state: { $field: { kind: "choice", codec: 1, value: stored.state } },
+                parent: null
             },
             tagIds: ["tag-1", "tag-2"]
         });
-        expect(encoded.fields.happenedAt).toBe(stored.happenedAt?.getTime());
-        expect(encoded.fields.featured).toBe(true);
-        expect(encoded.fields.body).toEqual(stored.body);
         await expect(revisions.byId(stored.id, appended.id)).resolves.toEqual(appended);
         expect(appended.snapshot.fields.happenedAt).toEqual(stored.happenedAt);
         expect(appended.snapshot.tagIds).toEqual(["tag-1", "tag-2"]);

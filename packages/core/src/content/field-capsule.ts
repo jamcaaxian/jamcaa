@@ -20,6 +20,28 @@ export function slot(definition: StorageSlot): StorageSlot {
 }
 
 /**
+ * The Revision codec every built-in Field writes today: one stable version
+ * whose payload matches the Revision v1 representation. Future Field kinds
+ * ship their own versioned codecs.
+ */
+export function revisionCodecV1<TValue>(
+    encode: (value: TValue) => unknown,
+    decode: (payload: unknown) => unknown
+): Pick<FieldCapsule<TValue>, "revisionVersion" | "revisionEncode" | "revisionDecode"> {
+    return {
+        revisionVersion: () => 1,
+        revisionEncode: encode,
+        revisionDecode: (version, payload) => {
+            if (version !== 1) {
+                throw new Error(`Revision codec ${version} is not known.`);
+            }
+
+            return decode(payload);
+        }
+    };
+}
+
+/**
  * Hidden, Worker-safe behavior compiled for one Field kind. Core owns the
  * dispatch sites; implementation details such as Drizzle stay out of the public
  * Field interface.
@@ -35,6 +57,12 @@ export interface FieldCapsule<TValue = unknown> {
     snapshotValue(value: TValue): unknown;
     /** Revision v1 payload -> represented value, before Field.parse. */
     valueFromSnapshot(value: unknown): unknown;
+    /** Current Revision codec version written into new snapshots. */
+    revisionVersion(): number;
+    /** Non-null canonical value -> Revision payload for the current codec. */
+    revisionEncode(value: TValue): unknown;
+    /** Revision payload of one codec version -> represented value, before Field.parse. */
+    revisionDecode(version: number, payload: unknown): unknown;
     /** One submitted string -> represented value. */
     submissionValue(raw: string): unknown;
     isBlankSubmission(raw: string): boolean;
