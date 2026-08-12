@@ -4,19 +4,23 @@ import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { Collection } from "@jamcaa/core/content";
-import { searchMigrationSql } from "@jamcaa/core/search";
+import { searchArtifactDescriptor, searchMigrationSql, type SearchArtifactDescriptor } from "@jamcaa/core/search";
 import { contentModel } from "../src/content/schema";
 
 export interface SearchMigrationRecord {
     collection: string;
     migration: string;
+    /** SHA-256 of the generated SQL (v1 semantics, kept in v2). */
     artifactSha256: string;
+    /** SHA-256 of the semantic descriptor; present from manifest v2 on. */
+    descriptorSha256?: string;
+    artifact?: SearchArtifactDescriptor;
     migrationSha256: string;
     status: "active" | "removed";
 }
 
 export interface SearchMigrationManifest {
-    version: 1;
+    version: 1 | 2;
     records: SearchMigrationRecord[];
 }
 
@@ -36,8 +40,28 @@ const migrationFilePattern = /^\d+_[^/\\]+\.sql$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 const sqlOperators = ["->>", "||", "<<", ">>", "<=", ">=", "==", "!=", "<>", "->"];
 
-function sha256(value: string | Uint8Array): string {
+export function sha256(value: string | Uint8Array): string {
     return createHash("sha256").update(value).digest("hex");
+}
+
+function canonicalJson(value: unknown): string {
+    if (Array.isArray(value)) {
+        return `[${value.map(canonicalJson).join(",")}]`;
+    }
+
+    if (typeof value === "object" && value !== null) {
+        const entries = Object.entries(value as Record<string, unknown>)
+            .sort(([left], [right]) => (left < right ? -1 : 1))
+            .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`);
+
+        return `{${entries.join(",")}}`;
+    }
+
+    return JSON.stringify(value);
+}
+
+export function descriptorSha256Of(descriptor: SearchArtifactDescriptor): string {
+    return sha256(canonicalJson(descriptor));
 }
 
 function searchRemovalMigrationSql(collection: string): string {
@@ -58,10 +82,11 @@ function parseSearchMigrationManifest(value: unknown, source: string): SearchMig
 
     const manifest = value as { version: unknown; records: unknown };
 
-    if (manifest.version !== 1 || !Array.isArray(manifest.records)) {
-        throw new Error(`${source} must use version 1 and contain a records array.`);
+    if ((manifest.version !== 1 && manifest.version !== 2) || !Array.isArray(manifest.records)) {
+        throw new Error(`${source} must use version 1 or 2 and contain a records array.`);
     }
 
+    const version = manifest.version;
     const records = manifest.records.map((value, index): SearchMigrationRecord => {
         if (typeof value !== "object" || value === null) {
             throw new Error(`${source} record ${index + 1} must be an object.`);
@@ -87,16 +112,36 @@ function parseSearchMigrationManifest(value: unknown, source: string): SearchMig
             throw new Error(`${source} record ${index + 1} has an invalid status.`);
         }
 
-        return {
+        const parsed: SearchMigrationRecord = {
             collection: record.collection,
             migration: record.migration,
             artifactSha256: record.artifactSha256,
             migrationSha256: record.migrationSha256,
             status: record.status
         };
+
+        if (record.descriptorSha256 !== undefined) {
+            if (typeof record.descriptorSha256 !== "string" || !sha256Pattern.test(record.descriptorSha256)) {
+                throw new Error(`${source} record ${index + 1} has an invalid descriptor SHA-256.`);
+            }
+
+            parsed.descriptorSha256 = record.descriptorSha256;
+        }
+
+        if (record.artifact !== undefined) {
+            parsed.artifact = record.artifact as SearchArtifactDescriptor;
+        }
+
+        if (version === 2 && record.status === "active" && parsed.descriptorSha256 === undefined) {
+            throw new Error(
+                `${source} record ${index + 1} is active and must carry a descriptor SHA-256 and artifact.`
+            );
+        }
+
+        return parsed;
     });
 
-    return { version: 1, records };
+    return { version, records };
 }
 
 export function canonicalSqlTokens(sql: string): string[] {
@@ -219,11 +264,24 @@ export function verifyUniqueMigrationNumbers(migrationFiles: readonly string[]):
 
 function verifyManifestPrefix(manifest: SearchMigrationManifest, baseline: SearchMigrationManifest): void {
     for (const [index, record] of baseline.records.entries()) {
-        if (JSON.stringify(manifest.records[index]) !== JSON.stringify(record)) {
+        const current = manifest.records[index];
+
+        if (current === undefined) {
             throw new Error(
                 `Search migration record ${index + 1} changed after registration. `
                     + "The manifest is append-only; add a record instead."
             );
+        }
+
+        // Every field the baseline recorded must still hold the same value; a
+        // manifest version upgrade may only add fields, never rewrite them.
+        for (const [key, value] of Object.entries(record)) {
+            if (canonicalJson((current as unknown as Record<string, unknown>)[key]) !== canonicalJson(value)) {
+                throw new Error(
+                    `Search migration record ${index + 1} changed after registration. `
+                        + "The manifest is append-only; add a record instead."
+                );
+            }
         }
     }
 }
@@ -245,6 +303,69 @@ export function verifyAppendOnlyManifest(manifest: SearchMigrationManifest, base
 
         additionsByCollection.set(record.collection, additions);
     }
+}
+
+function assertVersionsBumpedForChange(
+    before: SearchArtifactDescriptor["fields"][number],
+    after: SearchArtifactDescriptor["fields"][number]
+): void {
+    if (before.storageVersion !== after.storageVersion || before.searchVersion !== after.searchVersion) {
+        return;
+    }
+
+    if (
+        before.kind !== after.kind
+        || canonicalJson(before.columns) !== canonicalJson(after.columns)
+        || canonicalJson(before.expression) !== canonicalJson(after.expression)
+    ) {
+        throw new Error(
+            `Field "${after.name}" changed its Search artifact without bumping its storage or Search `
+                + `contract version (storage ${after.storageVersion}, Search ${after.searchVersion}). `
+                + "Bump the version and append a new migration record."
+        );
+    }
+}
+
+function descriptorDriftError(
+    collection: string,
+    current: SearchArtifactDescriptor,
+    recorded: SearchArtifactDescriptor | undefined
+): Error {
+    const details: string[] = [];
+    const recordedFields = new Map((recorded?.fields ?? []).map(field => [field.name, field]));
+    const currentNames = new Set(current.fields.map(field => field.name));
+
+    for (const field of current.fields) {
+        const before = recordedFields.get(field.name);
+
+        if (before === undefined) {
+            details.push(`Field "${field.name}": newly searchable.`);
+            continue;
+        }
+
+        if (before.storageVersion !== field.storageVersion || before.searchVersion !== field.searchVersion) {
+            details.push(
+                `Field "${field.name}": storage ${before.storageVersion}->${field.storageVersion}, `
+                    + `Search ${before.searchVersion}->${field.searchVersion}.`
+            );
+            continue;
+        }
+
+        assertVersionsBumpedForChange(before, field);
+    }
+
+    for (const before of recorded?.fields ?? []) {
+        if (!currentNames.has(before.name)) {
+            details.push(`Field "${before.name}": no longer searchable.`);
+        }
+    }
+
+    return new Error(
+        `Search declaration for Collection "${collection}" needs a new migration handoff. `
+            + `Current descriptor SHA-256: ${descriptorSha256Of(current)}.\n`
+            + details.map(detail => `- ${detail}`).join("\n")
+            + `\n\nRecord this descriptor:\n${JSON.stringify(current, null, 2)}\n`
+    );
 }
 
 export async function verifySearchMigrations(options: {
@@ -311,13 +432,67 @@ export async function verifySearchMigrations(options: {
         }
     }
 
+    const recordsByCollection = new Map<string, SearchMigrationRecord[]>();
+
+    for (const record of records) {
+        const list = recordsByCollection.get(record.collection) ?? [];
+
+        list.push(record);
+        recordsByCollection.set(record.collection, list);
+    }
+
+    // A regular handoff appends one record; any artifact change in the new
+    // record must have bumped its contract versions relative to the previous
+    // record for the same Collection.
+    for (const list of recordsByCollection.values()) {
+        for (let index = 1; index < list.length; index += 1) {
+            const before = list[index - 1]!;
+            const after = list[index]!;
+
+            if (before.artifact === undefined || after.artifact === undefined) {
+                continue;
+            }
+
+            if (descriptorSha256Of(before.artifact) === descriptorSha256Of(after.artifact)) {
+                continue;
+            }
+
+            const afterFields = new Map(after.artifact.fields.map(field => [field.name, field]));
+
+            for (const beforeField of before.artifact.fields) {
+                const afterField = afterFields.get(beforeField.name);
+
+                if (afterField !== undefined) {
+                    assertVersionsBumpedForChange(beforeField, afterField);
+                }
+            }
+        }
+    }
+
+    const collectionsByName = new Map(collections.map(collection => [collection.name, collection]));
+
     for (const artifact of artifacts) {
         const record = latest.get(artifact.collection);
+        const collection = collectionsByName.get(artifact.collection)!;
+        const descriptor = searchArtifactDescriptor(collection);
+        const descriptorHash = descriptorSha256Of(descriptor);
 
-        if (record === undefined || record.status !== "active" || record.artifactSha256 !== artifact.sha256) {
+        if (record === undefined || record.status !== "active") {
             throw new Error(
                 `Search declaration for Collection "${artifact.collection}" needs a new migration handoff. `
-                    + `Current artifact SHA-256: ${artifact.sha256}. Do not edit a registered migration.\n\n`
+                    + `Descriptor SHA-256: ${descriptorHash}. Do not edit a registered migration.\n\n`
+                    + `${artifact.sql}\n`
+            );
+        }
+
+        if (record.descriptorSha256 !== undefined && record.descriptorSha256 !== descriptorHash) {
+            throw descriptorDriftError(artifact.collection, descriptor, record.artifact);
+        }
+
+        if (record.artifactSha256 !== artifact.sha256) {
+            throw new Error(
+                `Search declaration for Collection "${artifact.collection}" needs a new migration handoff. `
+                    + `Current SQL SHA-256: ${artifact.sha256}. Do not edit a registered migration.\n\n`
                     + `${artifact.sql}\n`
             );
         }

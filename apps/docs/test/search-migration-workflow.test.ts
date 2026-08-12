@@ -1,12 +1,15 @@
 import { defineCollection, richText, text } from "@jamcaa/core/content";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { searchArtifactDescriptor } from "@jamcaa/core/search";
 import {
+    descriptorSha256Of,
     migrationCarriesArtifact,
     searchMigrationArtifacts,
+    sha256,
     verifyAppendOnlyManifest,
     verifyCurrentSearchMigrations,
     verifySearchMigrations,
@@ -126,6 +129,107 @@ describe("search migration workflow", () => {
             })
         ).resolves.toBeDefined();
         expect(record.collection).toBe("post");
+    });
+
+    it("refuses an expression change whose contract versions did not move", async () => {
+        const current = await verifyCurrentSearchMigrations();
+        const base = current.records[0]!;
+        const descriptor = searchArtifactDescriptor(post);
+        const tampered = {
+            ...descriptor,
+            fields: descriptor.fields.map(field =>
+                field.name === "title" ? { ...field, expression: { type: "rich-text", slot: "value" } } : field
+            )
+        };
+        const manifest: SearchMigrationManifest = {
+            version: 2,
+            records: [{ ...base, descriptorSha256: sha256(JSON.stringify(tampered)), artifact: tampered }]
+        };
+
+        await expect(
+            verifySearchMigrations({
+                collections: [post],
+                manifest,
+                migrationsDirectory: new URL("../migrations/", import.meta.url)
+            })
+        ).rejects.toThrow(/changed its Search artifact without bumping/i);
+    });
+
+    it("reports per-Field version drift when the recorded contract differs", async () => {
+        const current = await verifyCurrentSearchMigrations();
+        const base = current.records[0]!;
+        const descriptor = searchArtifactDescriptor(post);
+        const bumped = {
+            ...descriptor,
+            fields: descriptor.fields.map(field => (field.name === "title" ? { ...field, searchVersion: 2 } : field))
+        };
+        const manifest: SearchMigrationManifest = {
+            version: 2,
+            records: [{ ...base, descriptorSha256: sha256(JSON.stringify(bumped)), artifact: bumped }]
+        };
+
+        await expect(
+            verifySearchMigrations({
+                collections: [post],
+                manifest,
+                migrationsDirectory: new URL("../migrations/", import.meta.url)
+            })
+        ).rejects.toThrow(/Field "title": storage 1->1, Search 2->1/i);
+    });
+
+    it("requires active v2 records to carry a descriptor", async () => {
+        const current = await verifyCurrentSearchMigrations();
+        const record = current.records[0]!;
+        const legacy = { ...record, artifact: undefined, descriptorSha256: undefined };
+
+        await expect(
+            verifySearchMigrations({
+                collections: [post],
+                manifest: { version: 2, records: [legacy] },
+                migrationsDirectory: new URL("../migrations/", import.meta.url)
+            })
+        ).rejects.toThrow(/must carry a descriptor/i);
+    });
+
+    it("rejects a regular handoff whose changed Field versions did not move", async () => {
+        const current = await verifyCurrentSearchMigrations();
+        const base = current.records[0]!;
+        const directory = await mkdtemp(path.join(tmpdir(), "jamcaa-search-bump-"));
+        const original = await readFile(new URL("../migrations/0009_search.sql", import.meta.url));
+        const descriptor = searchArtifactDescriptor(post);
+        const tampered = {
+            ...descriptor,
+            fields: descriptor.fields.map(field =>
+                field.name === "title" ? { ...field, expression: { type: "rich-text", slot: "value" } } : field
+            )
+        };
+        const manifest: SearchMigrationManifest = {
+            version: 2,
+            records: [
+                base,
+                {
+                    ...base,
+                    migration: "0012_search.sql",
+                    descriptorSha256: descriptorSha256Of(tampered),
+                    artifact: tampered,
+                    migrationSha256: sha256(original)
+                }
+            ]
+        };
+
+        try {
+            await writeFile(path.join(directory, "0009_search.sql"), original);
+            await writeFile(path.join(directory, "0012_search.sql"), original);
+            await expect(
+                verifySearchMigrations({
+                    collections: [post],
+                    manifest,
+                    migrationsDirectory: pathToFileURL(`${directory}${path.sep}`)
+                })
+            ).rejects.toThrow(/changed its Search artifact without bumping/i);
+        } finally {
+            await rm(directory, { recursive: true, force: true });
+        }
     });
 
     it("rejects a registered migration that does not carry its generated artifact", async () => {

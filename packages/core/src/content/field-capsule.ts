@@ -44,6 +44,11 @@ export function revisionCodecV1<TValue>(
     };
 }
 
+/** Every built-in Field is on storage and Search contract version 1. */
+export function builtinContractVersions(): Pick<FieldCapsule, "storageVersion" | "searchVersion"> {
+    return { storageVersion: () => 1, searchVersion: () => 1 };
+}
+
 /**
  * Hidden, Worker-safe behavior compiled for one Field kind. Core owns the
  * dispatch sites; implementation details such as Drizzle stay out of the public
@@ -52,6 +57,10 @@ export function revisionCodecV1<TValue>(
 export interface FieldCapsule<TValue = unknown> {
     /** Physical slots in canonical order. Single-slot Fields use the name "value". */
     slots(): StorageSlots;
+    /** Bumped whenever physical columns, affinity, null semantics, or encoding change. */
+    storageVersion(): number;
+    /** Bumped whenever the Search text expression or its semantics change. */
+    searchVersion(): number;
     /** Non-null canonical value -> one cell per slot, no extra keys. */
     encode(value: TValue): Record<string, SQLiteCell>;
     /** Slot cells of a non-null logical value -> represented value, before Field.parse. */

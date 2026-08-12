@@ -62,6 +62,8 @@ function geoPoint(options: { required?: boolean } = {}): Field<GeoPoint | null, 
                 (value: GeoPoint) => ({ latitude: value.latitude, longitude: value.longitude }),
                 value => value
             ),
+            storageVersion: () => 1,
+            searchVersion: () => 1,
             submissionValue: raw => JSON.parse(raw) as unknown,
             isBlankSubmission: raw => raw.trim().length === 0,
             isRequiredValueMissing: () => false,

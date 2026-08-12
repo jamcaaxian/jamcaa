@@ -1,10 +1,41 @@
 {
-    "version": 1,
+    "version": 2,
     "records": [
         {
             "collection": "post",
             "migration": "0009_search.sql",
             "artifactSha256": "45af5c407574b20866100f2a2ffa3593dfefef6f4164f042521f15e321b96c9a",
+            "descriptorSha256": "dc68baad64dcba9021bc1e1ea232623bfa946ee9c5ee271b3f5c6a1b4130f2f5",
+            "artifact": {
+                "formatVersion": 1,
+                "collection": "post",
+                "fields": [
+                    {
+                        "name": "title",
+                        "kind": "text",
+                        "storageVersion": 1,
+                        "searchVersion": 1,
+                        "columns": ["title"],
+                        "expression": { "type": "column-text", "slot": "value" }
+                    },
+                    {
+                        "name": "excerpt",
+                        "kind": "text",
+                        "storageVersion": 1,
+                        "searchVersion": 1,
+                        "columns": ["excerpt"],
+                        "expression": { "type": "column-text", "slot": "value" }
+                    },
+                    {
+                        "name": "body",
+                        "kind": "richText",
+                        "storageVersion": 1,
+                        "searchVersion": 1,
+                        "columns": ["body"],
+                        "expression": { "type": "rich-text", "slot": "value" }
+                    }
+                ]
+            },
             "migrationSha256": "d002840524ce90e0aac6f7c51666649cdaf86fedf235cb48e9fa0096325f7aa9",
             "status": "active"
         }

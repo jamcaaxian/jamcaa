@@ -49,3 +49,47 @@ export function searchProjectionSql(collection: Collection, tableAlias: "entry" 
         });
     });
 }
+
+export interface SearchFieldArtifact {
+    name: string;
+    kind: string;
+    storageVersion: number;
+    searchVersion: number;
+    columns: readonly string[];
+    expression: { type: string; slot: string };
+}
+
+export interface SearchArtifactDescriptor {
+    formatVersion: 1;
+    collection: string;
+    fields: SearchFieldArtifact[];
+}
+
+/**
+ * The semantic half of the Search migration handoff: what each searchable
+ * Field contributes, in a deterministic JSON-stable shape. The Site hashes
+ * this descriptor separately from the generated SQL.
+ */
+export function searchArtifactDescriptor(collection: Collection): SearchArtifactDescriptor {
+    const layout = physicalLayout(collection.name, collection.fields);
+
+    return {
+        formatVersion: 1,
+        collection: collection.name,
+        fields: searchFields(collection).map(fieldName => {
+            const field = collection.fields[fieldName]!;
+            const capsule = capsuleOf(field);
+            const expression = capsule.searchText()!;
+            const item = layout.byField[fieldName]!;
+
+            return {
+                name: fieldName,
+                kind: field.kind,
+                storageVersion: capsule.storageVersion(),
+                searchVersion: capsule.searchVersion(),
+                columns: item.columns,
+                expression
+            };
+        })
+    };
+}
