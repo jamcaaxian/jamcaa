@@ -1,5 +1,6 @@
 import { sqliteTable, uniqueIndex, type SQLiteColumnBuilderBase } from "drizzle-orm/sqlite-core";
 import type { Collection } from "./collection";
+import { capsuleOf } from "./field-capsule";
 import { systemColumns } from "./system-fields";
 
 /** Declarations are camel case; SQL columns are snake case. */
@@ -16,7 +17,7 @@ export function buildTable(collection: Collection) {
     const declared: Record<string, SQLiteColumnBuilderBase> = {};
 
     for (const [fieldName, field] of Object.entries(collection.fields)) {
-        declared[fieldName] = field.buildColumn(toColumnName(fieldName));
+        declared[fieldName] = capsuleOf(field).buildColumn(toColumnName(fieldName));
     }
 
     const columns = { ...systemColumns(), ...declared };

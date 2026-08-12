@@ -1,7 +1,7 @@
 import type { Collection, FieldMap } from "./collection";
 import { canonicalFieldValue } from "./field-values";
-import type { Field, FieldValue } from "./fields";
-import { isRichTextEmpty } from "./rich-text";
+import { capsuleOf } from "./field-capsule";
+import type { FieldValue } from "./fields";
 
 interface EditingFieldBase {
     name: string;
@@ -49,55 +49,13 @@ export function editingFields<TFields extends FieldMap>(collection: Collection<T
             required: field.required
         };
 
-        switch (field.kind) {
-            case "number":
-                return { ...common, kind: field.kind, whole: field.whole ?? false };
-            case "choice":
-                return { ...common, kind: field.kind, choices: field.choices ?? [] };
-            case "reference":
-                return { ...common, kind: field.kind, collection: field.references ?? "" };
-            default:
-                return { ...common, kind: field.kind };
-        }
+        const extras = capsuleOf(field).editingExtras();
+
+        return (
+            extras === undefined ?
+                { ...common, kind: field.kind }
+            :   { ...common, kind: field.kind, ...extras }) as EditingField;
     });
-}
-
-function valueFor(field: Field, raw: string): unknown {
-    switch (field.kind) {
-        case "text":
-            return raw.trim();
-        case "markdown":
-            return raw;
-        case "richText":
-            return JSON.parse(raw) as unknown;
-        case "number":
-            return Number(raw);
-        case "toggle":
-            return (
-                raw === "true" ? true
-                : raw === "false" ? false
-                : undefined
-            );
-        case "moment": {
-            return new Date(raw);
-        }
-        case "choice":
-            return raw;
-        case "reference":
-            return raw.trim();
-    }
-}
-
-function isBlankSubmission(field: Field, raw: string): boolean {
-    return field.kind === "richText" ? raw.length === 0 : raw.trim().length === 0;
-}
-
-function isRequiredValueMissing(field: Field, value: unknown): boolean {
-    if (field.kind === "richText") {
-        return isRichTextEmpty(value as never);
-    }
-
-    return (field.kind === "text" || field.kind === "markdown") && value === "";
 }
 
 export function parseCollectionSubmission<TCollection extends Collection>(
@@ -127,7 +85,7 @@ export function parseCollectionSubmission<TCollection extends Collection>(
 
         const raw = submitted[0];
 
-        if (isBlankSubmission(field, raw)) {
+        if (capsuleOf(field).isBlankSubmission(raw)) {
             if (field.required) {
                 issues.push({ field: fieldName as keyof TCollection["fields"] & string, code: "required" });
             } else {
@@ -138,10 +96,10 @@ export function parseCollectionSubmission<TCollection extends Collection>(
         }
 
         try {
-            const represented = valueFor(field, raw);
+            const represented = capsuleOf(field).submissionValue(raw);
             const parsed = canonicalFieldValue(field, represented);
 
-            if (field.required && isRequiredValueMissing(field, parsed)) {
+            if (field.required && capsuleOf(field).isRequiredValueMissing(parsed)) {
                 issues.push({ field: fieldName as keyof TCollection["fields"] & string, code: "required" });
             } else {
                 values[fieldName] = parsed;

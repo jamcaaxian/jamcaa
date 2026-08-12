@@ -1,3 +1,4 @@
+import { capsuleOf } from "./field-capsule";
 import type { Field } from "./fields";
 
 export function canonicalFieldValue(field: Field, value: unknown): unknown {
@@ -23,27 +24,17 @@ export function fieldDatabaseValue(field: Field, value: unknown): string | numbe
         return null;
     }
 
-    switch (field.kind) {
-        case "richText":
-            return JSON.stringify(canonical);
-        case "toggle":
-            return canonical ? 1 : 0;
-        case "moment":
-            return (canonical as Date).getTime();
-        case "number":
-            return canonical as number;
-        case "text":
-        case "markdown":
-        case "choice":
-        case "reference":
-            return canonical as string;
-    }
+    return capsuleOf(field).databaseValue(canonical);
 }
 
 export function fieldSnapshotValue(field: Field, value: unknown): unknown {
     const canonical = canonicalFieldValue(field, value);
 
-    return field.kind === "moment" && canonical !== null ? (canonical as Date).getTime() : canonical;
+    if (canonical === null) {
+        return null;
+    }
+
+    return capsuleOf(field).snapshotValue(canonical);
 }
 
 export function fieldValueFromSnapshot(field: Field, value: unknown): unknown {
@@ -51,5 +42,5 @@ export function fieldValueFromSnapshot(field: Field, value: unknown): unknown {
         return canonicalFieldValue(field, value);
     }
 
-    return canonicalFieldValue(field, field.kind === "moment" && typeof value === "number" ? new Date(value) : value);
+    return canonicalFieldValue(field, capsuleOf(field).valueFromSnapshot(value));
 }
