@@ -237,11 +237,39 @@ describe("declared Entry writes", () => {
         const revisions = entryRevisionStore({ database: database(), collection: probe, table: revisionTable });
         const snapshot = entryRevisionSnapshot(probe, stored, ["tag-2", "tag-1", "tag-2"]);
         const appended = await revisions.append(stored.id, snapshot);
-        const raw = await env.DB.prepare("SELECT snapshot FROM _jamcaa_write_probe_revision WHERE id = ?")
+        const raw = await env.DB.prepare(
+            "SELECT format_version, snapshot FROM _jamcaa_write_probe_revision WHERE id = ?"
+        )
             .bind(appended.id)
-            .first<{ snapshot: string }>();
-        const encoded = JSON.parse(raw!.snapshot) as { fields: Record<string, unknown> };
+            .first<{ format_version: number; snapshot: string }>();
+        const encoded = JSON.parse(raw!.snapshot) as {
+            slug: string;
+            status: string;
+            publishedAt: number | null;
+            categoryId: string;
+            fields: Record<string, unknown>;
+            tagIds: string[];
+        };
 
+        expect(raw?.format_version).toBe(1);
+        expect(encoded).toEqual({
+            slug: stored.slug,
+            status: stored.status,
+            publishedAt: stored.publishedAt?.getTime() ?? null,
+            categoryId: stored.categoryId,
+            fields: {
+                title: stored.title,
+                longNote: stored.longNote,
+                body: stored.body,
+                score: stored.score,
+                count: stored.count,
+                featured: stored.featured,
+                happenedAt: stored.happenedAt?.getTime() ?? null,
+                state: stored.state,
+                parent: stored.parent
+            },
+            tagIds: ["tag-1", "tag-2"]
+        });
         expect(encoded.fields.happenedAt).toBe(stored.happenedAt?.getTime());
         expect(encoded.fields.featured).toBe(true);
         expect(encoded.fields.body).toEqual(stored.body);
