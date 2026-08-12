@@ -1,11 +1,12 @@
-import { isRichTextEmpty, parseRichText, type EntryStatus, type RichTextDocument } from "@jamcaa/core/content";
+import { parseCollectionSubmission, type EntryStatus, type RichTextDocument } from "@jamcaa/core/content";
+import { post } from "@/content/collections";
 
 const statuses: EntryStatus[] = ["draft", "published", "archived"];
 
 export interface PostSubmission {
     id: string;
     title: string;
-    excerpt: string;
+    excerpt: string | null;
     body: RichTextDocument;
     status: EntryStatus;
     slug: string;
@@ -14,16 +15,28 @@ export interface PostSubmission {
 }
 
 export function readPostSubmission(formData: FormData): PostSubmission | { error: string } {
-    const title = String(formData.get("title") ?? "").trim();
-    let body: RichTextDocument;
+    const fields = parseCollectionSubmission(post, formData);
 
-    try {
-        body = parseRichText(String(formData.get("body") ?? ""));
-    } catch {
-        return { error: "The Post body is not valid rich text." };
+    if (!fields.success) {
+        const invalidRichText = fields.issues.some(
+            issue => issue.code === "invalid" && post.fields[issue.field]?.kind === "richText"
+        );
+
+        if (invalidRichText) {
+            return { error: "The Post body is not valid rich text." };
+        }
+
+        if (fields.issues.some(issue => issue.code === "required")) {
+            return { error: "A Post needs a title and a body." };
+        }
+
+        return { error: "One of the Post fields is not valid." };
     }
 
-    if (!title || isRichTextEmpty(body)) {
+    const { title, body } = fields.values;
+    const excerpt = fields.values.excerpt ?? "";
+
+    if (!title) {
         return { error: "A Post needs a title and a body." };
     }
 
@@ -37,7 +50,7 @@ export function readPostSubmission(formData: FormData): PostSubmission | { error
     return {
         id: String(formData.get("id") ?? ""),
         title,
-        excerpt: String(formData.get("excerpt") ?? "").trim(),
+        excerpt,
         body,
         status: statuses.includes(candidate) ? candidate : "draft",
         slug: String(formData.get("slug") ?? ""),

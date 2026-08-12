@@ -1,3 +1,52 @@
+.jamcaa-editing-field {
+    display: grid;
+    min-width: 0;
+    gap: 0.5rem;
+}
+
+.jamcaa-editing-field__label {
+    width: fit-content;
+    color: var(--jamcaa-editor-foreground, var(--foreground, light-dark(#18181b, #fafafa)));
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+}
+
+.jamcaa-editing-field__description {
+    margin: 0;
+    color: var(--jamcaa-editor-muted-foreground, var(--muted-foreground, light-dark(#71717a, #a1a1aa)));
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.jamcaa-editing-control {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.25rem;
+    border: 1px solid var(--jamcaa-editor-border, var(--border, light-dark(#d4d4d8, #3f3f46)));
+    border-radius: var(--jamcaa-editor-radius, var(--radius, 0.5rem));
+    padding: 0.5rem 0.75rem;
+    background: var(--jamcaa-editor-background, var(--background, light-dark(#fff, #18181b)));
+    color: var(--jamcaa-editor-foreground, var(--foreground, light-dark(#18181b, #fafafa)));
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    outline: none;
+    transition:
+        border-color 150ms ease,
+        box-shadow 150ms ease;
+}
+
+.jamcaa-editing-control--multiline {
+    min-height: 10rem;
+    resize: vertical;
+}
+
+.jamcaa-editing-control:focus-visible {
+    border-color: var(--jamcaa-editor-ring, var(--ring, #2563eb));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--jamcaa-editor-ring, var(--ring, #2563eb)) 20%, transparent);
+}
+
 .jamcaa-rich-text-editor {
     color-scheme: light dark;
     overflow: hidden;

@@ -2,8 +2,8 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import type { Category, RichTextDocument, Tag } from "@jamcaa/core/content";
-import { RichTextEditor } from "@jamcaa/editor";
+import type { Category, EditingField, Tag } from "@jamcaa/core/content";
+import { CollectionEditingControls, type EditingControlValue } from "@jamcaa/editor";
 import { createHttpMediaAdapter } from "@jamcaa/editor/media";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -14,12 +14,10 @@ import { savePost, type PostFormState } from "./actions";
 
 export interface PostDraft {
     id: string;
-    title: string;
     slug: string;
-    excerpt: string | null;
-    body: RichTextDocument;
     status: string;
     categoryId: string;
+    fields: Readonly<Record<string, EditingControlValue>>;
 }
 
 export interface PostAddressSettings {
@@ -37,6 +35,8 @@ const postMedia = createHttpMediaAdapter({ collection: "post" });
 
 export function PostForm({
     post,
+    fields,
+    titleFieldName,
     mayPublish,
     address,
     categories,
@@ -44,6 +44,8 @@ export function PostForm({
     selectedTagIds
 }: {
     post?: PostDraft;
+    fields: readonly EditingField[];
+    titleFieldName: string;
     mayPublish: boolean;
     address: PostAddressSettings;
     categories: Category[];
@@ -51,7 +53,11 @@ export function PostForm({
     selectedTagIds: string[];
 }) {
     const [state, action, pending] = useActionState<PostFormState, FormData>(savePost, {});
-    const [title, setTitle] = useState(post?.title ?? "");
+    const [title, setTitle] = useState(String(post?.fields[titleFieldName] ?? ""));
+    const titleField = fields.find(field => field.name === titleFieldName);
+    const scalarFields = fields.filter(field => field.name !== titleFieldName && field.kind !== "richText");
+    const richTextFields = fields.filter(field => field.kind === "richText");
+    const fieldValues = post?.fields ?? {};
     // Publishing is withheld from the form as well as the action, so it is not
     // offered as something to attempt and be refused.
     const statuses = allStatuses.filter(status => status.value !== "published" || mayPublish);
@@ -71,16 +77,15 @@ export function PostForm({
             :   null}
 
             <FieldGroup>
-                <Field>
-                    <FieldLabel htmlFor="title">Title</FieldLabel>
-                    <Input
-                        id="title"
-                        name="title"
-                        value={title}
-                        onChange={event => setTitle(event.target.value)}
-                        required
-                    />
-                </Field>
+                <CollectionEditingControls
+                    fields={titleField ? [titleField] : []}
+                    values={{ ...fieldValues, [titleFieldName]: title }}
+                    onTextChange={(name, value) => {
+                        if (name === titleFieldName) {
+                            setTitle(value);
+                        }
+                    }}
+                />
 
                 {address.mayChooseSlug ?
                     <Field>
@@ -96,10 +101,7 @@ export function PostForm({
                     </>
                 }
 
-                <Field>
-                    <FieldLabel htmlFor="excerpt">Excerpt</FieldLabel>
-                    <Input id="excerpt" name="excerpt" defaultValue={post?.excerpt ?? ""} />
-                </Field>
+                <CollectionEditingControls fields={scalarFields} values={fieldValues} />
 
                 <Field>
                     <FieldLabel htmlFor="categoryId">Category</FieldLabel>
@@ -146,20 +148,11 @@ export function PostForm({
                     }
                 </Field>
 
-                <Field>
-                    <FieldLabel id="body-label" htmlFor="body-editor">
-                        Body
-                    </FieldLabel>
-                    <RichTextEditor
-                        name="body"
-                        label="Post body"
-                        labelledBy="body-label"
-                        defaultValue={post?.body}
-                        media={postMedia}
-                        messages={{ placeholder: "Write the Post body…" }}
-                    />
-                    <FieldDescription>Rich text. Images remain managed as Media.</FieldDescription>
-                </Field>
+                <CollectionEditingControls
+                    fields={richTextFields}
+                    values={fieldValues}
+                    richText={{ media: postMedia, messages: { placeholder: "Write the Post body…" } }}
+                />
 
                 <Field>
                     <FieldLabel htmlFor="status">Status</FieldLabel>

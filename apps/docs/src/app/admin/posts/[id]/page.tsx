@@ -3,7 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
+import { editingFields } from "@jamcaa/core/content";
+import type { EditingControlValue } from "@jamcaa/editor";
 import { getSettings } from "@jamcaa/core/settings";
+import { post } from "@/content/collections";
 import { siteSettings } from "@/content/settings";
 import { posts, postTagIds } from "@/content/store";
 import { taxonomy } from "@/content/taxonomy";
@@ -39,6 +42,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
 
     const mayPublish = await mayTouch(actor, "post", "publish", entry.authorId);
     const selectedTagIds = await postTagIds(database, entry.id);
+    const fields = editingFields(post);
 
     return (
         <div className="space-y-6">
@@ -72,14 +76,19 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
             </div>
 
             <PostForm
+                fields={fields}
+                titleFieldName={post.titleField}
                 post={{
                     id: entry.id,
-                    title: entry.title,
                     slug: entry.slug,
-                    excerpt: entry.excerpt,
-                    body: entry.body,
                     status: entry.status,
-                    categoryId: entry.categoryId
+                    categoryId: entry.categoryId,
+                    fields: Object.fromEntries(
+                        fields.map(field => [
+                            field.name,
+                            entry[field.name as keyof typeof entry] as EditingControlValue
+                        ])
+                    )
                 }}
                 mayPublish={mayPublish}
                 address={{ pattern: settings.get("permalink.post"), mayChooseSlug: mayPublish }}

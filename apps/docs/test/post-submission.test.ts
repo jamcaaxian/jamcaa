@@ -43,4 +43,21 @@ describe("reading a Post submission", () => {
 
         expect(readPostSubmission(data)).toMatchObject({ categoryId: "category-one", tagIds: ["tag-one", "tag-two"] });
     });
+
+    it("normalises optional declared text Fields through the Collection declaration", () => {
+        const data = form(JSON.stringify(richTextFromPlainText("A body")));
+        data.set("excerpt", "  A short summary  ");
+
+        expect(readPostSubmission(data)).toMatchObject({ excerpt: "A short summary" });
+
+        data.set("excerpt", "");
+        expect(readPostSubmission(data)).toMatchObject({ excerpt: "" });
+    });
+
+    it("rejects repeated declared scalar Fields", () => {
+        const data = form(JSON.stringify(richTextFromPlainText("A body")));
+        data.append("title", "Another title");
+
+        expect(readPostSubmission(data)).toEqual({ error: "One of the Post fields is not valid." });
+    });
 });

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
+import { editingFields } from "@jamcaa/core/content";
 import { getSettings } from "@jamcaa/core/settings";
+import { post } from "@/content/collections";
 import { siteSettings } from "@/content/settings";
 import { taxonomy } from "@/content/taxonomy";
 import { may, mayTouch } from "@/lib/permissions";
@@ -32,6 +34,8 @@ export default async function NewPostPage() {
         <div className="space-y-6">
             <h1 className="text-lg font-semibold tracking-tight">New post</h1>
             <PostForm
+                fields={editingFields(post)}
+                titleFieldName={post.titleField}
                 mayPublish={mayPublish}
                 address={{ pattern: settings.get("permalink.post"), mayChooseSlug: mayPublish }}
                 categories={categories}

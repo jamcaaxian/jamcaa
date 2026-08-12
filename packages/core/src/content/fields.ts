@@ -20,6 +20,10 @@ export interface Field<TValue = unknown, TKind extends FieldKind = FieldKind> {
     readonly label: string | undefined;
     readonly description: string | undefined;
     readonly required: boolean;
+    /** Whether a number Field accepts only safe integers. */
+    readonly whole?: boolean;
+    /** The accepted values of a choice Field. */
+    readonly choices?: readonly string[];
     /** The collection a reference field points at. Absent on every other kind. */
     readonly references?: string;
     /** Carries the field's value type. Never assigned; erased at runtime. */
@@ -58,7 +62,17 @@ export function text<const TOptions extends FieldOptions = FieldOptions>(
 ): Field<Held<string, TOptions>, "text"> {
     const definition = base("text", options);
 
-    return { ...definition, buildColumn: name => column(sqliteText(name), definition.required) };
+    return {
+        ...definition,
+        parse: value => {
+            if (typeof value !== "string") {
+                throw new Error("A text Field needs text.");
+            }
+
+            return value as Held<string, TOptions>;
+        },
+        buildColumn: name => column(sqliteText(name), definition.required)
+    };
 }
 
 /** Long-form body content, stored and edited as Markdown. */
@@ -67,7 +81,17 @@ export function markdown<const TOptions extends FieldOptions = FieldOptions>(
 ): Field<Held<string, TOptions>, "markdown"> {
     const definition = base("markdown", options);
 
-    return { ...definition, buildColumn: name => column(sqliteText(name), definition.required) };
+    return {
+        ...definition,
+        parse: value => {
+            if (typeof value !== "string") {
+                throw new Error("A Markdown Field needs text.");
+            }
+
+            return value as Held<string, TOptions>;
+        },
+        buildColumn: name => column(sqliteText(name), definition.required)
+    };
 }
 
 /** Structured long-form content stored as ProseMirror JSON. */
@@ -96,6 +120,18 @@ export function number<const TOptions extends NumberOptions = NumberOptions>(
 
     return {
         ...definition,
+        whole,
+        parse: value => {
+            if (typeof value !== "number" || !Number.isFinite(value)) {
+                throw new Error("A number Field needs a finite number.");
+            }
+
+            if (whole && !Number.isSafeInteger(value)) {
+                throw new Error("A whole number Field needs a safe integer.");
+            }
+
+            return value as Held<number, TOptions>;
+        },
         buildColumn: name => column(whole ? sqliteInteger(name) : sqliteReal(name), definition.required)
     };
 }
@@ -108,6 +144,13 @@ export function toggle<const TOptions extends FieldOptions = FieldOptions>(
 
     return {
         ...definition,
+        parse: value => {
+            if (typeof value !== "boolean") {
+                throw new Error("A toggle Field needs true or false.");
+            }
+
+            return value as Held<boolean, TOptions>;
+        },
         buildColumn: name => column(sqliteInteger(name, { mode: "boolean" }), definition.required)
     };
 }
@@ -120,6 +163,13 @@ export function moment<const TOptions extends FieldOptions = FieldOptions>(
 
     return {
         ...definition,
+        parse: value => {
+            if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+                throw new Error("A moment Field needs a valid Date.");
+            }
+
+            return value as Held<Date, TOptions>;
+        },
         buildColumn: name => column(sqliteInteger(name, { mode: "timestamp_ms" }), definition.required)
     };
 }
@@ -138,6 +188,14 @@ export function choice<
 
     return {
         ...definition,
+        choices: options.of,
+        parse: value => {
+            if (typeof value !== "string" || !options.of.includes(value as TChoice)) {
+                throw new Error("A choice Field needs one of its declared choices.");
+            }
+
+            return value as Held<TChoice, TOptions>;
+        },
         buildColumn: name =>
             column(sqliteText(name, { enum: options.of as [TChoice, ...TChoice[]] }), definition.required)
     };
@@ -157,6 +215,13 @@ export function reference<const TOptions extends ReferenceOptions = ReferenceOpt
     return {
         ...definition,
         references: options.to,
+        parse: value => {
+            if (typeof value !== "string" || !value.trim()) {
+                throw new Error("A reference Field needs an Entry identifier.");
+            }
+
+            return value.trim() as Held<string, TOptions>;
+        },
         buildColumn: name => column(sqliteText(name), definition.required)
     };
 }

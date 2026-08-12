@@ -31,6 +31,20 @@ export interface RichTextEditorMessages {
     close: string;
 }
 
+export interface CollectionEditingControlMessages {
+    none: string;
+    toggleUnset: string;
+    toggleYes: string;
+    toggleNo: string;
+}
+
+export const defaultCollectionEditingControlMessages: CollectionEditingControlMessages = {
+    none: "None",
+    toggleUnset: "Not set",
+    toggleYes: "Yes",
+    toggleNo: "No"
+};
+
 export const defaultRichTextEditorMessages: RichTextEditorMessages = {
     toolbar: "Formatting",
     placeholder: "Write…",

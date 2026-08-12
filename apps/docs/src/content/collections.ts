@@ -7,7 +7,7 @@ export const post = defineCollection({
     fields: {
         title: text({ required: true }),
         excerpt: text({ description: "Shown in listings and search results." }),
-        body: richText({ required: true })
+        body: richText({ required: true, description: "Rich text. Images remain managed as Media." })
     },
     summary: { fields: ["title", "excerpt"] },
     search: { fields: ["title", "excerpt", "body"] }
