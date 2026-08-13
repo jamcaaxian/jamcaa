@@ -1,9 +1,16 @@
 {
     "name": "@jamcaa/core",
     "version": "0.0.0",
-    "private": true,
     "description": "The jamcaa publishing core",
     "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jamcaaxian/jamcaa.git",
+        "directory": "packages/core"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
     "type": "module",
     "exports": {
         ".": "./src/index.ts",
@@ -26,6 +33,11 @@
         "test": "vitest run",
         "auth:generate": "auth generate --config ./auth.ts --output ./src/db/schema/auth.ts --yes && prettier --write ./src/db/schema/auth.ts"
     },
+    "files": [
+        "src",
+        "!src/**/*.test.ts",
+        "!src/**/*.test.tsx"
+    ],
     "dependencies": {
         "aws4fetch": "^1.0.20",
         "better-auth": "^1.6.26",

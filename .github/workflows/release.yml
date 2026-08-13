@@ -1,0 +1,55 @@
+name: Release packages
+
+# ADR-0020: independent Sites consume matching published versions once the
+# package-release pipeline is introduced. changesets drives versions and
+# changelogs; this workflow versions on every develop push and publishes when
+# an NPM_TOKEN secret is configured. No third-party actions: only git, pnpm,
+# and the changesets CLI.
+
+on:
+    push:
+        branches: [develop]
+        paths:
+            - "packages/**"
+            - ".changeset/**"
+            - "package.json"
+            - "pnpm-lock.yaml"
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        env:
+            NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        steps:
+            - name: Check out the repository
+              run: git clone --depth 1 --branch develop "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" .
+
+            - name: Prepare pnpm
+              run: |
+                  corepack enable
+                  corepack prepare pnpm@10.34.5 --activate
+                  pnpm install --frozen-lockfile
+
+            - name: Apply changeset version bumps
+              run: pnpm version
+
+            - name: Commit version bumps
+              run: |
+                  if git diff --quiet; then
+                    echo "No version bumps to commit."
+                  else
+                    git config user.name "github-actions[bot]"
+                    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                    git add -A
+                    git commit -m "Apply changeset version bumps"
+                    git push
+                  fi
+
+            - name: Publish to npm
+              if: env.NPM_TOKEN != ''
+              run: |
+                  npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+                  pnpm release

@@ -30,6 +30,13 @@ Architectural decisions and their trade-offs are recorded in [`docs/adr/`](./doc
 
 Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) first — note that a Contributor License Agreement is required.
 
+## Releasing
+
+- [changesets](https://github.com/changesets/changesets) drives versions and changelogs. Run `pnpm changeset` alongside each pull request with public-facing changes.
+- On every push to `develop`, GitHub Actions applies version bumps, commits them, and publishes `@jamcaa/core` and `@jamcaa/editor` to npm, and deploys the docs Site and its counters Worker to Cloudflare.
+- The workflows read three GitHub Secrets: `NPM_TOKEN` (an npm automation token), `CLOUDFLARE_API_TOKEN`, and `CLOUDFLARE_ACCOUNT_ID`. Until they are configured, the steps that need them are skipped.
+- The packages are published source-exported: consumers compile the TypeScript sources, so Next.js Sites must list them in [`transpilePackages`](https://nextjs.org/docs/app/api-reference/config/next-config-js/transpilePackages).
+
 ## License
 
 [Apache License 2.0](./LICENSE).

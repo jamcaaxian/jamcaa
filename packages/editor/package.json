@@ -1,9 +1,16 @@
 {
     "name": "@jamcaa/editor",
     "version": "0.0.0",
-    "private": true,
     "description": "Reusable browser Editing Controls for jamcaa Sites",
     "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jamcaaxian/jamcaa.git",
+        "directory": "packages/editor"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
     "type": "module",
     "sideEffects": [
         "./src/styles.css"
@@ -19,6 +26,11 @@
         "typecheck": "tsc --noEmit",
         "test": "vitest run"
     },
+    "files": [
+        "src",
+        "!src/**/*.test.ts",
+        "!src/**/*.test.tsx"
+    ],
     "dependencies": {
         "@jamcaa/core": "workspace:*",
         "@tiptap/core": "^3.29.2",
