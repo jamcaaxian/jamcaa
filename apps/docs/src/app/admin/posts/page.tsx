@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
+import { counterServicePort } from "@jamcaa/core/counters";
 import { formatMoment } from "@jamcaa/core/dates";
 import { getSettings } from "@jamcaa/core/settings";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,26 @@ export default async function PostsPage() {
     const { env } = getCloudflareContext();
     const database = createDatabase(env.DB);
     const [entries, settings] = await Promise.all([posts(database).list(), getSettings(database, siteSettings)]);
+
+    let views: Map<string, number> | undefined;
+
+    if (env.COUNTERS !== undefined) {
+        try {
+            views = new Map(
+                (
+                    await counterServicePort(env.COUNTERS).readMany(
+                        entries.map(entry => ({
+                            target: { collectionName: "post", entryId: entry.id },
+                            kind: "view" as const
+                        }))
+                    )
+                ).map(result => [result.target.entryId, result.count])
+            );
+        } catch {
+            // The counters Worker is optional; a broken one must not take the list down.
+            views = undefined;
+        }
+    }
     const datePattern = settings.get("format.date");
     const timePattern = settings.get("format.time");
     const mayCreate = await may(actor, "post", "create");
@@ -65,6 +86,7 @@ export default async function PostsPage() {
                                         <Badge variant={tone[entry.status]}>{entry.status}</Badge>
                                     </div>
                                     <p className="text-muted-foreground mt-3 text-xs">
+                                        {views === undefined ? null : `${views.get(entry.id) ?? 0} views · `}
                                         Last edited {formatMoment(entry.updatedAt, datePattern)}{" "}
                                         {formatMoment(entry.updatedAt, timePattern)}
                                     </p>
@@ -78,6 +100,7 @@ export default async function PostsPage() {
                                 <TableRow>
                                     <TableHead>Title</TableHead>
                                     <TableHead className="w-32">Status</TableHead>
+                                    {views === undefined ? null : <TableHead className="w-20">Views</TableHead>}
                                     <TableHead className="w-44">Last edited</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -96,6 +119,11 @@ export default async function PostsPage() {
                                         <TableCell>
                                             <Badge variant={tone[entry.status]}>{entry.status}</Badge>
                                         </TableCell>
+                                        {views === undefined ? null : (
+                                            <TableCell className="text-muted-foreground text-sm">
+                                                {views.get(entry.id) ?? 0}
+                                            </TableCell>
+                                        )}
                                         <TableCell className="text-muted-foreground text-sm">
                                             {formatMoment(entry.updatedAt, datePattern)}{" "}
                                             {formatMoment(entry.updatedAt, timePattern)}

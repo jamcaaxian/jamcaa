@@ -1,0 +1,9 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "jamcaa-docs-counters",
+    "main": "counters/worker.ts",
+    "compatibility_date": "2026-08-08",
+    "durable_objects": { "bindings": [{ "name": "COUNTERS", "class_name": "CounterDurableObject" }] },
+    "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CounterDurableObject"] }],
+    "observability": { "enabled": true }
+}

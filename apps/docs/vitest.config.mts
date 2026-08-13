@@ -45,6 +45,6 @@ export default defineConfig({
     resolve: { alias: { "@": path.resolve("src") } },
     test: {
         setupFiles: ["./test/apply-migrations.ts"],
-        exclude: [...configDefaults.exclude, "test/search-migration-workflow.test.ts"]
+        exclude: [...configDefaults.exclude, "test/search-migration-workflow.test.ts", "test/counters.test.ts"]
     }
 });

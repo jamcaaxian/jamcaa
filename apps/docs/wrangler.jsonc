@@ -20,6 +20,13 @@
             // see https://opennext.js.org/cloudflare/caching
             "binding": "WORKER_SELF_REFERENCE",
             "service": "jamcaa-docs"
+        },
+        {
+            // Counters live in Durable Objects owned by a separate Worker, because
+            // a Next-on-Workers bundle cannot export its own Durable Object classes.
+            // See docs/adr/0007-durable-objects-for-counters.md.
+            "binding": "COUNTERS",
+            "service": "jamcaa-docs-counters"
         }
     ],
     // ISR caching. Rationale in docs/adr/0004-r2-with-regional-cache-for-isr.md
