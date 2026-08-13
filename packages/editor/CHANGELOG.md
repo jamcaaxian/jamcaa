@@ -1,5 +1,12 @@
 # @jamcaaxian/editor
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [a0831d0]
+    - @jamcaaxian/core@0.4.0
+
 ## 0.2.0
 
 ### Minor Changes
