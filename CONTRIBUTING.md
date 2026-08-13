@@ -10,6 +10,8 @@ Before your first pull request can be merged, you must sign the [Contributor Lic
 
 This is asked for a specific reason: without it, the project permanently loses the ability to adjust its license, because doing so would require locating and obtaining consent from every past contributor. Signing is a one-time step and is automated in the pull request workflow.
 
+When you open a pull request, the CLA bot comments with the agreement text. Reply to that comment with **I have read and agree to the CLA** to sign it. The `cla` status check on the pull request turns green, and the record of your agreement stays on the pull request itself. Maintainers are not asked to sign.
+
 ## Reporting bugs
 
 Open an issue with:

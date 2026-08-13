@@ -1,0 +1,101 @@
+name: Contributor License Agreement
+
+# ADR-0012: outside contributions require a signed CLA, and signing is handled
+# by a bot rather than a manual approval step. The record is the contributor's
+# agreement comment on the pull request itself.
+
+on:
+    pull_request_target:
+        types: [opened, synchronize, reopened]
+    issue_comment:
+        types: [created]
+
+permissions:
+    contents: read
+    issues: write
+    pull-requests: write
+    statuses: write
+
+jobs:
+    cla:
+        # issue_comment fires for plain issues too; the CLA only concerns PRs.
+        if: github.event_name == 'pull_request_target' || github.event.issue.pull_request
+        runs-on: ubuntu-latest
+        steps:
+            - name: Manage the CLA status
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  REPO: ${{ github.repository }}
+                  COMMENT_BODY: ${{ github.event.comment.body }}
+                  COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+              run: |
+                  set -euo pipefail
+
+                  if [ "${{ github.event_name }}" = "pull_request_target" ]; then
+                    NUMBER="${{ github.event.number }}"
+                  else
+                    NUMBER="${{ github.event.issue.number }}"
+                  fi
+
+                  PR_JSON=$(gh api "repos/$REPO/pulls/$NUMBER")
+                  AUTHOR=$(printf '%s' "$PR_JSON" | jq -r .user.login)
+                  HEAD_SHA=$(printf '%s' "$PR_JSON" | jq -r .head.sha)
+                  ASSOCIATION=$(printf '%s' "$PR_JSON" | jq -r .author_association)
+
+                  is_maintainer() {
+                    case "$ASSOCIATION" in OWNER|MEMBER|COLLABORATOR) return 0 ;; *) return 1 ;; esac
+                  }
+
+                  # The contributor's agreement comment, if one exists on this PR.
+                  agreement_comment_id=$(gh api "repos/$REPO/issues/$NUMBER/comments" --paginate \
+                    --jq "[.[] | select(.user.login == \"$AUTHOR\") | select(.body | ascii_downcase | startswith(\"i have read and agree to the cla\"))][0].id")
+
+                  # Whether this bot has already asked this PR's author to sign.
+                  request_comment_id=$(gh api "repos/$REPO/issues/$NUMBER/comments" --paginate \
+                    --jq "[.[] | select(.user.login == \"github-actions[bot]\") | select(.body | contains(\"Before this pull request can be merged\"))][0].id")
+
+                  set_status() {
+                    gh api "repos/$REPO/statuses/$HEAD_SHA" \
+                      -f state="$1" -f context="cla" -f description="$2" > /dev/null
+                  }
+
+                  post_cla_request() {
+                    CLA_BODY=$(gh api "repos/$REPO/contents/docs/CLA.md" --jq .content | base64 -d)
+                    gh api "repos/$REPO/issues/$NUMBER/comments" -f body="Thanks for the contribution! Before this pull request can be merged, please reply to this comment with:
+
+                    **I have read and agree to the CLA**
+
+                    ---
+
+                    $CLA_BODY" > /dev/null
+                  }
+
+                  if [ "${{ github.event_name }}" = "issue_comment" ]; then
+                    BODY="$COMMENT_BODY"
+                    COMMENT_AUTHOR="$COMMENT_AUTHOR"
+
+                    if [ "$COMMENT_AUTHOR" != "$AUTHOR" ]; then
+                      exit 0
+                    fi
+
+                    if printf '%s' "$BODY" | grep -Eiq '^i have read and agree to the cla'; then
+                      set_status success "Contributor agreed to the CLA"
+                      gh api "repos/$REPO/issues/$NUMBER/comments" \
+                        -f body="CLA agreement recorded. Thank you, @$AUTHOR." > /dev/null
+                    fi
+
+                    exit 0
+                  fi
+
+                  # pull_request_target paths: opened, synchronize, reopened.
+                  if [ -n "$agreement_comment_id" ]; then
+                    set_status success "Contributor agreed to the CLA"
+                  elif is_maintainer; then
+                    set_status success "Maintainers are not required to sign the CLA"
+                  else
+                    set_status pending "Waiting for the contributor to agree to the CLA"
+
+                    if [ -z "$request_comment_id" ]; then
+                      post_cla_request
+                    fi
+                  fi
