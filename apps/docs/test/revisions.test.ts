@@ -31,7 +31,20 @@ function snapshot(title: string, tagIds: string[] = []): PostRevisionSnapshot {
         status: "draft",
         publishedAt: null,
         categoryId,
-        fields: { title, excerpt: null, body: richTextFromPlainText(`${title} body`) },
+        fields: {
+            title,
+            excerpt: null,
+            body: {
+                version: 1,
+                blocks: [
+                    {
+                        id: "body",
+                        type: "builtin.richText",
+                        props: { document: richTextFromPlainText(`${title} body`) }
+                    }
+                ]
+            }
+        },
         tagIds
     };
 }
@@ -56,14 +69,24 @@ describe("Post Revisions", () => {
             authorId,
             categoryId,
             title: "First",
-            body: richTextFromPlainText("First body")
+            body: {
+                version: 1,
+                blocks: [
+                    { id: "body", type: "builtin.richText", props: { document: richTextFromPlainText("First body") } }
+                ]
+            }
         });
         const second = await posts(database()).create({
             slug: "second",
             authorId,
             categoryId,
             title: "Second",
-            body: richTextFromPlainText("Second body")
+            body: {
+                version: 1,
+                blocks: [
+                    { id: "body", type: "builtin.richText", props: { document: richTextFromPlainText("Second body") } }
+                ]
+            }
         });
         const revisions = postRevisions(database());
 
@@ -88,7 +111,16 @@ describe("Post Revisions", () => {
             authorId,
             categoryId,
             title: "Temporary",
-            body: richTextFromPlainText("Temporary body")
+            body: {
+                version: 1,
+                blocks: [
+                    {
+                        id: "body",
+                        type: "builtin.richText",
+                        props: { document: richTextFromPlainText("Temporary body") }
+                    }
+                ]
+            }
         });
         const revisions = postRevisions(database());
 
@@ -111,7 +143,16 @@ describe("Post Revisions", () => {
             desired: {
                 title: "First title",
                 excerpt: "First excerpt",
-                body: richTextFromPlainText("First body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("First body") }
+                        }
+                    ]
+                },
                 status: "draft",
                 slug: "first-title",
                 categoryId,
@@ -127,7 +168,16 @@ describe("Post Revisions", () => {
                 id: created.id,
                 title: "Published title",
                 excerpt: "Published excerpt",
-                body: richTextFromPlainText("Published body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Published body") }
+                        }
+                    ]
+                },
                 status: "published",
                 slug: "published-title",
                 categoryId,
@@ -145,7 +195,16 @@ describe("Post Revisions", () => {
             fields: {
                 title: "Published title",
                 excerpt: "Published excerpt",
-                body: richTextFromPlainText("Published body")
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Published body") }
+                        }
+                    ]
+                }
             },
             tagIds: []
         });
@@ -155,7 +214,20 @@ describe("Post Revisions", () => {
             status: "draft",
             publishedAt: null,
             categoryId,
-            fields: { title: "First title", excerpt: "First excerpt", body: richTextFromPlainText("First body") },
+            fields: {
+                title: "First title",
+                excerpt: "First excerpt",
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("First body") }
+                        }
+                    ]
+                }
+            },
             tagIds: ["tag-1"]
         });
     });
@@ -169,7 +241,16 @@ describe("Post Revisions", () => {
             desired: {
                 title: "Original",
                 excerpt: "Original excerpt",
-                body: richTextFromPlainText("Original body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Original body") }
+                        }
+                    ]
+                },
                 status: "published",
                 slug: "original",
                 categoryId,
@@ -188,7 +269,16 @@ describe("Post Revisions", () => {
                 id: entry.id,
                 title: "Changed",
                 excerpt: "Changed excerpt",
-                body: richTextFromPlainText("Changed body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Changed body") }
+                        }
+                    ]
+                },
                 status: "draft",
                 slug: "changed",
                 categoryId,
@@ -210,7 +300,16 @@ describe("Post Revisions", () => {
             authorId,
             title: "Original",
             excerpt: "Original excerpt",
-            body: richTextFromPlainText("Original body"),
+            body: {
+                version: 1,
+                blocks: [
+                    {
+                        id: "body",
+                        type: "builtin.richText",
+                        props: { document: richTextFromPlainText("Original body") }
+                    }
+                ]
+            },
             status: "published",
             slug: "original",
             publishedAt: source!.snapshot.publishedAt === null ? null : new Date(source!.snapshot.publishedAt)
@@ -233,7 +332,16 @@ describe("Post Revisions", () => {
             desired: {
                 title: "Tagged",
                 excerpt: null,
-                body: richTextFromPlainText("Tagged body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Tagged body") }
+                        }
+                    ]
+                },
                 status: "draft",
                 slug: "tagged",
                 categoryId,
@@ -251,7 +359,16 @@ describe("Post Revisions", () => {
                 id: entry.id,
                 title: "Current",
                 excerpt: null,
-                body: richTextFromPlainText("Current body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Current body") }
+                        }
+                    ]
+                },
                 status: "draft",
                 slug: "current",
                 categoryId,
@@ -282,7 +399,16 @@ describe("Post Revisions", () => {
             desired: {
                 title: "Published",
                 excerpt: null,
-                body: richTextFromPlainText("Published body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Published body") }
+                        }
+                    ]
+                },
                 status: "published",
                 slug: "published",
                 categoryId,
@@ -299,7 +425,16 @@ describe("Post Revisions", () => {
                 id: entry.id,
                 title: "Draft",
                 excerpt: null,
-                body: richTextFromPlainText("Draft body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Draft body") }
+                        }
+                    ]
+                },
                 status: "draft",
                 slug: "draft",
                 categoryId,
@@ -330,7 +465,16 @@ describe("Post Revisions", () => {
             desired: {
                 title: "Archived source",
                 excerpt: null,
-                body: richTextFromPlainText("Archived body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Archived body") }
+                        }
+                    ]
+                },
                 status: "archived",
                 slug: "same-address",
                 categoryId,
@@ -348,7 +492,16 @@ describe("Post Revisions", () => {
                 id: entry.id,
                 title: "Published now",
                 excerpt: null,
-                body: richTextFromPlainText("Published body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Published body") }
+                        }
+                    ]
+                },
                 status: "published",
                 slug: "same-address",
                 categoryId,
@@ -384,7 +537,16 @@ describe("Post Revisions", () => {
             desired: {
                 title: "Archived",
                 excerpt: null,
-                body: richTextFromPlainText("Archived body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Archived body") }
+                        }
+                    ]
+                },
                 status: "archived",
                 slug: "archived",
                 categoryId,
@@ -402,7 +564,16 @@ describe("Post Revisions", () => {
                     id: entry.id,
                     title: "Draft attempt",
                     excerpt: null,
-                    body: richTextFromPlainText("Draft body"),
+                    body: {
+                        version: 1,
+                        blocks: [
+                            {
+                                id: "body",
+                                type: "builtin.richText",
+                                props: { document: richTextFromPlainText("Draft body") }
+                            }
+                        ]
+                    },
                     status: "draft",
                     slug: entry.slug,
                     categoryId,
@@ -431,7 +602,16 @@ describe("Post Revisions", () => {
             desired: {
                 title: "Before",
                 excerpt: null,
-                body: richTextFromPlainText("Before body"),
+                body: {
+                    version: 1,
+                    blocks: [
+                        {
+                            id: "body",
+                            type: "builtin.richText",
+                            props: { document: richTextFromPlainText("Before body") }
+                        }
+                    ]
+                },
                 status: "draft",
                 slug: "before",
                 categoryId,
@@ -452,7 +632,16 @@ describe("Post Revisions", () => {
                     id: entry.id,
                     title: "After",
                     excerpt: null,
-                    body: richTextFromPlainText("After body"),
+                    body: {
+                        version: 1,
+                        blocks: [
+                            {
+                                id: "body",
+                                type: "builtin.richText",
+                                props: { document: richTextFromPlainText("After body") }
+                            }
+                        ]
+                    },
                     status: "draft",
                     slug: "after",
                     categoryId,

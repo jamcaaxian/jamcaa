@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { RichTextContent } from "@jamcaaxian/editor/content";
-import type { RichTextDocument } from "@jamcaaxian/core/content";
+import { BuiltinBlockView } from "@jamcaaxian/editor/blocks";
+import type { BlockDocument } from "@jamcaaxian/core/content";
 
 export interface PublicPost {
     title: string;
     excerpt: string | null;
-    body: RichTextDocument;
+    body: BlockDocument;
     publishedAt: Date | null;
     createdAt: Date;
 }
@@ -50,10 +50,15 @@ export function PostContent({
                         <time dateTime={displayedAt.toISOString()}>{publishedLabel}</time>
                     </p>
                 </header>
-                <RichTextContent
-                    document={post.body}
-                    mediaAddress={mediaId => `/media/${encodeURIComponent(mediaId)}`}
-                />
+                <div>
+                    {post.body.blocks.map(block => (
+                        <BuiltinBlockView
+                            key={block.id}
+                            block={block}
+                            mediaAddress={mediaId => `/media/${encodeURIComponent(mediaId)}`}
+                        />
+                    ))}
+                </div>
             </article>
         </main>
     );

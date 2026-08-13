@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import type { Category, EditingField, Tag } from "@jamcaaxian/core/content";
+import type { BlockDocument, Category, EditingField, Tag } from "@jamcaaxian/core/content";
+import { blocksToRichText } from "@jamcaaxian/core/content";
 import { CollectionEditingControls, type EditingControlValue } from "@jamcaaxian/editor";
 import { createHttpMediaAdapter } from "@jamcaaxian/editor/media";
 import { Button } from "@/components/ui/button";
@@ -55,9 +56,19 @@ export function PostForm({
     const [state, action, pending] = useActionState<PostFormState, FormData>(savePost, {});
     const [title, setTitle] = useState(String(post?.fields[titleFieldName] ?? ""));
     const titleField = fields.find(field => field.name === titleFieldName);
-    const scalarFields = fields.filter(field => field.name !== titleFieldName && field.kind !== "richText");
-    const richTextFields = fields.filter(field => field.kind === "richText");
-    const fieldValues = post?.fields ?? {};
+    const scalarFields = fields.filter(
+        field => field.name !== titleFieldName && field.kind !== "richText" && field.kind !== "blocks"
+    );
+    const richTextFields = fields.filter(field => field.kind === "richText" || field.kind === "blocks");
+    const fieldValues =
+        post ?
+            {
+                ...post.fields,
+                ...(typeof post.fields.body === "object" ?
+                    { body: blocksToRichText(post.fields.body as unknown as BlockDocument) }
+                :   {})
+            }
+        :   {};
     // Publishing is withheld from the form as well as the action, so it is not
     // offered as something to attempt and be refused.
     const statuses = allStatuses.filter(status => status.value !== "published" || mayPublish);

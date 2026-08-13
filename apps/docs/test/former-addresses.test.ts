@@ -35,7 +35,10 @@ async function published(slug: string) {
         publishedAt: new Date("2026-08-12T00:00:00.000Z"),
         title: slug,
         excerpt: null,
-        body: richTextFromPlainText(slug)
+        body: {
+            version: 1,
+            blocks: [{ id: "body", type: "builtin.richText", props: { document: richTextFromPlainText(slug) } }]
+        }
     });
 }
 

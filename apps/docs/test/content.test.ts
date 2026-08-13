@@ -1,6 +1,6 @@
 import { createDatabase } from "@jamcaaxian/core";
 import { createAuth } from "@jamcaaxian/core/auth";
-import { richTextFromPlainText, type RichTextDocument } from "@jamcaaxian/core/content";
+import { richTextFromPlainText, type BlockDocument } from "@jamcaaxian/core/content";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, expectTypeOf, it } from "vitest";
 import { postSummaries, postTagIds, posts, replacePostTags, writePostWithTags } from "@/content/store";
@@ -13,7 +13,9 @@ function database() {
 }
 
 function body(text = "A body") {
-    return richTextFromPlainText(text);
+    const document = richTextFromPlainText(text);
+
+    return { version: 1 as const, blocks: [{ id: "body", type: "builtin.richText", props: { document } }] };
 }
 
 async function anAuthor(email = "author@example.com") {
@@ -57,17 +59,8 @@ describe("the table a declaration produced", () => {
         expect(table?.name).toBe("post");
     });
 
-    it("migrates an existing Markdown body as plain rich text", async () => {
-        const markdown = [
-            "# Plain Markdown",
-            "",
-            "null",
-            "true",
-            "123",
-            '"quoted text"',
-            '{"example":"value"}',
-            '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"example"}]}]}'
-        ];
+    it("wraps a legacy rich-text body stored under the old document shape", async () => {
+        const legacy = richTextFromPlainText("legacy prose");
 
         await env.DB.prepare(
             "INSERT INTO user (id, name, email, email_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
@@ -75,48 +68,18 @@ describe("the table a declaration produced", () => {
             .bind("migration-author", "Migration Author", "migration@example.com", 1, Date.now(), Date.now())
             .run();
 
-        for (const [index, source] of markdown.entries()) {
-            await env.DB.prepare(
-                "INSERT INTO post (id, slug, author_id, category_id, title, body) VALUES (?, ?, ?, ?, ?, ?)"
-            )
-                .bind(
-                    `migration-${index}`,
-                    `migration-${index}`,
-                    "migration-author",
-                    categoryId,
-                    `Migration ${index}`,
-                    source
-                )
-                .run();
-        }
+        await env.DB.prepare(
+            "INSERT INTO post (id, slug, author_id, category_id, title, body__value, body__plain) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )
+            .bind("legacy", "legacy", "migration-author", categoryId, "Legacy", JSON.stringify(legacy), "legacy prose")
+            .run();
 
-        const markdownMigration = env.TEST_MIGRATIONS.find(candidate => candidate.name.startsWith("0006_"));
-        const canonicalMigration = env.TEST_MIGRATIONS.find(candidate => candidate.name.startsWith("0007_"));
+        const entry = await posts(database()).bySlug("legacy");
 
-        expect(markdownMigration).toBeDefined();
-        expect(canonicalMigration).toBeDefined();
-
-        for (const query of markdownMigration?.queries ?? []) {
-            await env.DB.prepare(query).run();
-        }
-
-        for (const query of canonicalMigration?.queries ?? []) {
-            await env.DB.prepare(query).run();
-        }
-
-        const rows = await env.DB.prepare("SELECT slug, body FROM post ORDER BY slug").all<{
-            slug: string;
-            body: string;
-        }>();
-
-        expect(rows.results).toHaveLength(markdown.length);
-
-        for (const [index, source] of markdown.entries()) {
-            const row = rows.results.find(candidate => candidate.slug === `migration-${index}`);
-
-            expect(row).toBeDefined();
-            expect(JSON.parse(row?.body ?? "null")).toEqual(richTextFromPlainText(source));
-        }
+        expect(entry?.body).toEqual({
+            version: 1,
+            blocks: [{ id: "legacy-body", type: "builtin.richText", props: { document: legacy } }]
+        });
     });
 
     it("keeps one slug to one entry", async () => {
@@ -170,7 +133,7 @@ describe("reading and writing entries", () => {
                 authorId,
                 categoryId,
                 title: "Invalid",
-                body: { type: "doc", content: [{ type: "html" }] } as unknown as RichTextDocument
+                body: { type: "doc", content: [{ type: "html" }] } as unknown as ReturnType<typeof body>
             })
         ).rejects.toThrow(/unsupported rich text node/i);
     });
@@ -257,8 +220,8 @@ describe("reading and writing entries", () => {
 
         await env.DB.prepare(
             `INSERT INTO post
-                (id, slug, author_id, category_id, status, created_at, updated_at, published_at, title, excerpt, body)
-             VALUES (?, ?, ?, ?, 'published', ?, ?, ?, ?, NULL, ?)`
+                (id, slug, author_id, category_id, status, created_at, updated_at, published_at, title, excerpt, body__value, body__plain)
+             VALUES (?, ?, ?, ?, 'published', ?, ?, ?, ?, NULL, ?, ?)`
         )
             .bind(
                 "summary-a",
@@ -269,13 +232,14 @@ describe("reading and writing entries", () => {
                 timestamp,
                 timestamp,
                 "A",
-                JSON.stringify(body("A"))
+                JSON.stringify(body("A")),
+                "A"
             )
             .run();
         await env.DB.prepare(
             `INSERT INTO post
-                (id, slug, author_id, category_id, status, created_at, updated_at, published_at, title, excerpt, body)
-             VALUES (?, ?, ?, ?, 'published', ?, ?, ?, ?, NULL, ?)`
+                (id, slug, author_id, category_id, status, created_at, updated_at, published_at, title, excerpt, body__value, body__plain)
+             VALUES (?, ?, ?, ?, 'published', ?, ?, ?, ?, NULL, ?, ?)`
         )
             .bind(
                 "summary-b",
@@ -286,7 +250,8 @@ describe("reading and writing entries", () => {
                 timestamp,
                 timestamp,
                 "B",
-                JSON.stringify(body("B"))
+                JSON.stringify(body("B")),
+                "B"
             )
             .run();
 
@@ -555,7 +520,7 @@ describe("what the store promises the compiler", () => {
         type Post = Awaited<ReturnType<ReturnType<typeof posts>["bySlug"]>>;
 
         expectTypeOf<NonNullable<Post>["title"]>().toEqualTypeOf<string>();
-        expectTypeOf<NonNullable<Post>["body"]>().toEqualTypeOf<RichTextDocument>();
+        expectTypeOf<NonNullable<Post>["body"]>().toEqualTypeOf<BlockDocument>();
         expectTypeOf<NonNullable<Post>["excerpt"]>().toEqualTypeOf<string | null>();
         expectTypeOf<NonNullable<Post>["categoryId"]>().toEqualTypeOf<string>();
         expectTypeOf<NonNullable<Post>["status"]>().toEqualTypeOf<"draft" | "published" | "archived">();

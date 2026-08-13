@@ -1,4 +1,5 @@
 import { parseColor } from "../theme";
+import { emptyRichText, richTextPlainText, type RichTextDocument } from "./rich-text";
 
 /**
  * The Block layer of the content model (iteration epic #26, milestone #29).
@@ -192,3 +193,53 @@ export function parseBlockDocument(raw: unknown, registry: BlockRegistry): Block
 
 /** All Blocks a Site has registered, addressed by name. */
 export type BlockRegistry = Record<string, BlockDefinition>;
+
+/**
+ * Extracts the Rich Text block a composable body carries. Bodies written before
+ * composability existed are wrapped into exactly one such block, so this is the
+ * stable view a Rich Text editor edits.
+ */
+export function blocksToRichText(document: BlockDocument | RichTextDocument): RichTextDocument {
+    if (!Array.isArray((document as BlockDocument).blocks)) {
+        // Revisions written before composable bodies stored the rich text
+        // directly, so the snapshot value itself is already the document.
+        const candidate = document as unknown as Record<string, unknown>;
+
+        if (typeof candidate === "object" && candidate !== null && candidate.type === "doc") {
+            return document as unknown as RichTextDocument;
+        }
+
+        return emptyRichText();
+    }
+
+    for (const block of (document as BlockDocument).blocks) {
+        if (block.type === "builtin.richText") {
+            const candidate = (block.props as Record<string, unknown>).document;
+
+            if (typeof candidate === "object" && candidate !== null && "type" in candidate) {
+                return candidate as unknown as RichTextDocument;
+            }
+        }
+    }
+
+    return emptyRichText();
+}
+
+/** Joins the readable text of every block, for search indexing. */
+export function blockPlainText(document: BlockDocument): string {
+    const parts: string[] = [];
+
+    for (const block of document.blocks) {
+        const props = block.props as Record<string, unknown>;
+
+        for (const value of Object.values(props)) {
+            if (typeof value === "string" && value.length > 0) {
+                parts.push(value);
+            } else if (typeof value === "object" && value !== null && !Array.isArray(value) && "type" in value) {
+                parts.push(richTextPlainText(value as unknown as RichTextDocument));
+            }
+        }
+    }
+
+    return parts.join(" ");
+}

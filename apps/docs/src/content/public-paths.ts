@@ -1,5 +1,5 @@
 import { buildPermalink, checkPermalink, matchPermalink } from "@jamcaaxian/core/content";
-import type { RichTextDocument } from "@jamcaaxian/core/content";
+import type { BlockDocument } from "@jamcaaxian/core/content";
 
 const RESERVED_PATH_PREFIXES = new Set([
     "_next",
@@ -21,7 +21,7 @@ export interface AddressablePost {
     status: string;
     title: string;
     excerpt: string | null;
-    body: RichTextDocument;
+    body: BlockDocument;
     publishedAt: Date | null;
     createdAt: Date;
 }

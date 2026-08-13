@@ -15,7 +15,10 @@ describe("reading a Post submission", () => {
     it("accepts a validated ProseMirror document", () => {
         const body = richTextFromPlainText("A body");
 
-        expect(readPostSubmission(form(JSON.stringify(body)))).toMatchObject({ title: "A title", body });
+        expect(readPostSubmission(form(JSON.stringify(body)))).toMatchObject({
+            title: "A title",
+            body: { version: 1, blocks: [{ id: "legacy-body", type: "builtin.richText", props: { document: body } }] }
+        });
     });
 
     it("rejects malformed and visually empty bodies", () => {

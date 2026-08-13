@@ -1,4 +1,9 @@
+import type { BlockDocument, RichTextDocument } from "@jamcaaxian/core/content";
 import { richTextFromPlainText } from "@jamcaaxian/core/content";
+function blockBody(document: RichTextDocument): BlockDocument {
+    return { version: 1, blocks: [{ id: "body", type: "builtin.richText", props: { document } }] };
+}
+
 import { describe, expect, it, vi } from "vitest";
 import {
     checkPublicPermalink,
@@ -13,7 +18,7 @@ const entry = {
     status: "published",
     title: "Hello",
     excerpt: null,
-    body: richTextFromPlainText("Hello"),
+    body: blockBody(richTextFromPlainText("Hello")),
     publishedAt: new Date(Date.UTC(2026, 7, 9)),
     createdAt: new Date(Date.UTC(2020, 0, 1))
 };

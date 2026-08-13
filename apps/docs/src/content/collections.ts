@@ -1,4 +1,4 @@
-import { defineCollection, richText, text } from "@jamcaaxian/core/content";
+import { blocks, defineCollection, text } from "@jamcaaxian/core/content";
 
 export const post = defineCollection({
     name: "post",
@@ -7,7 +7,7 @@ export const post = defineCollection({
     fields: {
         title: text({ required: true }),
         excerpt: text({ description: "Shown in listings and search results." }),
-        body: richText({ required: true, description: "Rich text. Images remain managed as Media." })
+        body: blocks({ required: true, description: "A body composed of blocks. Rich text is one block among others." })
     },
     summary: { fields: ["title", "excerpt"] },
     search: { fields: ["title", "excerpt", "body"] }

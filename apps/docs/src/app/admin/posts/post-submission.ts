@@ -1,4 +1,4 @@
-import { parseCollectionSubmission, type EntryStatus, type RichTextDocument } from "@jamcaaxian/core/content";
+import { parseCollectionSubmission, type BlockDocument, type EntryStatus } from "@jamcaaxian/core/content";
 import { post } from "@/content/collections";
 
 const statuses: EntryStatus[] = ["draft", "published", "archived"];
@@ -7,7 +7,7 @@ export interface PostSubmission {
     id: string;
     title: string;
     excerpt: string | null;
-    body: RichTextDocument;
+    body: BlockDocument;
     status: EntryStatus;
     slug: string;
     categoryId: string;
@@ -19,7 +19,7 @@ export function readPostSubmission(formData: FormData): PostSubmission | { error
 
     if (!fields.success) {
         const invalidRichText = fields.issues.some(
-            issue => issue.code === "invalid" && post.fields[issue.field]?.kind === "richText"
+            issue => issue.code === "invalid" && ["richText", "blocks"].includes(post.fields[issue.field]?.kind ?? "")
         );
 
         if (invalidRichText) {

@@ -353,6 +353,58 @@ export function parseRichText(value: unknown): RichTextDocument {
     return document as RichTextDocument;
 }
 
+/**
+ * Walks a document into a searchable word stream. Text nodes that split one
+ * word across marks stay joined, block boundaries and hard breaks become word
+ * separators, and media alternative text is indexed alongside the words.
+ */
+export function richTextPlainText(document: RichTextDocument): string {
+    const parts: string[] = [];
+    let run = "";
+
+    const flush = (): void => {
+        if (run.length > 0) {
+            parts.push(run);
+            run = "";
+        }
+    };
+
+    function visit(node: RichTextNode): void {
+        if (node.type === "text") {
+            run += node.text ?? "";
+            return;
+        }
+
+        if (node.type === "hardBreak") {
+            flush();
+            return;
+        }
+
+        if (node.type === "mediaImage") {
+            flush();
+            const alt = node.attrs?.alt;
+
+            if (typeof alt === "string" && alt.length > 0) {
+                parts.push(alt);
+            }
+            return;
+        }
+
+        for (const child of node.content ?? []) {
+            visit(child);
+        }
+
+        if (node.type !== "doc" && node.type !== "paragraph") {
+            flush();
+        }
+    }
+
+    visit(document);
+    flush();
+
+    return parts.join(" ");
+}
+
 export function emptyRichText(): RichTextDocument {
     return { type: "doc", content: [{ type: "paragraph" }] };
 }

@@ -5,6 +5,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
 import { formatMoment } from "@jamcaaxian/core/dates";
 import { getSettings } from "@jamcaaxian/core/settings";
+import { blocksToRichText, type BlockDocument } from "@jamcaaxian/core/content";
 import { RichTextContent } from "@jamcaaxian/editor/content";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -117,7 +118,7 @@ export default async function PostRevisionPage({ params }: { params: Promise<{ i
                     <p className="text-muted-foreground text-lg leading-8">{revision.snapshot.fields.excerpt}</p>
                 :   null}
                 <RichTextContent
-                    document={revision.snapshot.fields.body}
+                    document={blocksToRichText(revision.snapshot.fields.body as unknown as BlockDocument)}
                     mediaAddress={mediaId => `/media/${encodeURIComponent(mediaId)}`}
                 />
             </article>

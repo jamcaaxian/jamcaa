@@ -1,6 +1,11 @@
 import { createDatabase } from "@jamcaaxian/core";
 import { createAuth } from "@jamcaaxian/core/auth";
+import type { BlockDocument, RichTextDocument } from "@jamcaaxian/core/content";
 import { richTextFromPlainText } from "@jamcaaxian/core/content";
+function blockBody(document: RichTextDocument): BlockDocument {
+    return { version: 1, blocks: [{ id: "body", type: "builtin.richText", props: { document } }] };
+}
+
 import { d1SearchAdapter } from "@jamcaaxian/core/search";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -52,7 +57,7 @@ describe("published Entry search", () => {
             authorId,
             categoryId,
             title: "Edge runtime draft",
-            body: richTextFromPlainText("Cloudflare D1")
+            body: blockBody(richTextFromPlainText("Cloudflare D1"))
         });
 
         expect((await search().search({ collection: post, query: "edge runtime" })).matches).toEqual([]);
@@ -75,20 +80,20 @@ describe("published Entry search", () => {
             authorId,
             categoryId,
             title: "Projection",
-            body: {
+            body: blockBody({
                 type: "doc",
                 content: [
                     { type: "paragraph", content: [{ type: "text", text: "Architecture" }] },
                     { type: "mediaImage", attrs: { mediaId: crypto.randomUUID(), alt: "deployment diagram" } }
                 ]
-            },
+            }),
             status: "published"
         });
         const indexed = await env.DB.prepare("SELECT title, excerpt, body FROM _jamcaa_post_fts WHERE entry_id = ?")
             .bind(created.id)
             .first<{ title: string; excerpt: string; body: string }>();
 
-        expect(indexed).toEqual({ title: "Projection", excerpt: "", body: "Architecture\ndeployment diagram" });
+        expect(indexed).toEqual({ title: "Projection", excerpt: "", body: "Architecture deployment diagram" });
 
         expect((await search().search({ collection: post, query: "deployment diagram" })).matches).toEqual([
             expect.objectContaining({ entryId: created.id, excerpt: expect.stringContaining("deployment diagram") })
@@ -102,7 +107,7 @@ describe("published Entry search", () => {
             authorId,
             categoryId,
             title: "Marked text",
-            body: {
+            body: blockBody({
                 type: "doc",
                 content: [
                     {
@@ -113,7 +118,7 @@ describe("published Entry search", () => {
                         ]
                     }
                 ]
-            },
+            }),
             status: "published"
         });
         const indexed = await env.DB.prepare("SELECT body FROM _jamcaa_post_fts WHERE entry_id = ?")
@@ -133,7 +138,7 @@ describe("published Entry search", () => {
             authorId,
             categoryId,
             title: "Line break",
-            body: {
+            body: blockBody({
                 type: "doc",
                 content: [
                     {
@@ -145,14 +150,14 @@ describe("published Entry search", () => {
                         ]
                     }
                 ]
-            },
+            }),
             status: "published"
         });
         const indexed = await env.DB.prepare("SELECT body FROM _jamcaa_post_fts WHERE entry_id = ?")
             .bind(created.id)
             .first<{ body: string }>();
 
-        expect(indexed?.body).toBe("Cloudflare\nWorkers");
+        expect(indexed?.body).toBe("Cloudflare Workers");
         expect((await search().search({ collection: post, query: "Cloudflare Workers" })).matches).toEqual([
             expect.objectContaining({ entryId: created.id })
         ]);
@@ -168,7 +173,7 @@ describe("published Entry search", () => {
             authorId,
             categoryId: guides.id,
             title: "Cloudflare search",
-            body: richTextFromPlainText("D1 guide"),
+            body: blockBody(richTextFromPlainText("D1 guide")),
             status: "published"
         });
         await posts(database()).create({
@@ -176,7 +181,7 @@ describe("published Entry search", () => {
             authorId,
             categoryId: guides.id,
             title: "Cloudflare search",
-            body: richTextFromPlainText("D1 guide"),
+            body: blockBody(richTextFromPlainText("D1 guide")),
             status: "published"
         });
         await replacePostTags(database(), both.id, [featured.id]);
@@ -200,7 +205,7 @@ describe("published Entry search", () => {
                 authorId,
                 categoryId,
                 title: `Search ${slug}`,
-                body: richTextFromPlainText("shared term"),
+                body: blockBody(richTextFromPlainText("shared term")),
                 status: "published"
             });
         }
@@ -225,7 +230,7 @@ describe("published Entry search", () => {
                 authorId,
                 categoryId,
                 title: `Ranked ${slug}`,
-                body: richTextFromPlainText("composition result"),
+                body: blockBody(richTextFromPlainText("composition result")),
                 status: "published"
             });
         }
@@ -247,14 +252,14 @@ describe("published Entry search", () => {
             authorId,
             categoryId,
             title: "First",
-            body: richTextFromPlainText("First")
+            body: blockBody(richTextFromPlainText("First"))
         });
         const second = await store.create({
             slug: "second",
             authorId,
             categoryId,
             title: "Second",
-            body: richTextFromPlainText("Second")
+            body: blockBody(richTextFromPlainText("Second"))
         });
 
         expect((await store.byIds([second.id, "missing", first.id])).map(entry => entry.id)).toEqual([

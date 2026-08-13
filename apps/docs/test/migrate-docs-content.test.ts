@@ -1,7 +1,13 @@
 import { env } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createDatabase, type Database } from "@jamcaaxian/core/db";
-import { entryStore, entrySummaryReader, richTextToPlainText, taxonomyStore } from "@jamcaaxian/core/content";
+import {
+    blocksToRichText,
+    entryStore,
+    entrySummaryReader,
+    richTextToPlainText,
+    taxonomyStore
+} from "@jamcaaxian/core/content";
 import { d1SearchAdapter } from "@jamcaaxian/core/search";
 import { post } from "@/content/collections";
 import { contentModel, postTable } from "@/content/schema";
@@ -74,12 +80,12 @@ describe("repository docs migration", () => {
         const context = await store.bySlug("context");
 
         expect(context?.title).toBe("jamcaa");
-        expect(richTextToPlainText(context!.body)).toContain("publishing platform");
+        expect(richTextToPlainText(blocksToRichText(context!.body))).toContain("publishing platform");
 
         const adr = await store.bySlug("adr-0013-docs-site-dogfoods-the-framework");
 
         expect(adr?.title).toBe("The documentation site is built with the framework and doubles as the example");
-        expect(richTextToPlainText(adr!.body)).toContain("bootstrapping");
+        expect(richTextToPlainText(blocksToRichText(adr!.body))).toContain("bootstrapping");
 
         expect(await store.bySlug("agents-triage-labels")).toBeDefined();
     }, 30_000);

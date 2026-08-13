@@ -85,6 +85,13 @@
       "when": 1786630799931,
       "tag": "0012_pages",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1786636227773,
+      "tag": "0013_post_body_blocks",
+      "breakpoints": true
     }
   ]
 }

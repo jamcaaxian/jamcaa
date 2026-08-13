@@ -1,14 +1,17 @@
 import { integer as sqliteInteger, real as sqliteReal, text as sqliteText } from "drizzle-orm/sqlite-core";
 import { parseRichText, isRichTextEmpty, type RichTextDocument } from "./rich-text";
+import { blockPlainText, parseBlockDocument, type BlockDocument } from "./blocks";
 import { builtinContractVersions, compileField, revisionCodecV1, slot } from "./field-capsule";
 
-export type FieldKind = "text" | "markdown" | "richText" | "number" | "toggle" | "moment" | "choice" | "reference";
+export type FieldKind =
+    "text" | "markdown" | "richText" | "blocks" | "number" | "toggle" | "moment" | "choice" | "reference";
 
 /** The kinds the Platform compiles itself; every other kind needs a Field Type. */
 export const builtinFieldKinds: readonly FieldKind[] = [
     "text",
     "markdown",
     "richText",
+    "blocks",
     "number",
     "toggle",
     "moment",
@@ -48,10 +51,10 @@ export interface Field<TValue = unknown, TKind extends string = string> {
 
 export type FieldValue<TField> = TField extends Field<infer TValue, string> ? TValue : never;
 
-export type SearchableFieldKind = Extract<FieldKind, "text" | "markdown" | "richText">;
+export type SearchableFieldKind = Extract<FieldKind, "text" | "markdown" | "richText" | "blocks">;
 
 /** Fields whose values can be read cheaply in public Entry Summaries. */
-export type SummaryFieldKind = Exclude<FieldKind, "markdown" | "richText">;
+export type SummaryFieldKind = Exclude<FieldKind, "markdown" | "richText" | "blocks">;
 
 /** A field is nullable unless it was declared with `required: true`. */
 export type Held<TValue, TOptions extends FieldOptions> = TOptions extends { required: true } ? TValue : TValue | null;
@@ -163,6 +166,94 @@ export function richText<const TOptions extends FieldOptions = FieldOptions>(
             isRequiredValueMissing: value => isRichTextEmpty(value as RichTextDocument),
             editingExtras: () => undefined,
             searchText: () => ({ type: "rich-text", slot: "value" })
+        }
+    );
+}
+
+/**
+ * Accepts either a BlockDocument or a legacy RichTextDocument, which predates
+ * composable bodies and is wrapped into a single rich-text Block.
+ */
+export function parseBlocksValue(value: unknown): BlockDocument {
+    if (typeof value === "string") {
+        try {
+            value = JSON.parse(value) as unknown;
+        } catch {
+            return { version: 1, blocks: [] };
+        }
+    }
+
+    if (
+        typeof value === "object"
+        && value !== null
+        && !Array.isArray(value)
+        && "type" in value
+        && (value as { type?: unknown }).type === "doc"
+    ) {
+        // Legacy bodies are validated with the same rules the rich-text field
+        // applied, so bad nodes keep being refused rather than silently kept.
+        const document = parseRichText(value as RichTextDocument);
+
+        return { version: 1, blocks: [{ id: "legacy-body", type: "builtin.richText", props: { document } }] };
+    }
+
+    return parseBlockDocument(value, {}).document;
+}
+
+/** A body composed of Blocks; Rich Text is one Block among others. */
+export function blocks<const TOptions extends FieldOptions = FieldOptions>(
+    options?: TOptions
+): Field<Held<BlockDocument, TOptions>, "blocks"> {
+    const definition = base("blocks", options);
+
+    return compileField(
+        { ...definition, editingKind: "richText", parse: value => parseBlocksValue(value) },
+        {
+            slots: () => ({
+                value: slot({
+                    affinity: "text",
+                    buildColumn: name => sqliteText(name, { mode: "json" }).$type<BlockDocument>()
+                }),
+                plain: slot({ affinity: "text", buildColumn: name => sqliteText(name).$type<string>() })
+            }),
+            encode: (value: BlockDocument) => ({ value: JSON.stringify(value), plain: blockPlainText(value) }),
+            decode: cells => cells.value,
+            snapshotValue: (value: BlockDocument) => value,
+            valueFromSnapshot: value => value,
+            ...revisionCodecV1(
+                (value: BlockDocument) => value,
+                value => value
+            ),
+            ...builtinContractVersions(),
+            // The storage contract moved from one plain column (`body`) to a
+            // `body__value` JSON column plus a `body__plain` search projection,
+            // and the Search text expression moved from rich-text to the plain
+            // column. Both contracts bump so migration tooling demands handoffs.
+            storageVersion: () => 2,
+            searchVersion: () => 2,
+            submissionValue: raw => JSON.parse(raw) as unknown,
+            isBlankSubmission: raw => raw.length === 0,
+            isRequiredValueMissing: value => {
+                const document = value as BlockDocument;
+
+                if (document.blocks.length === 0) {
+                    return true;
+                }
+
+                // A body whose every block is an empty rich-text block reads
+                // as visually empty, so it still does not satisfy `required`.
+                return document.blocks.every(block => {
+                    if (block.type !== "builtin.richText") {
+                        return false;
+                    }
+
+                    const richText = block.props.document as RichTextDocument | undefined;
+
+                    return richText === undefined || isRichTextEmpty(richText);
+                });
+            },
+            editingExtras: () => undefined,
+            searchText: () => ({ type: "column-text", slot: "plain" })
         }
     );
 }
