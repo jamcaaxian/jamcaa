@@ -27,12 +27,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
     });
 
     return (
-        <main id="main-content" className="mx-auto min-h-dvh max-w-3xl px-4 py-14 sm:px-6 sm:py-24">
-            <header className="mb-14 space-y-3">
-                <Link href="/" className="text-primary text-sm font-semibold tracking-tight">
-                    {siteTitle}
+        <main id="main-content" className="relative mx-auto min-h-dvh max-w-3xl px-4 py-12 sm:px-6 sm:py-20">
+            <div
+                aria-hidden="true"
+                className="bg-primary/8 pointer-events-none absolute -top-24 -right-40 -z-10 h-96 w-96 rounded-full blur-3xl"
+            />
+            <header className="mb-16 space-y-5">
+                <Link
+                    href="/"
+                    className="text-primary inline-flex items-center gap-2 text-sm font-semibold tracking-tight"
+                >
+                    <span className="bg-primary/10 rounded-md px-1.5 py-0.5 font-mono text-xs">{siteTitle}</span>
                 </Link>
-                <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
+                <h1 className="max-w-2xl text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-6xl">
                     Published with the platform.
                 </h1>
                 <p className="text-muted-foreground max-w-xl text-lg leading-8">

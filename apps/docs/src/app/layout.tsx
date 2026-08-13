@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { publicSiteMetadata } from "@/content/public-site";
 import { ThemeScript } from "@/components/theme-script";
 import "./globals.css";
-
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 <link rel="alternate" type="application/feed+json" href="/feed.json" />
                 <ThemeScript />
             </head>
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+            <body className="antialiased">
                 <a
                     href="#main-content"
                     className="bg-background text-foreground focus-visible:ring-ring fixed top-2 left-2 z-100 -translate-y-20 rounded-lg px-3 py-2 text-sm font-medium shadow-lg focus:translate-y-0 focus-visible:ring-3"

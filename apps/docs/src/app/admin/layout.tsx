@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <SidebarProvider>
             <AdminSidebar siteTitle={settings.get("site.title")} />
             <SidebarInset>
-                <header className="bg-background sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4">
+                <header className="bg-background/80 sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-xl">
                     <SidebarTrigger className="-ml-1" />
                     <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
                     <div className="min-w-0 flex-1 overflow-hidden">
@@ -45,7 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                     </div>
                 </header>
 
-                <div id="main-content" className="min-w-0 flex-1 p-4 sm:p-6">
+                <div id="main-content" className="min-w-0 flex-1 p-5 sm:p-8">
                     {children}
                 </div>
             </SidebarInset>
