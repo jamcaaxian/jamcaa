@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { createDatabase } from "@jamcaaxian/core";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { publicSiteMetadata } from "@/content/public-site";
+import { siteThemeCss } from "@/content/theme";
 import { ThemeScript } from "@/components/theme-script";
 import "./globals.css";
 
@@ -10,12 +13,24 @@ export async function generateMetadata(): Promise<Metadata> {
     return publicSiteMetadata();
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+    let themeCss = "";
+
+    try {
+        const { env } = getCloudflareContext();
+        themeCss = await siteThemeCss(createDatabase(env.DB));
+    } catch {
+        // Outside a request context (rare) or a broken binding: keep the static theme.
+    }
+
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
                 <link rel="icon" href="/favicon.svg" type="image/svg+xml"></link>
                 <link rel="alternate" type="application/feed+json" href="/feed.json" />
+                {themeCss ?
+                    <style dangerouslySetInnerHTML={{ __html: themeCss }} />
+                :   null}
                 <ThemeScript />
             </head>
             <body className="antialiased">

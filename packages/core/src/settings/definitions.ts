@@ -1,4 +1,5 @@
 import { checkPattern, DATE_PATTERNS, TIME_PATTERNS } from "../dates";
+import { DEFAULT_ACCENT, parseColor } from "../theme";
 
 /**
  * Settings are declared in code and their values live in the database, for the same
@@ -140,5 +141,15 @@ export const coreSettings = defineSettings({
         description: "In megabytes. A file that arrives through the server is also bounded by the platform it runs on.",
         default: 25,
         check: value => (value > 0 ? undefined : "An upload limit has to be more than nothing.")
+    },
+    // The Site owns presenting this value (ADR-0016); the Design page in the admin
+    // is the dedicated editor, so the generic settings form never lists it.
+    "theme.accent": {
+        kind: "text",
+        label: "Accent colour",
+        description: "Any CSS colour. Text on top is kept legible automatically.",
+        default: DEFAULT_ACCENT,
+        internal: true,
+        check: value => (parseColor(value) ? undefined : "That does not look like a colour.")
     }
 });
