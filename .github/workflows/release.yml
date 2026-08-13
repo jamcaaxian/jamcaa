@@ -36,8 +36,15 @@ jobs:
 
             - name: Apply changeset version bumps
               # `pnpm version` is a builtin that prints tool versions; the
-              # script must be addressed through `run`.
-              run: pnpm run version
+              # script must be addressed through `run`. `changeset version`
+              # exits non-zero when there is nothing to consume, so only run it
+              # while changeset files exist.
+              run: |
+                  if find .changeset -maxdepth 1 -name '*.md' ! -name 'README.md' | grep -q .; then
+                    pnpm run version
+                  else
+                    echo "No changesets to consume."
+                  fi
 
             - name: Commit version bumps
               run: |
