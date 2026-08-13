@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { publicSiteSettings } from "@/content/public-site";
 import { getSession, isInstalled, safeNextPath } from "@/lib/session";
 import { SignInForm } from "./sign-in-form";
@@ -24,16 +23,21 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     const siteTitle = (await publicSiteSettings()).get("site.title");
 
     return (
-        <main id="main-content" className="flex min-h-svh items-center justify-center p-4 sm:p-6">
-            <Card className="w-full max-w-sm">
-                <CardHeader>
-                    <CardTitle>Sign in</CardTitle>
-                    <CardDescription>Continue to the {siteTitle} admin.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <SignInForm next={next} />
-                </CardContent>
-            </Card>
+        <main id="main-content" className="relative flex min-h-svh items-center justify-center p-4 sm:p-6">
+            <div
+                aria-hidden="true"
+                className="bg-primary/8 pointer-events-none absolute top-1/4 left-1/2 -z-10 h-96 w-96 -translate-x-1/2 rounded-full blur-3xl"
+            />
+            <div className="shadow-soft w-full max-w-sm rounded-3xl bg-card p-8">
+                <div className="mb-8 space-y-2 text-center">
+                    <p className="bg-primary/10 text-primary mx-auto inline-flex rounded-full px-2.5 py-0.5 font-mono text-xs">
+                        {siteTitle}
+                    </p>
+                    <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+                    <p className="text-muted-foreground text-sm">Continue to the {siteTitle} admin.</p>
+                </div>
+                <SignInForm next={next} />
+            </div>
         </main>
     );
 }

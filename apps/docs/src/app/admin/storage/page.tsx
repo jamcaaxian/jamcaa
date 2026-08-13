@@ -105,7 +105,7 @@ export default async function StoragePage() {
     return (
         <div className="space-y-8">
             <div className="space-y-1">
-                <h1 className="text-lg font-semibold tracking-tight">Storage</h1>
+                <h1 className="text-xl font-semibold tracking-tight">Storage</h1>
                 <p className="text-muted-foreground text-sm">
                     Buckets describe reachable storage. Ordered rules decide where each new file lands.
                 </p>

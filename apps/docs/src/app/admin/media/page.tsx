@@ -39,7 +39,7 @@ export default async function MediaPage() {
     return (
         <div className="space-y-6">
             <div className="space-y-1">
-                <h1 className="text-lg font-semibold tracking-tight">Media</h1>
+                <h1 className="text-xl font-semibold tracking-tight">Media</h1>
                 <p className="text-muted-foreground text-sm">
                     {files.length === 1 ? "One file" : `${files.length} files`}
                 </p>

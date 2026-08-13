@@ -131,7 +131,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
             {query ?
                 <section aria-labelledby="search-results" className="space-y-6">
                     <div className="flex flex-wrap items-baseline justify-between gap-3">
-                        <h2 id="search-results" className="text-lg font-semibold tracking-tight">
+                        <h2 id="search-results" className="text-xl font-semibold tracking-tight">
                             Results for “{query}”
                         </h2>
                         {(category || tag) && (

@@ -32,7 +32,7 @@ export default async function NewPostPage() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-lg font-semibold tracking-tight">New post</h1>
+            <h1 className="text-xl font-semibold tracking-tight">New post</h1>
             <PostForm
                 fields={editingFields(post)}
                 titleFieldName={post.titleField}

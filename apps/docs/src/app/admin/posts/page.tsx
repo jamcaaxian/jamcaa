@@ -56,7 +56,7 @@ export default async function PostsPage() {
         <div className="space-y-6">
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="space-y-1">
-                    <h1 className="text-lg font-semibold tracking-tight">Posts</h1>
+                    <h1 className="text-xl font-semibold tracking-tight">Posts</h1>
                     <p className="text-muted-foreground text-sm">
                         {entries.length === 1 ? "One post" : `${entries.length} posts`}
                     </p>
@@ -69,7 +69,14 @@ export default async function PostsPage() {
             </div>
 
             {entries.length === 0 ?
-                <p className="text-muted-foreground text-sm">Nothing written yet.</p>
+                <div className="rounded-2xl border border-dashed px-8 py-16 text-center">
+                    <p className="font-medium">Nothing written yet.</p>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                        {mayCreate ?
+                            "Create the first post to see it here."
+                        :   "Posts will appear here once they exist."}
+                    </p>
+                </div>
             :   <>
                     <ul className="space-y-3 md:hidden">
                         {entries.map(entry => (

@@ -40,7 +40,7 @@ export default async function PostRevisionsPage({ params }: { params: Promise<{ 
         <div className="space-y-6">
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="space-y-1">
-                    <h1 className="text-lg font-semibold tracking-tight">Revisions</h1>
+                    <h1 className="text-xl font-semibold tracking-tight">Revisions</h1>
                     <p className="text-muted-foreground text-sm wrap-anywhere">
                         {entry.title} ·{" "}
                         {revisions.length === 1 ? "One saved state" : `${revisions.length} saved states`}

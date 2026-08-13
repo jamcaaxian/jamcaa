@@ -53,7 +53,7 @@ export default async function PostRevisionPage({ params }: { params: Promise<{ i
         <div className="space-y-6">
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="space-y-1">
-                    <h1 className="text-lg font-semibold tracking-tight wrap-anywhere">
+                    <h1 className="text-xl font-semibold tracking-tight wrap-anywhere">
                         {revision.snapshot.fields.title}
                     </h1>
                     <p className="text-muted-foreground text-sm">Revision saved {savedLabel}</p>

@@ -22,7 +22,7 @@ export default async function RolesPage() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-lg font-semibold tracking-tight">Roles</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Roles</h1>
             <p className="text-muted-foreground max-w-2xl text-sm leading-6">
                 Choose what each system Role may do. Capability changes apply to every user holding that Role.
             </p>
