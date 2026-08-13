@@ -27,6 +27,9 @@
     "//": "next and eslint-config-next are pinned to exact versions on purpose. The Cloudflare adapter patches Next's server to stop it pulling in sharp, whose native binaries cannot be bundled for Workers. That patch is version-specific: on 16.3.0 it silently fails to apply and the build dies on .node files. Only bump this together with @opennextjs/cloudflare, and verify `pnpm preview` afterwards.",
     "dependencies": {
         "@base-ui/react": "^1.7.0",
+        "@dnd-kit/core": "^6.3.1",
+        "@dnd-kit/sortable": "^10.0.0",
+        "@dnd-kit/utilities": "^3.2.2",
         "@jamcaaxian/core": "workspace:*",
         "@jamcaaxian/editor": "workspace:*",
         "@opennextjs/cloudflare": "^1.20.2",

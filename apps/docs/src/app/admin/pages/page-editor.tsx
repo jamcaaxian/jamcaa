@@ -1,7 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-react";
 import { builtinBlocks } from "@jamcaaxian/editor/blocks";
 import type { BlockDefinition, BlockInstance } from "@jamcaaxian/core/content";
 import { Button } from "@/components/ui/button";
@@ -98,6 +101,65 @@ function PropField({
             />;
 }
 
+function SortableBlockCard({
+    block,
+    index,
+    total,
+    onMove,
+    onRemove,
+    title,
+    fields
+}: {
+    block: BlockInstance;
+    index: number;
+    total: number;
+    onMove: (direction: -1 | 1) => void;
+    onRemove: () => void;
+    title: React.ReactNode;
+    fields: React.ReactNode;
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={{ transform: CSS.Transform.toString(transform), transition }}
+            className={`bg-card rounded-2xl border p-4 ${isDragging ? "shadow-lifted z-10 opacity-90" : ""}`}
+        >
+            <div className="mb-3 flex items-center justify-between gap-2">
+                <button
+                    type="button"
+                    {...attributes}
+                    {...listeners}
+                    className="text-muted-foreground hover:text-foreground cursor-grab rounded-md p-1 transition-colors active:cursor-grabbing"
+                    aria-label={`Drag block ${index + 1}`}
+                >
+                    <GripVertical className="size-4" />
+                </button>
+                {title}
+                <div className="ml-auto flex items-center gap-1">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => onMove(-1)} disabled={index === 0}>
+                        <ArrowUp className="size-4" />
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onMove(1)}
+                        disabled={index === total - 1}
+                    >
+                        <ArrowDown className="size-4" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
+                        <Trash2 className="size-4" />
+                    </Button>
+                </div>
+            </div>
+            {fields}
+        </div>
+    );
+}
+
 export function PageEditor({
     action,
     initial,
@@ -112,6 +174,7 @@ export function PageEditor({
     const [address, setAddress] = useState(initial.address);
     const [status, setStatus] = useState(initial.status);
     const [blocks, setBlocks] = useState<BlockInstance[]>(initial.blocks);
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
     function patchBlock(id: string, propName: string, value: unknown) {
         setBlocks(current =>
@@ -121,16 +184,13 @@ export function PageEditor({
 
     function move(index: number, direction: -1 | 1) {
         setBlocks(current => {
-            const next = [...current];
             const target = index + direction;
 
-            if (target < 0 || target >= next.length) {
+            if (target < 0 || target >= current.length) {
                 return current;
             }
 
-            [next[index], next[target]] = [next[target]!, next[index]!];
-
-            return next;
+            return arrayMove(current, index, target);
         });
     }
 
@@ -140,6 +200,21 @@ export function PageEditor({
 
     function add(type: string) {
         setBlocks(current => [...current, newBlock(type)]);
+    }
+
+    function onDragEnd(event: DragEndEvent) {
+        const { active, over } = event;
+
+        if (over === null || active.id === over.id) {
+            return;
+        }
+
+        setBlocks(current => {
+            const from = current.findIndex(block => block.id === active.id);
+            const to = current.findIndex(block => block.id === over.id);
+
+            return from < 0 || to < 0 ? current : arrayMove(current, from, to);
+        });
     }
 
     return (
@@ -196,73 +271,61 @@ export function PageEditor({
                     <div className="rounded-2xl border border-dashed px-8 py-12 text-center text-sm text-muted-foreground">
                         No blocks yet. Add the first one below.
                     </div>
-                :   blocks.map((block, index) => {
-                        const definition = builtinBlocks[block.type as keyof typeof builtinBlocks] as
-                            BlockDefinition | undefined;
-                        const propEntries = Object.entries(definition?.props ?? {});
+                :   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                        <SortableContext items={blocks.map(block => block.id)} strategy={verticalListSortingStrategy}>
+                            {blocks.map((block, index) => {
+                                const definition = builtinBlocks[block.type as keyof typeof builtinBlocks] as
+                                    BlockDefinition | undefined;
+                                const propEntries = Object.entries(definition?.props ?? {});
 
-                        return (
-                            <div key={block.id} className="rounded-2xl border p-4">
-                                <div className="mb-3 flex items-center justify-between gap-2">
-                                    <span className="text-sm font-medium">
-                                        {definition?.label ?? block.type}
-                                        <span className="text-muted-foreground ml-2 font-mono text-xs">
-                                            {block.type}
-                                        </span>
-                                    </span>
-                                    <div className="flex items-center gap-1">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => move(index, -1)}
-                                            disabled={index === 0}
-                                        >
-                                            <ArrowUp className="size-4" />
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => move(index, 1)}
-                                            disabled={index === blocks.length - 1}
-                                        >
-                                            <ArrowDown className="size-4" />
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => remove(block.id)}
-                                        >
-                                            <Trash2 className="size-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                                {propEntries.length > 0 ?
-                                    <div className="grid gap-3 sm:grid-cols-2">
-                                        {propEntries.map(([propName, declaration]) => (
-                                            <div
-                                                key={propName}
-                                                className={
-                                                    declaration.kind === "flag" ? "flex items-center" : "space-y-1.5"
-                                                }
-                                            >
-                                                {declaration.kind !== "flag" ?
-                                                    <Label className="text-xs">{declaration.label}</Label>
-                                                :   null}
-                                                <PropField
-                                                    block={block}
-                                                    propName={propName}
-                                                    onChange={value => patchBlock(block.id, propName, value)}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                :   null}
-                            </div>
-                        );
-                    })
+                                return (
+                                    <SortableBlockCard
+                                        key={block.id}
+                                        block={block}
+                                        index={index}
+                                        total={blocks.length}
+                                        onMove={direction => move(index, direction)}
+                                        onRemove={() => remove(block.id)}
+                                        title={
+                                            <span className="text-sm font-medium">
+                                                {definition?.label ?? block.type}
+                                                <span className="text-muted-foreground ml-2 font-mono text-xs">
+                                                    {block.type}
+                                                </span>
+                                            </span>
+                                        }
+                                        fields={
+                                            propEntries.length > 0 ?
+                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                    {propEntries.map(([propName, declaration]) => (
+                                                        <div
+                                                            key={propName}
+                                                            className={
+                                                                declaration.kind === "flag" ?
+                                                                    "flex items-center"
+                                                                :   "space-y-1.5"
+                                                            }
+                                                        >
+                                                            {declaration.kind !== "flag" ?
+                                                                <Label className="text-xs">{declaration.label}</Label>
+                                                            :   null}
+                                                            <PropField
+                                                                block={block}
+                                                                propName={propName}
+                                                                onChange={value =>
+                                                                    patchBlock(block.id, propName, value)
+                                                                }
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            :   null
+                                        }
+                                    />
+                                );
+                            })}
+                        </SortableContext>
+                    </DndContext>
                 }
 
                 <Select
