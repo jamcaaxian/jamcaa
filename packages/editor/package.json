@@ -1,6 +1,6 @@
 {
     "name": "@jamcaa/editor",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "description": "Reusable browser Editing Controls for jamcaa Sites",
     "license": "Apache-2.0",
     "repository": {
