@@ -16,6 +16,7 @@
         "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
         "db:generate": "drizzle-kit generate && pnpm db:search:check",
         "db:search:check": "vitest run --config vitest.migrations.config.mts",
+        "test:docs:migrate": "vitest run test/migrate-docs-content.test.ts",
         "db:migrate": "wrangler d1 migrations apply jamcaa-docs --local",
         "db:migrate:remote": "wrangler d1 migrations apply jamcaa-docs --remote"
     },

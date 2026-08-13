@@ -62,6 +62,10 @@ If your machine is managed and Developer Mode is locked by policy, set `node-lin
 - Update documentation in the same pull request as the change it describes.
 - Write commit messages that explain why, not what. The diff already shows what.
 
+## Repository documentation
+
+`CONTEXT.md`, `docs/adr/*.md`, and `docs/agents/*.md` remain Markdown in the repository and are migrated into the documentation site through the migration script (ADR-0013). After editing one of those files, verify the migration still passes with `pnpm --filter @jamcaa/docs test:docs:migrate`.
+
 ## Third-party material
 
 Do not add third-party code, assets, or documentation to this repository unless its license explicitly permits redistribution under Apache-2.0, and its attribution requirements are satisfied. When in doubt, open an issue rather than committing it.
