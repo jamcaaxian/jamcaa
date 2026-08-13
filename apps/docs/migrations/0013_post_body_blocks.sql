@@ -26,15 +26,25 @@ UPDATE `post`
 SET
         `body__plain` = (
                 SELECT
-                        group_concat (nodes.value, ' ')
+                        group_concat (piece, ' ')
                 FROM
-                        json_tree (`post`.`body__value`, '$.blocks[0].props.document') AS nodes
-                WHERE
-                        nodes.type = 'text'
-                        AND (
-                                nodes.key = 'alt'
-                                OR typeof (nodes.key) = 'integer'
+                        (
+                                SELECT
+                                        CASE
+                                                WHEN json_extract (nodes.value, '$.type') = 'text' THEN coalesce(json_extract (nodes.value, '$.text'), '')
+                                                WHEN json_extract (nodes.value, '$.type') = 'hardBreak' THEN ' '
+                                                WHEN json_extract (nodes.value, '$.type') = 'mediaImage' THEN coalesce(json_extract (nodes.value, '$.attrs.alt'), '')
+                                                ELSE NULL
+                                        END AS piece
+                                FROM
+                                        json_tree (`post`.`body__value`, '$.blocks[0].props.document') AS nodes
+                                WHERE
+                                        nodes.type = 'object'
+                                        AND json_extract (nodes.value, '$.type') IN ('text', 'hardBreak', 'mediaImage')
                         )
+                WHERE
+                        piece IS NOT NULL
+                        AND piece <> ''
         )
 WHERE
         `body__value` IS NOT NULL;
