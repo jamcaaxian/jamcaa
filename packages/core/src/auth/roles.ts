@@ -116,7 +116,11 @@ export async function seedSystemRoles(database: Database, catalogue: CapabilityC
         );
 
         if (rows.length > 0) {
-            await database.insert(roleCapability).values(rows);
+            // D1 caps the bound parameters of one query; insert in batches so a
+            // catalogue that grows beyond that cap still seeds in one call.
+            for (let offset = 0; offset < rows.length; offset += 30) {
+                await database.insert(roleCapability).values(rows.slice(offset, offset + 30));
+            }
         }
     }
 }

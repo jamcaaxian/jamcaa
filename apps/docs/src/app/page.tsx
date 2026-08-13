@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
 import { ProgressivePostList } from "@/components/public/progressive-post-list";
+import { PageContent } from "@/components/public/page-content";
+import { pages } from "@/content/pages-store";
 import { publicPostListing } from "@/content/public-listing";
 import { publicPostPage } from "@/content/public-listing-page";
 import { publicSiteSettings } from "@/content/public-site";
@@ -12,10 +14,17 @@ export const dynamic = "force-dynamic";
 export default async function Home({ searchParams }: { searchParams: Promise<{ cursor?: string }> }) {
     const { env } = getCloudflareContext();
     const cursor = (await searchParams).cursor;
-    const [entries, settings] = await Promise.all([
-        publicPostPage(() => postSummaries(createDatabase(env.DB)).list({ limit: 20, cursor })),
-        publicSiteSettings()
+    const database = createDatabase(env.DB);
+    const [entries, settings, homePage] = await Promise.all([
+        publicPostPage(() => postSummaries(database).list({ limit: 20, cursor })),
+        publicSiteSettings(),
+        pages(database).byAddress("/")
     ]);
+
+    if (homePage !== undefined) {
+        return <PageContent title={homePage.title} body={homePage.body} />;
+    }
+
     const siteTitle = settings.get("site.title");
     const siteDescription = settings.get("site.description").trim();
     const listing = publicPostListing(entries, {

@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, HardDrive, Image as ImageIcon, Palette, Settings, ShieldCheck, Tags } from "lucide-react";
+import {
+    FileText,
+    HardDrive,
+    Image as ImageIcon,
+    LayoutTemplate,
+    Palette,
+    Settings,
+    ShieldCheck,
+    Tags
+} from "lucide-react";
 import {
     Sidebar,
     SidebarContent,
@@ -23,6 +32,7 @@ const sections = [
         label: "Content",
         items: [
             { title: "Posts", href: "/admin/posts", icon: FileText },
+            { title: "Pages", href: "/admin/pages", icon: LayoutTemplate },
             { title: "Taxonomy", href: "/admin/taxonomy", icon: Tags },
             { title: "Media", href: "/admin/media", icon: ImageIcon }
         ]

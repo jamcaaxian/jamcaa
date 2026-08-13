@@ -14,7 +14,8 @@ export const coreCapabilities = {
     session: ["list", "revoke"],
     taxonomy: ["read", "manage"],
     settings: ["read", "manage"],
-    role: ["read", "manage"]
+    role: ["read", "manage"],
+    page: ["create", "read", "update", "delete", "publish"]
 } as const;
 
 export type CapabilityCatalogue = Record<string, readonly string[]>;

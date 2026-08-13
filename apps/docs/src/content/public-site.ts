@@ -5,6 +5,7 @@ import { formatMoment } from "@jamcaaxian/core/dates";
 import { loadSettings, type SettingCatalogue } from "@jamcaaxian/core/settings";
 import { publicPostAddresses, type FormerPostResolution } from "./public-addresses";
 import { postAddress, resolvePublishedPost } from "./public-paths";
+import { pages } from "./pages-store";
 import { siteSettings } from "./settings";
 import { posts } from "./store";
 
@@ -76,6 +77,11 @@ export async function publishedPostAt(pathSegments: string[]) {
     );
 
     return former === undefined ? undefined : { kind: "former" as const, ...former };
+}
+
+/** A published Page at the given path, when one exists. */
+export async function publicPageAt(pathSegments: string[]) {
+    return pages(database()).byAddress(`/${pathSegments.join("/")}`);
 }
 
 export async function publicMoment(moment: Date): Promise<{ dateTime: string; label: string }> {

@@ -4,14 +4,16 @@ const mocked = vi.hoisted(() => ({
     notFound: vi.fn(),
     permanentRedirect: vi.fn(),
     publicMoment: vi.fn(),
-    publishedPostAt: vi.fn()
+    publishedPostAt: vi.fn(),
+    publicPageAt: vi.fn()
 }));
 
 vi.mock("next/navigation", () => ({ notFound: mocked.notFound, permanentRedirect: mocked.permanentRedirect }));
 vi.mock("@/components/public/post-content", () => ({ PostContent: () => null }));
 vi.mock("@/content/public-site", () => ({
     publicMoment: mocked.publicMoment,
-    publishedPostAt: mocked.publishedPostAt
+    publishedPostAt: mocked.publishedPostAt,
+    publicPageAt: mocked.publicPageAt
 }));
 
 import PublicEntryPage from "@/app/[...path]/page";
@@ -44,6 +46,7 @@ describe("the public Entry catch-all route", () => {
 
     it("renders the current canonical Entry", async () => {
         mocked.publishedPostAt.mockResolvedValue({ kind: "entry", entry });
+        mocked.publicPageAt.mockResolvedValue(undefined);
 
         const rendered = await PublicEntryPage({ params: Promise.resolve({ path: ["current"] }) });
 
@@ -56,6 +59,7 @@ describe("the public Entry catch-all route", () => {
 
     it("permanently redirects a Former Address directly to the latest canonical address", async () => {
         mocked.publishedPostAt.mockResolvedValue({ kind: "former", entry, address: "/latest/current" });
+        mocked.publicPageAt.mockResolvedValue(undefined);
 
         await expect(PublicEntryPage({ params: Promise.resolve({ path: ["former", "address"] }) })).rejects.toThrow(
             "permanent redirect"
@@ -67,6 +71,7 @@ describe("the public Entry catch-all route", () => {
 
     it("returns not found when no current or Former Address is public", async () => {
         mocked.publishedPostAt.mockResolvedValue(undefined);
+        mocked.publicPageAt.mockResolvedValue(undefined);
 
         await expect(PublicEntryPage({ params: Promise.resolve({ path: ["missing"] }) })).rejects.toThrow("not found");
 

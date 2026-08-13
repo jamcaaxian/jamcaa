@@ -185,6 +185,10 @@ export function pageStore(database: Database, registry: BlockRegistry) {
             return updated === undefined ?
                     { status: "rejected", message: "The page could not be read back." }
                 :   { status: "updated", page: updated };
+        },
+
+        async delete(id: string): Promise<void> {
+            await database.delete(page).where(eq(page.id, id));
         }
     };
 }

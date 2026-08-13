@@ -2,14 +2,11 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { counterServicePort } from "@jamcaaxian/core/counters";
+import { PageContent } from "@/components/public/page-content";
 import { PostContent } from "@/components/public/post-content";
-import { publicMoment, publishedPostAt } from "@/content/public-site";
+import { publicMoment, publicPageAt, publishedPostAt } from "@/content/public-site";
 
 export const dynamic = "force-dynamic";
-
-async function requestedPost(params: Promise<{ path: string[] }>) {
-    return publishedPostAt((await params).path);
-}
 
 function countView(entryId: string): void {
     try {
@@ -26,7 +23,7 @@ function countView(entryId: string): void {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ path: string[] }> }): Promise<Metadata> {
-    const entry = await requestedPost(params);
+    const entry = await publishedPostAt((await params).path);
 
     return entry?.kind === "entry" ?
             {
@@ -43,7 +40,11 @@ export async function generateMetadata({ params }: { params: Promise<{ path: str
 }
 
 export default async function PublicEntryPage({ params }: { params: Promise<{ path: string[] }> }) {
-    const entry = await requestedPost(params);
+    const [entry, page] = await Promise.all([publishedPostAt((await params).path), publicPageAt((await params).path)]);
+
+    if (page !== undefined) {
+        return <PageContent title={page.title} body={page.body} />;
+    }
 
     if (entry === undefined) notFound();
 
