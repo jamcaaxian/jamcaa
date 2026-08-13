@@ -1,4 +1,4 @@
-import { renderRichTextToHtml, type RichTextDocument } from "@jamcaa/core/content";
+import { renderRichTextToHtml, type RichTextDocument } from "@jamcaaxian/core/content";
 
 export interface RichTextContentProps {
     document: RichTextDocument;

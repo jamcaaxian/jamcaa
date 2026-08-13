@@ -1,10 +1,10 @@
-import { createDatabase } from "@jamcaa/core";
+import { createDatabase } from "@jamcaaxian/core";
 import {
     createStorageConfiguration,
     seedStorage,
     StorageConfigurationError,
     type StorageConfiguration
-} from "@jamcaa/core/media";
+} from "@jamcaaxian/core/media";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 

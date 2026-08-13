@@ -1,5 +1,5 @@
 {
-    "name": "@jamcaa/editor",
+    "name": "@jamcaaxian/editor",
     "version": "0.1.1",
     "description": "Reusable browser Editing Controls for jamcaa Sites",
     "license": "Apache-2.0",
@@ -32,7 +32,7 @@
         "!src/**/*.test.tsx"
     ],
     "dependencies": {
-        "@jamcaa/core": "workspace:*",
+        "@jamcaaxian/core": "workspace:*",
         "@tiptap/core": "^3.29.2",
         "@tiptap/react": "^3.29.2",
         "@tiptap/starter-kit": "^3.29.2",

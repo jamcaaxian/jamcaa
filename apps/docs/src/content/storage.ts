@@ -1,4 +1,4 @@
-import type { BucketSeed } from "@jamcaa/core/media";
+import type { BucketSeed } from "@jamcaaxian/core/media";
 
 /**
  * This site keeps its media in a bucket of the same account, so it is reached through

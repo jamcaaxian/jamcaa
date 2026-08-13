@@ -15,9 +15,9 @@ const mocked = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ notFound: mocked.notFound }));
 vi.mock("next/link", () => ({ default: () => null }));
 vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: mocked.getCloudflareContext }));
-vi.mock("@jamcaa/core", () => ({ createDatabase: mocked.createDatabase }));
-vi.mock("@jamcaa/core/settings", () => ({ getSettings: mocked.getSettings }));
-vi.mock("@jamcaa/editor/content", () => ({ RichTextContent: () => null }));
+vi.mock("@jamcaaxian/core", () => ({ createDatabase: mocked.createDatabase }));
+vi.mock("@jamcaaxian/core/settings", () => ({ getSettings: mocked.getSettings }));
+vi.mock("@jamcaaxian/editor/content", () => ({ RichTextContent: () => null }));
 vi.mock("@/components/ui/badge", () => ({ Badge: () => null }));
 vi.mock("@/components/ui/button", () => ({ Button: () => null }));
 vi.mock("@/components/ui/card", () => ({

@@ -18,7 +18,7 @@ import {
     Undo2,
     Unlink
 } from "lucide-react";
-import { emptyRichText, parseRichText, safeRichTextHref, type RichTextDocument } from "@jamcaa/core/content";
+import { emptyRichText, parseRichText, safeRichTextHref, type RichTextDocument } from "@jamcaaxian/core/content";
 import { createMediaImage } from "./media-image";
 import { MediaPicker } from "./media-picker";
 import type { RichTextMediaAdapter } from "./media";

@@ -1,10 +1,10 @@
-import { defineCollection, richText, text } from "@jamcaa/core/content";
+import { defineCollection, richText, text } from "@jamcaaxian/core/content";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { searchArtifactDescriptor } from "@jamcaa/core/search";
+import { searchArtifactDescriptor } from "@jamcaaxian/core/search";
 import {
     descriptorSha256Of,
     migrationCarriesArtifact,

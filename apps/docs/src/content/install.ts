@@ -1,5 +1,5 @@
-import type { InstallPlan } from "@jamcaa/core/install";
-import { coreCapabilities } from "@jamcaa/core/auth";
+import type { InstallPlan } from "@jamcaaxian/core/install";
+import { coreCapabilities } from "@jamcaaxian/core/auth";
 import { fallbackBucketId, siteBuckets } from "./storage";
 
 export const siteCapabilities = coreCapabilities;

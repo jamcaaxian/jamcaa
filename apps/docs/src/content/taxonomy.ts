@@ -1,1 +1,1 @@
-export { taxonomyStore as taxonomy } from "@jamcaa/core/content";
+export { taxonomyStore as taxonomy } from "@jamcaaxian/core/content";

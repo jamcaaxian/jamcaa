@@ -13,7 +13,7 @@ const mocked = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({ notFound: mocked.notFound, redirect: mocked.redirect }));
 vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: mocked.getCloudflareContext }));
-vi.mock("@jamcaa/core", () => ({ createDatabase: mocked.createDatabase }));
+vi.mock("@jamcaaxian/core", () => ({ createDatabase: mocked.createDatabase }));
 vi.mock("@/components/public/post-content", () => ({ PostContent: () => null }));
 vi.mock("@/content/public-site", () => ({ publicMoment: mocked.publicMoment }));
 vi.mock("@/content/store", () => ({ posts: () => ({ byId: mocked.byId }) }));

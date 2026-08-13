@@ -11,15 +11,15 @@ const mocked = vi.hoisted(() => ({
 
 vi.mock("next/cache", () => ({ revalidatePath: mocked.revalidatePath }));
 vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: mocked.getCloudflareContext }));
-vi.mock("@jamcaa/core", () => ({ createDatabase: mocked.createDatabase }));
-vi.mock("@jamcaa/core/auth", async importOriginal => ({
-    ...(await importOriginal<typeof import("@jamcaa/core/auth")>()),
+vi.mock("@jamcaaxian/core", () => ({ createDatabase: mocked.createDatabase }));
+vi.mock("@jamcaaxian/core/auth", async importOriginal => ({
+    ...(await importOriginal<typeof import("@jamcaaxian/core/auth")>()),
     replaceSystemRoleGrants: mocked.replaceSystemRoleGrants
 }));
 vi.mock("@/lib/permissions", () => ({ may: mocked.may }));
 vi.mock("@/lib/session", () => ({ requireSession: mocked.requireSession }));
 
-import { RoleGrantError } from "@jamcaa/core/auth";
+import { RoleGrantError } from "@jamcaaxian/core/auth";
 import { saveRoleGrants } from "@/app/admin/roles/actions";
 
 describe("saving system Role grants", () => {

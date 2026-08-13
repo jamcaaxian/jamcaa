@@ -68,9 +68,9 @@ If your machine is managed and Developer Mode is locked by policy, set `node-lin
 
 `CONTEXT.md`, `docs/adr/*.md`, and `docs/agents/*.md` remain Markdown in the repository and are migrated into the documentation site through the migration script (ADR-0013). After editing one of those files:
 
-- verify the migration still passes with `pnpm --filter @jamcaa/docs test:docs:migrate`,
-- apply it to the local development database with `pnpm --filter @jamcaa/docs db:docs:migrate`, and
-- apply it to the deployed database with `pnpm --filter @jamcaa/docs db:docs:migrate:remote`.
+- verify the migration still passes with `pnpm --filter @jamcaaxian/docs test:docs:migrate`,
+- apply it to the local development database with `pnpm --filter @jamcaaxian/docs db:docs:migrate`, and
+- apply it to the deployed database with `pnpm --filter @jamcaaxian/docs db:docs:migrate:remote`.
 
 ## Third-party material
 

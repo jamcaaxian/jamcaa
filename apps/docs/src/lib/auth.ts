@@ -1,6 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createAuth, getRoleGrants } from "@jamcaa/core/auth";
-import { createDatabase } from "@jamcaa/core";
+import { createAuth, getRoleGrants } from "@jamcaaxian/core/auth";
+import { createDatabase } from "@jamcaaxian/core";
 import { nextCookies } from "better-auth/next-js";
 import { siteCapabilities } from "@/content/install";
 

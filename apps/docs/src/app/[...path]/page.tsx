@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { counterServicePort } from "@jamcaa/core/counters";
+import { counterServicePort } from "@jamcaaxian/core/counters";
 import { PostContent } from "@/components/public/post-content";
 import { publicMoment, publishedPostAt } from "@/content/public-site";
 

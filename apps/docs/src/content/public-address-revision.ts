@@ -1,4 +1,4 @@
-import type { Database } from "@jamcaa/core/db";
+import type { Database } from "@jamcaaxian/core/db";
 
 const REVISION_KEY = "platform.publicAddressRevision";
 

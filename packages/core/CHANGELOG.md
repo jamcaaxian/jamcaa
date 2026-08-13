@@ -1,4 +1,4 @@
-# @jamcaa/core
+# @jamcaaxian/core
 
 ## 0.2.0
 

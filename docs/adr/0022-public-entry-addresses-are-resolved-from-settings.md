@@ -29,4 +29,4 @@ Patterns may contain literal path segments and the tokens `{slug}`, `{collection
 
 Choosing a slug is a publishing capability. Authors without that capability receive a slug generated from the title for a new Entry and retain the existing slug while editing. The server enforces this rule independently of the editing control.
 
-The docs Site keeps its home page as a static route and resolves Entry pages below every other static route. This lets the Site dogfood configurable addresses without moving Next.js routing concerns into `@jamcaa/core`.
+The docs Site keeps its home page as a static route and resolves Entry pages below every other static route. This lets the Site dogfood configurable addresses without moving Next.js routing concerns into `@jamcaaxian/core`.

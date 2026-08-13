@@ -34,7 +34,7 @@ _Avoid_: Post body, HTML, Markdown
 
 **Editing Control**:
 The interface control used to author one Field according to its kind.
-_Avoid_: editor or widget as names for the domain concept; implementation names such as `@jamcaa/editor` may use the shorter technical term.
+_Avoid_: editor or widget as names for the domain concept; implementation names such as `@jamcaaxian/editor` may use the shorter technical term.
 
 **Post**:
 An entry published for readers, whose body is Rich Text. Markdown is an interchange format, not the body's stored form.

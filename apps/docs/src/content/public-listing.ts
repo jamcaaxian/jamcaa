@@ -1,5 +1,5 @@
-import type { EntrySummaryPage } from "@jamcaa/core/content";
-import { formatMoment } from "@jamcaa/core/dates";
+import type { EntrySummaryPage } from "@jamcaaxian/core/content";
+import { formatMoment } from "@jamcaaxian/core/dates";
 import type { post } from "@/content/collections";
 import { postAddress } from "@/content/public-paths";
 import type { PublicPostListingPage } from "@/content/public-listing-protocol";

@@ -1,11 +1,11 @@
-# @jamcaa/editor
+# @jamcaaxian/editor
 
 ## 0.1.1
 
 ### Patch Changes
 
 - Updated dependencies [3c6d3a4]
-    - @jamcaa/core@0.2.0
+    - @jamcaaxian/core@0.2.0
 
 ## 0.1.0
 
@@ -16,4 +16,4 @@
 ### Patch Changes
 
 - Updated dependencies [8472a2a]
-    - @jamcaa/core@0.1.0
+    - @jamcaaxian/core@0.1.0

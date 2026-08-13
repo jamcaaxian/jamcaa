@@ -5,8 +5,8 @@ const mocked = vi.hoisted(() => ({ getSession: vi.fn(), may: vi.fn(), mediaRunti
 vi.mock("@/lib/session", () => ({ getSession: mocked.getSession }));
 vi.mock("@/lib/permissions", () => ({ may: mocked.may }));
 vi.mock("@/lib/media", () => ({ mediaRuntime: mocked.mediaRuntime }));
-vi.mock("@jamcaa/core/media", async importOriginal => ({
-    ...(await importOriginal<typeof import("@jamcaa/core/media")>()),
+vi.mock("@jamcaaxian/core/media", async importOriginal => ({
+    ...(await importOriginal<typeof import("@jamcaaxian/core/media")>()),
     listMedia: mocked.listMedia
 }));
 

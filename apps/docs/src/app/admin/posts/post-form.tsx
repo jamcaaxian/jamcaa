@@ -2,9 +2,9 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import type { Category, EditingField, Tag } from "@jamcaa/core/content";
-import { CollectionEditingControls, type EditingControlValue } from "@jamcaa/editor";
-import { createHttpMediaAdapter } from "@jamcaa/editor/media";
+import type { Category, EditingField, Tag } from "@jamcaaxian/core/content";
+import { CollectionEditingControls, type EditingControlValue } from "@jamcaaxian/editor";
+import { createHttpMediaAdapter } from "@jamcaaxian/editor/media";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";

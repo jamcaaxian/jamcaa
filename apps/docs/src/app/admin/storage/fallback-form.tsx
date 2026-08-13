@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import type { ManagedBucket } from "@jamcaa/core/media";
+import type { ManagedBucket } from "@jamcaaxian/core/media";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

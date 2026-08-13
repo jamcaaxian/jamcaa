@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EditorMediaError } from "@jamcaa/editor/media";
+import { EditorMediaError } from "@jamcaaxian/editor/media";
 import { mediaUploadProblem } from "@/app/admin/media/media-upload-problem";
 
 describe("the Site Media upload error copy", () => {

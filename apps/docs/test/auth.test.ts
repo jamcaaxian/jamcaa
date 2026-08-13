@@ -1,5 +1,5 @@
-import { createDatabase } from "@jamcaa/core";
-import { createAuth } from "@jamcaa/core/auth";
+import { createDatabase } from "@jamcaaxian/core";
+import { createAuth } from "@jamcaaxian/core/auth";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 

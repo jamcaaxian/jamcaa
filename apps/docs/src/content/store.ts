@@ -5,9 +5,9 @@ import {
     formerAddressStore,
     tagMembershipStore,
     writeEntryWithTags
-} from "@jamcaa/core/content";
-import type { EntryRevisionSnapshot } from "@jamcaa/core/content";
-import type { Database } from "@jamcaa/core/db";
+} from "@jamcaaxian/core/content";
+import type { EntryRevisionSnapshot } from "@jamcaaxian/core/content";
+import type { Database } from "@jamcaaxian/core/db";
 import { post } from "./collections";
 import { contentModel, formerPostAddressTable, postRevisionTable, postTable, postTagTable } from "./schema";
 

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
-import { formatMoment } from "@jamcaa/core/dates";
-import { loadSettings, type SettingCatalogue } from "@jamcaa/core/settings";
+import { createDatabase } from "@jamcaaxian/core";
+import { formatMoment } from "@jamcaaxian/core/dates";
+import { loadSettings, type SettingCatalogue } from "@jamcaaxian/core/settings";
 import { publicPostAddresses, type FormerPostResolution } from "./public-addresses";
 import { postAddress, resolvePublishedPost } from "./public-paths";
 import { siteSettings } from "./settings";

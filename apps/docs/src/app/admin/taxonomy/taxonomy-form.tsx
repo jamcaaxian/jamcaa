@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import type { Category, Tag } from "@jamcaa/core/content";
+import type { Category, Tag } from "@jamcaaxian/core/content";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";

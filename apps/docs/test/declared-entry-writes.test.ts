@@ -1,4 +1,4 @@
-import { createDatabase } from "@jamcaa/core";
+import { createDatabase } from "@jamcaaxian/core";
 import {
     buildRevisionTable,
     buildTable,
@@ -17,7 +17,7 @@ import {
     text,
     toggle,
     type EntryOf
-} from "@jamcaa/core/content";
+} from "@jamcaaxian/core/content";
 import { env } from "cloudflare:test";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 

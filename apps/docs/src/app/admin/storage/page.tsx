@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ArrowDown, ArrowUp, Plus } from "lucide-react";
-import { createStorageConfiguration, type ManagedStorageRule, type StorageConditions } from "@jamcaa/core/media";
+import { createStorageConfiguration, type ManagedStorageRule, type StorageConditions } from "@jamcaaxian/core/media";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

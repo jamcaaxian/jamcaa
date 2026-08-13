@@ -6,7 +6,7 @@ import {
     type StorageConditions,
     type StorageConfiguration,
     type StorageConfigurationChange
-} from "@jamcaa/core/media";
+} from "@jamcaaxian/core/media";
 import { mediaRuntime } from "@/lib/media";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";

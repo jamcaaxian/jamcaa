@@ -1,6 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
-import { ensureInstalled } from "@jamcaa/core/install";
+import { createDatabase } from "@jamcaaxian/core";
+import { ensureInstalled } from "@jamcaaxian/core/install";
 import { AdminBreadcrumb } from "@/components/admin/admin-breadcrumb";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { ThemeToggle } from "@/components/admin/theme-toggle";
@@ -10,7 +10,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { installPlan } from "@/content/install";
 import { siteSettings } from "@/content/settings";
 import { requireSession } from "@/lib/session";
-import { getSettings } from "@jamcaa/core/settings";
+import { getSettings } from "@jamcaaxian/core/settings";
 
 // Every admin page reads the session, and the runtime bindings it needs only
 // exist inside a request. Applies to all segments below this layout.

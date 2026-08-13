@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { RichTextContent } from "@jamcaa/editor/content";
-import type { RichTextDocument } from "@jamcaa/core/content";
+import { RichTextContent } from "@jamcaaxian/editor/content";
+import type { RichTextDocument } from "@jamcaaxian/core/content";
 
 export interface PublicPost {
     title: string;

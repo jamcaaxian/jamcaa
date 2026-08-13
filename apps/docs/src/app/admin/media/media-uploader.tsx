@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
-import { createHttpMediaAdapter } from "@jamcaa/editor/media";
+import { createHttpMediaAdapter } from "@jamcaaxian/editor/media";
 import { Button } from "@/components/ui/button";
 import { mediaUploadProblem } from "./media-upload-problem";
 

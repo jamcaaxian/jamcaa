@@ -1,8 +1,8 @@
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDatabase } from "@jamcaa/core";
-import { richTextFromPlainText } from "@jamcaa/core/content";
-import { loadSettings } from "@jamcaa/core/settings";
+import { createDatabase } from "@jamcaaxian/core";
+import { richTextFromPlainText } from "@jamcaaxian/core/content";
+import { loadSettings } from "@jamcaaxian/core/settings";
 import {
     compareAndIncrementPublicAddressRevision,
     comparePublicAddressRevision,

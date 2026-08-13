@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { openMedia } from "@jamcaa/core/media";
+import { openMedia } from "@jamcaaxian/core/media";
 import { mediaRuntime } from "@/lib/media";
 
 export const dynamic = "force-dynamic";

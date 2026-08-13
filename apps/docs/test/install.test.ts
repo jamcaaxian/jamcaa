@@ -1,6 +1,6 @@
-import { createDatabase } from "@jamcaa/core";
-import { checkRequirements, ensureInstalled, INSTALL_VERSION } from "@jamcaa/core/install";
-import { coreSettings, forgetCachedSettings, loadSettings } from "@jamcaa/core/settings";
+import { createDatabase } from "@jamcaaxian/core";
+import { checkRequirements, ensureInstalled, INSTALL_VERSION } from "@jamcaaxian/core/install";
+import { coreSettings, forgetCachedSettings, loadSettings } from "@jamcaaxian/core/settings";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import { installPlan } from "@/content/install";

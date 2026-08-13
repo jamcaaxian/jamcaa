@@ -1,4 +1,4 @@
-import { actorMay, actorMayTouch, type Actor } from "@jamcaa/core/auth";
+import { actorMay, actorMayTouch, type Actor } from "@jamcaaxian/core/auth";
 import { getAuth } from "./auth";
 
 export async function may(actor: Actor, resource: string, action: string): Promise<boolean> {

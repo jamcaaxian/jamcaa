@@ -9,9 +9,9 @@ const mocked = vi.hoisted(() => ({
 }));
 
 vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: mocked.getCloudflareContext }));
-vi.mock("@jamcaa/core", () => ({ createDatabase: mocked.createDatabase }));
-vi.mock("@jamcaa/core/auth", async importOriginal => ({
-    ...(await importOriginal<typeof import("@jamcaa/core/auth")>()),
+vi.mock("@jamcaaxian/core", () => ({ createDatabase: mocked.createDatabase }));
+vi.mock("@jamcaaxian/core/auth", async importOriginal => ({
+    ...(await importOriginal<typeof import("@jamcaaxian/core/auth")>()),
     inspectSystemRoleGrants: mocked.inspectSystemRoleGrants
 }));
 vi.mock("@/lib/permissions", () => ({ may: mocked.may }));

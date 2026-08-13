@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
-import { loadSettings, type SettingCatalogue } from "@jamcaa/core/settings";
+import { createDatabase } from "@jamcaaxian/core";
+import { loadSettings, type SettingCatalogue } from "@jamcaaxian/core/settings";
 import { siteSettings } from "@/content/settings";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";

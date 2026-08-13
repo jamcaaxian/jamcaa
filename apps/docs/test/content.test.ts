@@ -1,6 +1,6 @@
-import { createDatabase } from "@jamcaa/core";
-import { createAuth } from "@jamcaa/core/auth";
-import { richTextFromPlainText, type RichTextDocument } from "@jamcaa/core/content";
+import { createDatabase } from "@jamcaaxian/core";
+import { createAuth } from "@jamcaaxian/core/auth";
+import { richTextFromPlainText, type RichTextDocument } from "@jamcaaxian/core/content";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, expectTypeOf, it } from "vitest";
 import { postSummaries, postTagIds, posts, replacePostTags, writePostWithTags } from "@/content/store";

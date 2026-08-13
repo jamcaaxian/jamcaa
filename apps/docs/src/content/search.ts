@@ -1,6 +1,6 @@
-import type { Database } from "@jamcaa/core/db";
-import type { EntryOf } from "@jamcaa/core/content";
-import { d1SearchAdapter, type SearchFilters } from "@jamcaa/core/search";
+import type { Database } from "@jamcaaxian/core/db";
+import type { EntryOf } from "@jamcaaxian/core/content";
+import { d1SearchAdapter, type SearchFilters } from "@jamcaaxian/core/search";
 import { post } from "./collections";
 import { postTable, postTagTable } from "./schema";
 import { posts } from "./store";

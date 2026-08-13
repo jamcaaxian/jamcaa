@@ -1,5 +1,5 @@
-import { createDatabase } from "@jamcaa/core";
-import { defineCollection, permalinkSettings, text } from "@jamcaa/core/content";
+import { createDatabase } from "@jamcaaxian/core";
+import { defineCollection, permalinkSettings, text } from "@jamcaaxian/core/content";
 import {
     coreSettings,
     defineSettings,
@@ -7,7 +7,7 @@ import {
     getSettings,
     loadSettings,
     writeSettings
-} from "@jamcaa/core/settings";
+} from "@jamcaaxian/core/settings";
 import { siteSettings } from "@/content/settings";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";

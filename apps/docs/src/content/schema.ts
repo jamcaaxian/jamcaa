@@ -1,4 +1,4 @@
-import { buildFormerAddressTable, buildRevisionTable, defineContentModel } from "@jamcaa/core/content";
+import { buildFormerAddressTable, buildRevisionTable, defineContentModel } from "@jamcaaxian/core/content";
 import { post } from "./collections";
 
 export const contentModel = defineContentModel({ collections: [post] });

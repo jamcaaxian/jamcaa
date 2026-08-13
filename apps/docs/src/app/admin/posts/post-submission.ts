@@ -1,4 +1,4 @@
-import { parseCollectionSubmission, type EntryStatus, type RichTextDocument } from "@jamcaa/core/content";
+import { parseCollectionSubmission, type EntryStatus, type RichTextDocument } from "@jamcaaxian/core/content";
 import { post } from "@/content/collections";
 
 const statuses: EntryStatus[] = ["draft", "published", "archived"];

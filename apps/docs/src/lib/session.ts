@@ -1,8 +1,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
-import { hasAdministrator } from "@jamcaa/core/auth";
+import { createDatabase } from "@jamcaaxian/core";
+import { hasAdministrator } from "@jamcaaxian/core/auth";
 import { getAuth } from "./auth";
 
 export async function getSession() {

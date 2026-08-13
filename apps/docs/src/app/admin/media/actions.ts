@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { removeMedia } from "@jamcaa/core/media";
+import { removeMedia } from "@jamcaaxian/core/media";
 import { mediaRuntime } from "@/lib/media";
 import { mayTouch } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
-import { mediaById } from "@jamcaa/core/media";
+import { mediaById } from "@jamcaaxian/core/media";
 
 export async function deleteMedia(formData: FormData): Promise<void> {
     const session = await requireSession();

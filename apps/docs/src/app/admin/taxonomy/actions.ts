@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createDatabase } from "@jamcaa/core";
+import { createDatabase } from "@jamcaaxian/core";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { taxonomy } from "@/content/taxonomy";
 import { may, type Actor } from "@/lib/permissions";

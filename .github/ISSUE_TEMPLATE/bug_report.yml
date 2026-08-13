@@ -48,7 +48,7 @@ body:
           label: Versions
           description: Package versions, Node version, and Wrangler version.
           placeholder: |
-              @jamcaa/core:
+              @jamcaaxian/core:
               node:
               wrangler:
       validations:

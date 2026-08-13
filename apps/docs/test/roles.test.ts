@@ -1,4 +1,4 @@
-import { createDatabase } from "@jamcaa/core";
+import { createDatabase } from "@jamcaaxian/core";
 import {
     buildAccessControl,
     coreCapabilities,
@@ -10,7 +10,7 @@ import {
     ROLE_CACHE_TTL_MS,
     seedSystemRoles,
     systemRoles
-} from "@jamcaa/core/auth";
+} from "@jamcaaxian/core/auth";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 

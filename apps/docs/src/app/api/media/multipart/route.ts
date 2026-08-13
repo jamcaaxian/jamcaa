@@ -4,8 +4,8 @@ import {
     planMultipartUpload,
     recordMultipartPart,
     type UploadedPart
-} from "@jamcaa/core/media";
-import { coreSettings, loadSettings } from "@jamcaa/core/settings";
+} from "@jamcaaxian/core/media";
+import { coreSettings, loadSettings } from "@jamcaaxian/core/settings";
 import { mediaRuntime } from "@/lib/media";
 import { may } from "@/lib/permissions";
 import { getSession } from "@/lib/session";

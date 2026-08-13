@@ -1,4 +1,4 @@
-import type { EntrySummaryOf } from "@jamcaa/core/content";
+import type { EntrySummaryOf } from "@jamcaaxian/core/content";
 import type { post } from "./collections";
 import { postAddress } from "./public-paths";
 

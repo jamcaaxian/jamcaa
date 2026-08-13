@@ -6,8 +6,8 @@ import {
     type DeclaredValuesOf,
     type EntryOf,
     type EntryStatus
-} from "@jamcaa/core/content";
-import type { Database } from "@jamcaa/core/db";
+} from "@jamcaaxian/core/content";
+import type { Database } from "@jamcaaxian/core/db";
 import { compareAndIncrementPublicAddressRevision, comparePublicAddressRevision } from "./public-address-revision";
 import { publicPostAddresses } from "./public-addresses";
 import { freePublicPostSlug, postAddress } from "./public-paths";

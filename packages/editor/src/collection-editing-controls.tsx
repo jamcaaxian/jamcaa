@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import type { EditingField, RichTextDocument } from "@jamcaa/core/content";
+import type { EditingField, RichTextDocument } from "@jamcaaxian/core/content";
 import {
     defaultCollectionEditingControlMessages,
     type CollectionEditingControlMessages,

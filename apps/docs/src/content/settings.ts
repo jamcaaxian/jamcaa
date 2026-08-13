@@ -1,5 +1,5 @@
-import { permalinkSettings } from "@jamcaa/core/content";
-import type { Database } from "@jamcaa/core/db";
+import { permalinkSettings } from "@jamcaaxian/core/content";
+import type { Database } from "@jamcaaxian/core/db";
 import {
     checkSettingValue,
     coreSettings,
@@ -9,7 +9,7 @@ import {
     readSettingValue,
     type SettingCatalogue,
     type SettingValues
-} from "@jamcaa/core/settings";
+} from "@jamcaaxian/core/settings";
 import { post } from "./collections";
 import {
     compareAndIncrementPublicAddressRevision,

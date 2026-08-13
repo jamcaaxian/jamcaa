@@ -29,10 +29,10 @@ importers:
       '@base-ui/react':
         specifier: ^1.7.0
         version: 1.7.0(@types/react@19.2.18)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@jamcaa/core':
+      '@jamcaaxian/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@jamcaa/editor':
+      '@jamcaaxian/editor':
         specifier: workspace:*
         version: link:../../packages/editor
       '@opennextjs/cloudflare':
@@ -157,7 +157,7 @@ importers:
 
   packages/editor:
     dependencies:
-      '@jamcaa/core':
+      '@jamcaaxian/core':
         specifier: workspace:*
         version: link:../core
       '@tiptap/core':

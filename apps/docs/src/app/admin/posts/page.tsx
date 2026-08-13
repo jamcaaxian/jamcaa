@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
-import { counterServicePort } from "@jamcaa/core/counters";
-import { formatMoment } from "@jamcaa/core/dates";
-import { getSettings } from "@jamcaa/core/settings";
+import { createDatabase } from "@jamcaaxian/core";
+import { counterServicePort } from "@jamcaaxian/core/counters";
+import { formatMoment } from "@jamcaaxian/core/dates";
+import { getSettings } from "@jamcaaxian/core/settings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";

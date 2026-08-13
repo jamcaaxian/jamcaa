@@ -18,8 +18,8 @@ const mocked = vi.hoisted(() => {
 vi.mock("@/lib/session", () => ({ getSession: mocked.getSession }));
 vi.mock("@/lib/permissions", () => ({ may: mocked.may }));
 vi.mock("@/lib/media", () => ({ mediaRuntime: mocked.mediaRuntime }));
-vi.mock("@jamcaa/core/settings", () => ({ coreSettings: {}, loadSettings: mocked.loadSettings }));
-vi.mock("@jamcaa/core/media", () => ({
+vi.mock("@jamcaaxian/core/settings", () => ({ coreSettings: {}, loadSettings: mocked.loadSettings }));
+vi.mock("@jamcaaxian/core/media", () => ({
     MultipartUploadNotEstablishedError: mocked.MultipartUploadNotEstablishedError,
     planMultipartUpload: mocked.planMultipartUpload,
     recordMultipartPart: mocked.recordMultipartPart,

@@ -1,7 +1,7 @@
-import { createDatabase } from "@jamcaa/core";
-import { createAuth } from "@jamcaa/core/auth";
-import { richTextFromPlainText } from "@jamcaa/core/content";
-import { d1SearchAdapter } from "@jamcaa/core/search";
+import { createDatabase } from "@jamcaaxian/core";
+import { createAuth } from "@jamcaaxian/core/auth";
+import { richTextFromPlainText } from "@jamcaaxian/core/content";
+import { d1SearchAdapter } from "@jamcaaxian/core/search";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import { post } from "@/content/collections";

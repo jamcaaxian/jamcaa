@@ -1,4 +1,4 @@
-import { CounterDurableObject } from "@jamcaa/core/counters/durable-object";
+import { CounterDurableObject } from "@jamcaaxian/core/counters/durable-object";
 
 export { CounterDurableObject };
 

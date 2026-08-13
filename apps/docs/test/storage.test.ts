@@ -1,5 +1,5 @@
-import { createDatabase } from "@jamcaa/core";
-import { chooseRule, parseConditions, seedStorage, type StorageRule } from "@jamcaa/core/media";
+import { createDatabase } from "@jamcaaxian/core";
+import { chooseRule, parseConditions, seedStorage, type StorageRule } from "@jamcaaxian/core/media";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 

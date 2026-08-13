@@ -1,7 +1,7 @@
 import { env, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { counterNamespacePort, counterServicePort } from "@jamcaa/core/counters";
-import type { CounterDurableObject } from "@jamcaa/core/counters/durable-object";
+import { counterNamespacePort, counterServicePort } from "@jamcaaxian/core/counters";
+import type { CounterDurableObject } from "@jamcaaxian/core/counters/durable-object";
 
 // The generated Site env types declare COUNTERS as a service-binding Fetcher;
 // in this suite the same binding name carries the namespace of the main Worker.

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
+import { createDatabase } from "@jamcaaxian/core";
 import { restorePostRevision } from "@/content/post-writes";
 import { postRevisions, posts } from "@/content/store";
 import { may, mayTouch } from "@/lib/permissions";

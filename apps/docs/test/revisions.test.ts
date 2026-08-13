@@ -1,6 +1,6 @@
-import { createDatabase } from "@jamcaa/core";
-import { createAuth } from "@jamcaa/core/auth";
-import { richTextFromPlainText } from "@jamcaa/core/content";
+import { createDatabase } from "@jamcaaxian/core";
+import { createAuth } from "@jamcaaxian/core/auth";
+import { richTextFromPlainText } from "@jamcaaxian/core/content";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import { commitPostState, restorePostRevision } from "@/content/post-writes";

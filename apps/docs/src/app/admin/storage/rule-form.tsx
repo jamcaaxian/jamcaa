@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import type { ManagedBucket, ManagedStorageRule, StorageConditions } from "@jamcaa/core/media";
+import type { ManagedBucket, ManagedStorageRule, StorageConditions } from "@jamcaaxian/core/media";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";

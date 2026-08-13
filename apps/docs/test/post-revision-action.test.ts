@@ -15,7 +15,7 @@ const mocked = vi.hoisted(() => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: mocked.redirect }));
 vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: mocked.getCloudflareContext }));
-vi.mock("@jamcaa/core", () => ({ createDatabase: mocked.createDatabase }));
+vi.mock("@jamcaaxian/core", () => ({ createDatabase: mocked.createDatabase }));
 vi.mock("@/content/post-writes", () => ({ restorePostRevision: mocked.restorePostRevision }));
 vi.mock("@/content/store", () => ({
     posts: () => ({ byId: mocked.byId }),

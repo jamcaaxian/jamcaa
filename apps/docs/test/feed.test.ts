@@ -1,4 +1,4 @@
-import type { EntrySummaryOf } from "@jamcaa/core/content";
+import type { EntrySummaryOf } from "@jamcaaxian/core/content";
 import { describe, expect, it } from "vitest";
 import type { post } from "@/content/collections";
 import { jsonFeed } from "@/content/feed";

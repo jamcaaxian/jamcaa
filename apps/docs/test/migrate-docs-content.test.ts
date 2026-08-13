@@ -1,8 +1,8 @@
 import { env } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createDatabase, type Database } from "@jamcaa/core/db";
-import { entryStore, entrySummaryReader, richTextToPlainText, taxonomyStore } from "@jamcaa/core/content";
-import { d1SearchAdapter } from "@jamcaa/core/search";
+import { createDatabase, type Database } from "@jamcaaxian/core/db";
+import { entryStore, entrySummaryReader, richTextToPlainText, taxonomyStore } from "@jamcaaxian/core/content";
+import { d1SearchAdapter } from "@jamcaaxian/core/search";
 import { post } from "@/content/collections";
 import { contentModel, postTable } from "@/content/schema";
 import { jsonFeed } from "@/content/feed";

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
+import { createDatabase } from "@jamcaaxian/core";
 import { PostContent } from "@/components/public/post-content";
 import { publicMoment } from "@/content/public-site";
 import { posts } from "@/content/store";

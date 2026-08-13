@@ -3,8 +3,8 @@ import { execFile } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import type { Collection } from "@jamcaa/core/content";
-import { searchArtifactDescriptor, searchMigrationSql, type SearchArtifactDescriptor } from "@jamcaa/core/search";
+import type { Collection } from "@jamcaaxian/core/content";
+import { searchArtifactDescriptor, searchMigrationSql, type SearchArtifactDescriptor } from "@jamcaaxian/core/search";
 import { contentModel } from "../src/content/schema";
 
 export interface SearchMigrationRecord {

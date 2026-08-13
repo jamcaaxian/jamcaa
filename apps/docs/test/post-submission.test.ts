@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { richTextFromPlainText } from "@jamcaa/core/content";
+import { richTextFromPlainText } from "@jamcaaxian/core/content";
 import { readPostSubmission } from "@/app/admin/posts/post-submission";
 
 function form(body: string, title = "A title") {

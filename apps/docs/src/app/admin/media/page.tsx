@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { FileText } from "lucide-react";
-import { listMedia } from "@jamcaa/core/media";
-import { coreSettings, loadSettings } from "@jamcaa/core/settings";
+import { listMedia } from "@jamcaaxian/core/media";
+import { coreSettings, loadSettings } from "@jamcaaxian/core/settings";
 import { mediaRuntime } from "@/lib/media";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";

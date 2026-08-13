@@ -2,10 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
-import { claimFirstAdministrator } from "@jamcaa/core/auth";
-import { ensureInstalled } from "@jamcaa/core/install";
-import { coreSettings, writeSettings } from "@jamcaa/core/settings";
+import { createDatabase } from "@jamcaaxian/core";
+import { claimFirstAdministrator } from "@jamcaaxian/core/auth";
+import { ensureInstalled } from "@jamcaaxian/core/install";
+import { coreSettings, writeSettings } from "@jamcaaxian/core/settings";
 import { installPlan } from "@/content/install";
 import { getAuth } from "@/lib/auth";
 

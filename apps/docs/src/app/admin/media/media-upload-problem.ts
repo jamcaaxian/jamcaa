@@ -1,4 +1,4 @@
-import { EditorMediaError, type EditorMediaErrorCode } from "@jamcaa/editor/media";
+import { EditorMediaError, type EditorMediaErrorCode } from "@jamcaaxian/editor/media";
 
 const messages: Record<EditorMediaErrorCode, string> = {
     "image-upload-failed": "The upload failed.",

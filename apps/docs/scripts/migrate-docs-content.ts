@@ -1,7 +1,7 @@
-import { richTextFromMarkdown, type RichTextDocument } from "@jamcaa/core/content";
-import { entryStore } from "@jamcaa/core/content";
-import type { Collection, ContentModel } from "@jamcaa/core/content";
-import type { Database } from "@jamcaa/core/db";
+import { richTextFromMarkdown, type RichTextDocument } from "@jamcaaxian/core/content";
+import { entryStore } from "@jamcaaxian/core/content";
+import type { Collection, ContentModel } from "@jamcaaxian/core/content";
+import type { Database } from "@jamcaaxian/core/db";
 
 /** One repository document, ready to become one published Post. */
 export interface DocSource {

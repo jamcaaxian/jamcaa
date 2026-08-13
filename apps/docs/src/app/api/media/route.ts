@@ -1,5 +1,5 @@
-import { acceptUpload, cancelUpload, confirmUpload, listMedia } from "@jamcaa/core/media";
-import { coreSettings, loadSettings } from "@jamcaa/core/settings";
+import { acceptUpload, cancelUpload, confirmUpload, listMedia } from "@jamcaaxian/core/media";
+import { coreSettings, loadSettings } from "@jamcaaxian/core/settings";
 import { mediaRuntime } from "@/lib/media";
 import { transferModeFor } from "@/lib/media-transfer";
 import { may } from "@/lib/permissions";

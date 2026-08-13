@@ -1,6 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
-import type { SigningCredentials } from "@jamcaa/core/media";
+import { createDatabase } from "@jamcaaxian/core";
+import type { SigningCredentials } from "@jamcaaxian/core/media";
 
 /** What the media layer needs from the runtime, gathered in one place per request. */
 export function mediaRuntime() {

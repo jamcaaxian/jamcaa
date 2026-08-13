@@ -1,4 +1,4 @@
-import { createDatabase } from "@jamcaa/core";
+import { createDatabase } from "@jamcaaxian/core";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { jsonFeed } from "@/content/feed";
 import { publicSiteSettings } from "@/content/public-site";

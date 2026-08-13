@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
-import { editingFields } from "@jamcaa/core/content";
-import { getSettings } from "@jamcaa/core/settings";
+import { createDatabase } from "@jamcaaxian/core";
+import { editingFields } from "@jamcaaxian/core/content";
+import { getSettings } from "@jamcaaxian/core/settings";
 import { post } from "@/content/collections";
 import { siteSettings } from "@/content/settings";
 import { taxonomy } from "@/content/taxonomy";

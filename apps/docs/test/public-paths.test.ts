@@ -1,4 +1,4 @@
-import { richTextFromPlainText } from "@jamcaa/core/content";
+import { richTextFromPlainText } from "@jamcaaxian/core/content";
 import { describe, expect, it, vi } from "vitest";
 import {
     checkPublicPermalink,

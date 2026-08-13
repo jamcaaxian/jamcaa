@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getSchema } from "@tiptap/core";
-import { parseRichText } from "@jamcaa/core/content";
+import { parseRichText } from "@jamcaaxian/core/content";
 import { richTextDocumentForSubmission, richTextExtensions, toolbarButtonPressedState } from "./rich-text-editor";
 
 describe("the browser and core rich text compatibility contract", () => {

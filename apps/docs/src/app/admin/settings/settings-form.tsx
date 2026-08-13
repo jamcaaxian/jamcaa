@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { buildPermalink, checkPermalink } from "@jamcaa/core/content";
-import { checkPattern, describePattern } from "@jamcaa/core/dates";
+import { buildPermalink, checkPermalink } from "@jamcaaxian/core/content";
+import { checkPattern, describePattern } from "@jamcaaxian/core/dates";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";

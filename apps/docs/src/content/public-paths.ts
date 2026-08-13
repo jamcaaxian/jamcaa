@@ -1,5 +1,5 @@
-import { buildPermalink, checkPermalink, matchPermalink } from "@jamcaa/core/content";
-import type { RichTextDocument } from "@jamcaa/core/content";
+import { buildPermalink, checkPermalink, matchPermalink } from "@jamcaaxian/core/content";
+import type { RichTextDocument } from "@jamcaaxian/core/content";
 
 const RESERVED_PATH_PREFIXES = new Set([
     "_next",

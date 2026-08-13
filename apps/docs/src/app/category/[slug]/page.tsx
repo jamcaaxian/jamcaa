@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createDatabase } from "@jamcaa/core";
+import { createDatabase } from "@jamcaaxian/core";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ProgressivePostList } from "@/components/public/progressive-post-list";
 import { publicPostListing } from "@/content/public-listing";

@@ -1,5 +1,5 @@
-import type { EntryOf } from "@jamcaa/core/content";
-import type { Database } from "@jamcaa/core/db";
+import type { EntryOf } from "@jamcaaxian/core/content";
+import type { Database } from "@jamcaaxian/core/db";
 import { post } from "./collections";
 import { isReservedPublicAddress, postAddress } from "./public-paths";
 import { formerPostAddresses, posts } from "./store";

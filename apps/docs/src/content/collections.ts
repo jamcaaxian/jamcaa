@@ -1,4 +1,4 @@
-import { defineCollection, richText, text } from "@jamcaa/core/content";
+import { defineCollection, richText, text } from "@jamcaaxian/core/content";
 
 export const post = defineCollection({
     name: "post",

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createDatabase } from "@jamcaa/core";
+import { createDatabase } from "@jamcaaxian/core";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { SearchResultList } from "@/components/public/search-result-list";
 import { publicSiteSettings } from "@/content/public-site";

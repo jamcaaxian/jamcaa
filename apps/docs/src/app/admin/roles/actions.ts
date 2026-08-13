@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaa/core";
-import { replaceSystemRoleGrants, RoleGrantError, type CapabilityGrants } from "@jamcaa/core/auth";
+import { createDatabase } from "@jamcaaxian/core";
+import { replaceSystemRoleGrants, RoleGrantError, type CapabilityGrants } from "@jamcaaxian/core/auth";
 import { siteCapabilities } from "@/content/install";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";

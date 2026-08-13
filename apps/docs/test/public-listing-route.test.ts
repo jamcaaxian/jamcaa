@@ -9,7 +9,7 @@ const mocked = vi.hoisted(() => ({
     publicSiteSettings: vi.fn()
 }));
 
-vi.mock("@jamcaa/core", () => ({ createDatabase: mocked.createDatabase }));
+vi.mock("@jamcaaxian/core", () => ({ createDatabase: mocked.createDatabase }));
 vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: mocked.getCloudflareContext }));
 vi.mock("@/content/store", () => ({ postSummaries: () => ({ list: mocked.list }) }));
 vi.mock("@/content/taxonomy", () => ({
