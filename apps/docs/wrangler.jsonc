@@ -62,6 +62,11 @@
         }
     ],
     "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler"] }],
+    // Upstream OpenNext issue #1232: Next's getMiddlewareManifest() uses a
+    // dynamic require() that the Workers runtime cannot execute, which 500s
+    // every route. Minimal mode makes it return null instead. This Site has
+    // no middleware/proxy file, so nothing is skipped.
+    "vars": { "NEXT_PRIVATE_MINIMAL_MODE": "1" },
     "observability": { "enabled": true },
     "upload_source_maps": true
     /**
