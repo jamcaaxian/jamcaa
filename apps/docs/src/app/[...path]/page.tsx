@@ -16,7 +16,14 @@ function countView(entryId: string): void {
             return;
         }
 
-        ctx.waitUntil(counterServicePort(env.COUNTERS).increment({ collectionName: "post", entryId }, "view"));
+        // View counting is best-effort telemetry: a missing or failing
+        // counters Worker (for example in local development) must never
+        // take a public page down.
+        ctx.waitUntil(
+            counterServicePort(env.COUNTERS)
+                .increment({ collectionName: "post", entryId }, "view")
+                .catch(() => undefined)
+        );
     } catch {
         // No Cloudflare context, for example in tests outside the Worker: skip counting.
     }

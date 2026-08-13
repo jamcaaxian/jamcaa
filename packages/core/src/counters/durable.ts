@@ -23,6 +23,10 @@ interface CountResponse {
 }
 
 async function expectCount(response: Response): Promise<number> {
+    if (!response.ok) {
+        throw new Error(`The counters Worker answered ${response.status}.`);
+    }
+
     const body = (await response.json()) as CountResponse;
 
     if (body.count === undefined) {
@@ -37,7 +41,7 @@ export function counterNamespacePort(namespace: DurableObjectNamespace<CounterDu
     const request = async (target: CounterTarget, pathname: string, body: unknown): Promise<number> => {
         const response = await namespace
             .get(namespace.idFromName(`${target.collectionName}:${target.entryId}`))
-            .fetch(new Request(`https://counters${pathname}`, { method: "POST", body: JSON.stringify(body) }));
+            .fetch(`https://counters${pathname}`, { method: "POST", body: JSON.stringify(body) });
 
         return await expectCount(response);
     };
@@ -68,9 +72,10 @@ export function counterNamespacePort(namespace: DurableObjectNamespace<CounterDu
 /** Counters reached through a service binding to a counters Worker. */
 export function counterServicePort(fetcher: Fetcher): CounterPort {
     const post = async (pathname: string, body: unknown): Promise<number> => {
-        const response = await fetcher.fetch(
-            new Request(`https://counters${pathname}`, { method: "POST", body: JSON.stringify(body) })
-        );
+        const response = await fetcher.fetch(`https://counters${pathname}`, {
+            method: "POST",
+            body: JSON.stringify(body)
+        });
 
         return await expectCount(response);
     };
