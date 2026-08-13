@@ -133,3 +133,5 @@ Use `pnpm upload` instead when the deployment artifact should be uploaded withou
 On every push to `develop`, the deploy workflow builds and deploys both Workers automatically once the Cloudflare secrets are configured.
 
 After the first deploy: run `pnpm db:migrate:remote`, run `pnpm db:docs:migrate:remote` to publish the documentation, and open `/setup` on the deployed address to create its administrator.
+
+View counts appear once the counters Worker is deployed; local `wrangler dev` does not start it, and the admin list simply omits the Views column until the `COUNTERS` service binding resolves.

@@ -12,6 +12,7 @@ on:
         paths:
             - "packages/**"
             - ".changeset/**"
+            - ".github/workflows/**"
             - "package.json"
             - "pnpm-lock.yaml"
 
@@ -34,7 +35,9 @@ jobs:
                   pnpm install --frozen-lockfile
 
             - name: Apply changeset version bumps
-              run: pnpm version
+              # `pnpm version` is a builtin that prints tool versions; the
+              # script must be addressed through `run`.
+              run: pnpm run version
 
             - name: Commit version bumps
               run: |
