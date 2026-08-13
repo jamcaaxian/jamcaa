@@ -119,7 +119,7 @@ Add GitHub Secrets when CI should deploy automatically: `CLOUDFLARE_API_TOKEN` a
 The Site expects the D1, R2, Durable Object, service, and image bindings declared in `wrangler.jsonc`. After those resources and secrets exist in the target Cloudflare account:
 
 ```bash
-pnpm deploy
+pnpm run deploy
 ```
 
 Deploy the counters Worker alongside it:
@@ -128,7 +128,7 @@ Deploy the counters Worker alongside it:
 pnpm exec wrangler deploy --config wrangler.counters.jsonc
 ```
 
-Use `pnpm upload` instead when the deployment artifact should be uploaded without immediately deploying it.
+Use `pnpm run upload` instead when the deployment artifact should be uploaded without immediately deploying it.
 
 On every push to `develop`, the deploy workflow builds and deploys both Workers automatically once the Cloudflare secrets are configured.
 

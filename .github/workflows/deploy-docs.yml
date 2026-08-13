@@ -42,7 +42,7 @@ jobs:
 
             - name: Deploy the docs Site
               if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
-              run: pnpm --filter @jamcaa/docs deploy
+              run: pnpm --filter @jamcaa/docs run deploy
 
             - name: Deploy the counters Worker
               if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
