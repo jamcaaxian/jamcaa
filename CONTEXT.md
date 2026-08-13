@@ -36,6 +36,10 @@ _Avoid_: Post body, HTML, Markdown
 A self-contained unit of a composable body. It declares which attributes an author may set, and every stored instance is validated against that declaration. A body is a sequence of Blocks; Rich Text is one Block among others.
 _Avoid_: component instance, widget, section, module
 
+**Page**:
+A freely created addressable page built from Blocks, such as a home page, an about page, or a portfolio. Pages have no Collection, Taxonomy, or search presence; they exist alongside Entries rather than inside a Collection.
+_Avoid_: static page, landing page (as a distinct concept), route
+
 **Editing Control**:
 The interface control used to author one Field according to its kind.
 _Avoid_: editor or widget as names for the domain concept; implementation names such as `@jamcaaxian/editor` may use the shorter technical term.

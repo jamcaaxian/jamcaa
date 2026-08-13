@@ -7,6 +7,7 @@ export * from "./field-types";
 export * from "./former-addresses";
 export * from "./markdown";
 export * from "./model";
+export * from "./pages";
 export * from "./permalink";
 export * from "./revisions";
 export * from "./rich-text";

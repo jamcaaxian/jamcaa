@@ -2,6 +2,7 @@
 // Regenerate it rather than editing by hand: pnpm --filter @jamcaaxian/core auth:generate
 export * from "./auth";
 export * from "./media";
+export * from "./pages";
 export * from "./roles";
 export * from "./settings";
 export * from "./taxonomy";

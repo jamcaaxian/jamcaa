@@ -78,6 +78,13 @@
       "when": 1786512203679,
       "tag": "0011_post_revisions",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1786630799931,
+      "tag": "0012_pages",
+      "breakpoints": true
     }
   ]
 }
