@@ -11,7 +11,7 @@ interface CounterEnv {
  * Worker reaches counters through a service binding (ADR-0007), because a
  * Next-on-Workers bundle cannot export its own Durable Object classes.
  */
-export default {
+const countersRouter: ExportedHandler<CounterEnv> = {
     async fetch(request: Request, env: CounterEnv): Promise<Response> {
         const url = new URL(request.url);
 
@@ -44,3 +44,5 @@ export default {
         return await stub.fetch(new Request(request.url, { method: request.method, body: text }));
     }
 };
+
+export default countersRouter;
