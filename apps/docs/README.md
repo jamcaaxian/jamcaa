@@ -61,6 +61,59 @@ pnpm preview
 
 On Windows, the current OpenNext/workerd toolchain may fail to resolve generated server manifests. Use WSL or CI when that existing platform limitation appears; `pnpm dev` remains the local browser-acceptance path.
 
+## First run
+
+Start the development server and open [http://localhost:2727/setup](http://localhost:2727/setup). The setup flow creates the first administrator account and applies the install plan (buckets, capabilities). After that the administration lives at [http://localhost:2727/admin](http://localhost:2727/admin).
+
+## Repository documentation
+
+`CONTEXT.md`, `docs/adr/*.md`, and `docs/agents/*.md` remain Markdown in the repository and are migrated into this Site as Posts (ADR-0013). After editing one of those files:
+
+```bash
+pnpm test:docs:migrate        # verify conversion against an isolated D1
+pnpm db:docs:migrate          # apply to the local development D1
+pnpm db:docs:migrate:remote   # apply to the deployed D1
+```
+
+## Customizing the Site
+
+Everything Site-specific lives under `src/content`:
+
+- `collections.ts` declares the Collections and Fields; `schema.ts` assembles them into the ContentModel.
+- `settings.ts` declares Site settings; the admin Settings page edits their values (title, description, permalink pattern, theme accent, date and time formats).
+- `install.ts` declares the install plan (buckets and capabilities); `storage.ts` declares Media buckets.
+- `public-*.ts`, `feed.ts`, and `taxonomy.ts` own presentation and reading paths.
+
+Change the declarations, regenerate migrations with `pnpm db:generate`, and apply them with `pnpm db:migrate`.
+
+## One-time production setup
+
+Create these resources in the target Cloudflare account, then keep their identifiers in sync with the configs:
+
+| Resource    | Name to create          | Where it is referenced                                                     |
+| ----------- | ----------------------- | -------------------------------------------------------------------------- |
+| D1 database | `jamcaa-docs`           | `wrangler.jsonc` → `d1_databases[DB]`                                      |
+| D1 database | `jamcaa-docs-tag-cache` | `wrangler.jsonc` → `d1_databases[NEXT_TAG_CACHE_D1]`                       |
+| R2 bucket   | `jamcaa-docs-inc-cache` | `wrangler.jsonc` → `r2_buckets[NEXT_INC_CACHE_R2_BUCKET]`                  |
+| R2 bucket   | `jamcaa-docs-media`     | `wrangler.jsonc` → `r2_buckets[MEDIA_BUCKET]` and `src/content/storage.ts` |
+| Worker      | `jamcaa-docs`           | created by `pnpm deploy`                                                   |
+| Worker      | `jamcaa-docs-counters`  | `wrangler.counters.jsonc`                                                  |
+
+After creating the two D1 databases, copy their `database_id` values from the dashboard into `wrangler.jsonc`.
+
+Set the production secrets on the docs Worker (the values in `.dev.vars` are local only):
+
+```bash
+wrangler secret put BETTER_AUTH_SECRET       # at least 32 random characters
+wrangler secret put R2_ACCOUNT_ID
+wrangler secret put R2_ACCESS_KEY_ID         # R2 API token, "Object Read & Write", scoped to jamcaa-docs-media
+wrangler secret put R2_SECRET_ACCESS_KEY
+```
+
+The R2 credentials let the server sign addresses for browser uploads. Also add CORS rules to the media bucket for every admin origin that performs direct uploads, including `http://localhost:2727` while developing locally.
+
+Add GitHub Secrets when CI should deploy automatically: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (the deploy workflow), and `NPM_TOKEN` (the release workflow). Until they exist, the affected steps are skipped.
+
 ## Deploy
 
 The Site expects the D1, R2, Durable Object, service, and image bindings declared in `wrangler.jsonc`. After those resources and secrets exist in the target Cloudflare account:
@@ -69,4 +122,14 @@ The Site expects the D1, R2, Durable Object, service, and image bindings declare
 pnpm deploy
 ```
 
+Deploy the counters Worker alongside it:
+
+```bash
+pnpm exec wrangler deploy --config wrangler.counters.jsonc
+```
+
 Use `pnpm upload` instead when the deployment artifact should be uploaded without immediately deploying it.
+
+On every push to `develop`, the deploy workflow builds and deploys both Workers automatically once the Cloudflare secrets are configured.
+
+After the first deploy: run `pnpm db:migrate:remote`, run `pnpm db:docs:migrate:remote` to publish the documentation, and open `/setup` on the deployed address to create its administrator.

@@ -26,6 +26,18 @@ The reference Docs Site under [`apps/docs`](./apps/docs) is built with jamcaa it
 
 Architectural decisions and their trade-offs are recorded in [`docs/adr/`](./docs/adr). Start there if you want to understand why something is the way it is.
 
+## Using the framework
+
+The Docs Site doubles as the reference example (ADR-0013): [its guide](./apps/docs/README.md) walks through local development, first-run setup, content migration, Site customization, one-time Cloudflare resource creation, production secrets, and deployment — the same path any Site author follows. Read it top to bottom to deploy and customize your own Site.
+
+Everything an adopter must do by hand is listed there, summarized here:
+
+- **Local**: copy `.dev.vars.example` to `.dev.vars`, generate a `BETTER_AUTH_SECRET`, add local R2 credentials for signed uploads.
+- **Cloudflare resources**: two D1 databases, two R2 buckets, the counters Worker; copy generated `database_id` values into `wrangler.jsonc`.
+- **Production secrets** on the docs Worker: `BETTER_AUTH_SECRET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
+- **GitHub Secrets** for CI: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `NPM_TOKEN`.
+- **After first deploy**: `db:migrate:remote`, `db:docs:migrate:remote`, then `/setup` on the deployed address.
+
 ## Contributing
 
 Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) first — note that a Contributor License Agreement is required.
