@@ -40,13 +40,13 @@ export function docSlug(relativePath: string): string {
     return base.toLowerCase();
 }
 
-function firstHeading(markdown: string, fallback: string): string {
+export function docTitle(markdown: string, fallback: string): string {
     const match = /^#\s+(.+)$/m.exec(markdown);
 
     return match === null ? fallback : match[1]!.trim();
 }
 
-function firstParagraphText(body: RichTextDocument): string {
+export function docExcerpt(body: RichTextDocument): string {
     for (const node of body.content) {
         if (node.type !== "paragraph") {
             continue;
@@ -85,8 +85,8 @@ export async function migrateDocsContent(options: {
 
     for (const source of [...options.sources].sort((left, right) => left.slug.localeCompare(right.slug))) {
         const body = richTextFromMarkdown(source.markdown);
-        const title = source.title || firstHeading(source.markdown, source.slug);
-        const excerpt = firstParagraphText(body);
+        const title = source.title || docTitle(source.markdown, source.slug);
+        const excerpt = docExcerpt(body);
         const existing = await store.bySlug(source.slug);
 
         if (existing === undefined) {
@@ -115,8 +115,24 @@ export function docSourcesFromRecord(record: Record<string, string>): DocSource[
     return Object.entries(record)
         .map(([path, markdown]) => ({
             slug: docSlug(path),
-            title: firstHeading(markdown, path.split("/").pop()?.replace(/\.md$/i, "") ?? path),
+            title: docTitle(markdown, path.split("/").pop()?.replace(/\.md$/i, "") ?? path),
             markdown
         }))
         .sort((left, right) => left.slug.localeCompare(right.slug));
+}
+
+export interface RepositoryPost {
+    slug: string;
+    title: string;
+    excerpt: string;
+    body: RichTextDocument;
+}
+
+/** One converted, publishable Post per repository document. */
+export function repositoryPosts(record: Record<string, string>): RepositoryPost[] {
+    return docSourcesFromRecord(record).map(source => {
+        const body = richTextFromMarkdown(source.markdown);
+
+        return { slug: source.slug, title: source.title, excerpt: docExcerpt(body), body };
+    });
 }

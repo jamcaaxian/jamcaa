@@ -17,6 +17,9 @@
         "db:generate": "drizzle-kit generate && pnpm db:search:check",
         "db:search:check": "vitest run --config vitest.migrations.config.mts",
         "test:docs:migrate": "vitest run test/migrate-docs-content.test.ts",
+        "db:docs:generate": "vitest run --config vitest.docs-sql.config.mts",
+        "db:docs:migrate": "pnpm db:docs:generate && wrangler d1 execute jamcaa-docs --local --file=.wrangler/docs-migration.sql",
+        "db:docs:migrate:remote": "pnpm db:docs:generate && wrangler d1 execute jamcaa-docs --remote --file=.wrangler/docs-migration.sql",
         "db:migrate": "wrangler d1 migrations apply jamcaa-docs --local",
         "db:migrate:remote": "wrangler d1 migrations apply jamcaa-docs --remote"
     },
