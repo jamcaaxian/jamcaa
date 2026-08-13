@@ -1,5 +1,5 @@
 import { createDatabase } from "@jamcaa/core";
-import { claimFirstAdministrator, createAuth, hasAnyUser } from "@jamcaa/core/auth";
+import { claimFirstAdministrator, createAuth, hasAdministrator } from "@jamcaa/core/auth";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import { safeNextPath } from "@/lib/safe-next-path";
@@ -24,7 +24,7 @@ describe("first-run installation", () => {
     });
 
     it("reports an empty installation", async () => {
-        expect(await hasAnyUser(database())).toBe(false);
+        expect(await hasAdministrator(database())).toBe(false);
     });
 
     it("makes the first account an administrator", async () => {
@@ -43,7 +43,7 @@ describe("first-run installation", () => {
         expect(roles.results.map(row => row.name)).toContain("admin");
     });
 
-    it("refuses once any account exists", async () => {
+    it("refuses once an administrator exists", async () => {
         await claimFirstAdministrator({ auth: auth(), database: database(), ...founder });
 
         const second = await claimFirstAdministrator({
@@ -60,6 +60,22 @@ describe("first-run installation", () => {
         expect(total?.total).toBe(1);
     });
 
+    it("ignores accounts that are not administrators", async () => {
+        await env.DB.prepare(
+            "INSERT INTO user (id, name, email, email_verified) VALUES ('docs-author', 'Documentation', 'docs@jamcaa.local', 1)"
+        ).run();
+
+        expect(await hasAdministrator(database())).toBe(false);
+
+        const result = await claimFirstAdministrator({ auth: auth(), database: database(), ...founder });
+        expect(result.status).toBe("created");
+
+        const admins = await env.DB.prepare("SELECT COUNT(*) AS total FROM user WHERE role = 'admin'").first<{
+            total: number;
+        }>();
+        expect(admins?.total).toBe(1);
+    });
+
     it("does not create an account when sign-up is rejected", async () => {
         const result = await claimFirstAdministrator({
             auth: auth(),
@@ -69,7 +85,7 @@ describe("first-run installation", () => {
         });
 
         expect(result.status).toBe("rejected");
-        expect(await hasAnyUser(database())).toBe(false);
+        expect(await hasAdministrator(database())).toBe(false);
     });
 });
 

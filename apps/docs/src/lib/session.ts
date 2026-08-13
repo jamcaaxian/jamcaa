@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaa/core";
-import { hasAnyUser } from "@jamcaa/core/auth";
+import { hasAdministrator } from "@jamcaa/core/auth";
 import { getAuth } from "./auth";
 
 export async function getSession() {
@@ -28,7 +28,7 @@ export async function requireSession() {
 export async function isInstalled() {
     const { env } = getCloudflareContext();
 
-    return hasAnyUser(createDatabase(env.DB));
+    return hasAdministrator(createDatabase(env.DB));
 }
 
 export { safeNextPath } from "./safe-next-path";

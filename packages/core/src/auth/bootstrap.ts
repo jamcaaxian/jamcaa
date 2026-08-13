@@ -6,8 +6,8 @@ import { forgetCachedRoleGrants } from "./role-cache";
 import { seedSystemRoles } from "./roles";
 import type { Auth } from "./index";
 
-export async function hasAnyUser(database: Database): Promise<boolean> {
-    const [row] = await database.select({ total: count() }).from(user);
+export async function hasAdministrator(database: Database): Promise<boolean> {
+    const [row] = await database.select({ total: count() }).from(user).where(eq(user.role, "admin"));
 
     return (row?.total ?? 0) > 0;
 }
@@ -17,8 +17,10 @@ export type FirstAdministratorResult =
 
 /**
  * Bootstraps an empty installation: seeds the system roles and turns the first
- * account into an administrator. Refuses once any user exists, so the route
- * that exposes this closes itself permanently after one successful call.
+ * account into an administrator. Refuses once an administrator exists, so the
+ * route that exposes this closes itself permanently after one successful call.
+ * Accounts without the admin role (such as content authors seeded by
+ * migrations) do not count as an installed administrator.
  */
 export async function claimFirstAdministrator(options: {
     auth: Auth;
@@ -29,7 +31,7 @@ export async function claimFirstAdministrator(options: {
 }): Promise<FirstAdministratorResult> {
     const { auth, database, name, email, password } = options;
 
-    if (await hasAnyUser(database)) {
+    if (await hasAdministrator(database)) {
         return { status: "already-installed" };
     }
 
