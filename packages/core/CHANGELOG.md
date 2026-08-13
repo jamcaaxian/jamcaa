@@ -1,5 +1,14 @@
 # @jamcaaxian/core
 
+## 0.3.0
+
+### Minor Changes
+
+- 1644fc9: Add the Block layer: core validates block documents against declared
+  prop schemas, and the editor ships a built-in block library with
+  server rendering. Core also gains the internal `theme.accent` setting
+  that feeds the Site-level theme resolution.
+
 ## 0.2.0
 
 ### Minor Changes
