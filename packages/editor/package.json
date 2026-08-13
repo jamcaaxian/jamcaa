@@ -1,4 +1,4 @@
-{
+﻿{
     "name": "@jamcaaxian/editor",
     "version": "0.1.1",
     "description": "Reusable browser Editing Controls for jamcaa Sites",
@@ -19,6 +19,7 @@
         ".": "./src/index.ts",
         "./content": "./src/content.tsx",
         "./media": "./src/media.ts",
+        "./blocks": "./src/blocks/index.ts",
         "./styles.css": "./src/styles.css"
     },
     "scripts": {

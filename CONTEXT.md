@@ -32,6 +32,10 @@ _Avoid_: property, column, attribute
 Structured long-form content that may contain headings, lists, links, code, and references to Media.
 _Avoid_: Post body, HTML, Markdown
 
+**Block**:
+A self-contained unit of a composable body. It declares which attributes an author may set, and every stored instance is validated against that declaration. A body is a sequence of Blocks; Rich Text is one Block among others.
+_Avoid_: component instance, widget, section, module
+
 **Editing Control**:
 The interface control used to author one Field according to its kind.
 _Avoid_: editor or widget as names for the domain concept; implementation names such as `@jamcaaxian/editor` may use the shorter technical term.

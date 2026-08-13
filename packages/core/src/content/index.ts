@@ -1,4 +1,5 @@
 export * from "./collection";
+export * from "./blocks";
 export * from "./editing";
 export * from "./entries";
 export * from "./fields";
