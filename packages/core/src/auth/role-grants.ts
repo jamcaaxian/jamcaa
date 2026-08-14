@@ -6,6 +6,7 @@ import { forgetCachedRoleGrants } from "./role-cache";
 import { loadRoleGrants } from "./roles";
 
 const ADMIN_RECOVERY_ACTIONS = ["read", "manage"];
+const GRANT_INSERT_BATCH_SIZE = 30;
 
 export class RoleGrantError extends Error {
     constructor(message: string) {
@@ -92,12 +93,13 @@ export async function replaceSystemRoleGrants(
         actions.map(action => [roleName, resource, action] as const)
     );
 
-    if (rows.length > 0) {
-        const values = rows.map(() => "(?, ?, ?)").join(", ");
+    for (let offset = 0; offset < rows.length; offset += GRANT_INSERT_BATCH_SIZE) {
+        const batch = rows.slice(offset, offset + GRANT_INSERT_BATCH_SIZE);
+        const values = batch.map(() => "(?, ?, ?)").join(", ");
         statements.push(
             database.$client
                 .prepare(`INSERT INTO role_capability (role_name, resource, action) VALUES ${values}`)
-                .bind(...rows.flat())
+                .bind(...batch.flat())
         );
     }
 

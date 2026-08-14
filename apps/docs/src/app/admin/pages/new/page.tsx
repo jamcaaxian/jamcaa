@@ -11,9 +11,11 @@ export default async function NewPage() {
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
 
-    if (!(await may(actor, "page", "manage"))) {
-        return <p className="text-muted-foreground text-sm">You do not have permission to manage pages.</p>;
+    if (!(await may(actor, "page", "create"))) {
+        return <p className="text-muted-foreground text-sm">You do not have permission to create pages.</p>;
     }
+
+    const mayPublish = await may(actor, "page", "publish");
 
     return (
         <div className="space-y-8">
@@ -24,6 +26,7 @@ export default async function NewPage() {
             <PageEditor
                 action={createPage}
                 initial={{ title: "", address: "/", status: "draft", blocks: [] }}
+                mayPublish={mayPublish}
                 submitLabel="Create page"
             />
         </div>

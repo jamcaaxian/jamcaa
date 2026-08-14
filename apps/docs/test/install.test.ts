@@ -1,4 +1,5 @@
 import { createDatabase } from "@jamcaaxian/core";
+import { coreCapabilities } from "@jamcaaxian/core/auth";
 import { checkRequirements, ensureInstalled, INSTALL_VERSION } from "@jamcaaxian/core/install";
 import { coreSettings, forgetCachedSettings, loadSettings } from "@jamcaaxian/core/settings";
 import { env } from "cloudflare:test";
@@ -100,6 +101,21 @@ describe("bringing a site up to date", () => {
         expect(grants.results).not.toContainEqual({ roleName: "editor", resource: "settings", action: "read" });
         expect(grants.results).toContainEqual({ roleName: "editor", resource: "newsletter", action: "send" });
         expect(grants.results.some(grant => grant.roleName !== "admin" && grant.resource === "role")).toBe(false);
+    });
+
+    it("adds every Page capability to an administrator upgrading from version 3", async () => {
+        await ensureInstalled(database(), installPlan);
+        await env.DB.exec("DELETE FROM role_capability WHERE role_name = 'admin' AND resource = 'page'");
+        await env.DB.prepare("UPDATE setting SET value = '3' WHERE key = 'platform.installedVersion'").run();
+        forgetCachedSettings();
+
+        await ensureInstalled(database(), installPlan);
+
+        const grants = await env.DB.prepare(
+            "SELECT action FROM role_capability WHERE role_name = 'admin' AND resource = 'page' ORDER BY action"
+        ).all<{ action: string }>();
+
+        expect(grants.results.map(grant => grant.action)).toEqual([...coreCapabilities.page].sort());
     });
 
     it("records what it has run so the next visit is free", async () => {

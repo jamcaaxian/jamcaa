@@ -10,7 +10,7 @@ import { loadSettings, writeSettings } from "../settings/store";
  * never run. Sites are upgraded by running the same routine, not by remembering to
  * do something by hand.
  */
-export const INSTALL_VERSION = 3;
+export const INSTALL_VERSION = 4;
 
 export interface InstallPlan {
     buckets: readonly BucketSeed[];
@@ -63,6 +63,13 @@ export async function ensureInstalled(database: Database, plan: InstallPlan): Pr
                 { roleName: "admin", resource: "role", action: "read" },
                 { roleName: "admin", resource: "role", action: "manage" }
             ])
+            .onConflictDoNothing();
+    }
+
+    if (from < 4) {
+        await database
+            .insert(roleCapability)
+            .values(capabilities.page?.map(action => ({ roleName: "admin", resource: "page", action })) ?? [])
             .onConflictDoNothing();
     }
 

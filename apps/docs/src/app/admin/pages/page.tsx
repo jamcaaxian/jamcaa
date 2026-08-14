@@ -21,7 +21,8 @@ export default async function PagesPage() {
 
     const { env } = getCloudflareContext();
     const all = await pages(createDatabase(env.DB)).list();
-    const mayManage = await may(actor, "page", "manage");
+    const mayCreate = await may(actor, "page", "create");
+    const mayUpdate = await may(actor, "page", "update");
 
     return (
         <div className="space-y-6">
@@ -29,7 +30,7 @@ export default async function PagesPage() {
                 title="Pages"
                 description="Pages are built from components and addressed by their own path. “/” replaces the default home listing."
             >
-                {mayManage ?
+                {mayCreate ?
                     <Button nativeButton={false} render={<Link href="/admin/pages/new" />}>
                         New page
                     </Button>
@@ -40,7 +41,7 @@ export default async function PagesPage() {
                 <div className="rounded-2xl border border-dashed px-8 py-16 text-center">
                     <p className="font-medium">No pages yet.</p>
                     <p className="text-muted-foreground mt-1 text-sm">
-                        {mayManage ?
+                        {mayCreate ?
                             "Create a home page, a portfolio, or anything else composed of blocks."
                         :   "Pages will appear here once they exist."}
                     </p>
@@ -49,7 +50,7 @@ export default async function PagesPage() {
                     {all.map(page => (
                         <li key={page.id} className="flex items-center gap-4 py-5 first:pt-0 last:pb-0">
                             <Link
-                                href={mayManage ? `/admin/pages/${page.id}` : page.address}
+                                href={mayUpdate ? `/admin/pages/${page.id}` : page.address}
                                 className="min-w-0 flex-1 space-y-1"
                             >
                                 <span className="flex items-baseline gap-3">

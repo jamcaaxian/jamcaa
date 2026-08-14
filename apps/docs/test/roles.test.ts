@@ -3,6 +3,7 @@ import {
     buildAccessControl,
     coreCapabilities,
     forgetCachedRoleGrants,
+    grantEverything,
     getRoleGrants,
     inspectSystemRoleGrants,
     loadRoleGrants,
@@ -186,6 +187,16 @@ describe("system role grant editor", () => {
         await expect(getRoleGrants(database(), start)).resolves.toMatchObject({
             contributor: { post: ["read"], role: ["read"] }
         });
+    });
+
+    it("replaces an administrator grant set larger than D1's bound-parameter limit", async () => {
+        await replaceSystemRoleGrants(database(), coreCapabilities, "admin", grantEverything(coreCapabilities));
+
+        const grants = await loadRoleGrants(database());
+
+        for (const [resource, actions] of Object.entries(coreCapabilities)) {
+            expect(grants.admin?.[resource]?.sort()).toEqual([...actions].sort());
+        }
     });
 
     it("refuses unknown capabilities without changing existing grants", async () => {

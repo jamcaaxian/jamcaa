@@ -17,8 +17,8 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
 
-    if (!(await may(actor, "page", "manage"))) {
-        return <p className="text-muted-foreground text-sm">You do not have permission to manage pages.</p>;
+    if (!(await may(actor, "page", "update"))) {
+        return <p className="text-muted-foreground text-sm">You do not have permission to update pages.</p>;
     }
 
     const { id } = await params;
@@ -30,6 +30,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     }
 
     const action = updatePage.bind(null, page.id);
+    const mayPublish = await may(actor, "page", "publish");
 
     return (
         <div className="space-y-8">
@@ -47,6 +48,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
                     status: page.status,
                     blocks: page.body.blocks
                 }}
+                mayPublish={mayPublish}
                 submitLabel="Save page"
             />
         </div>

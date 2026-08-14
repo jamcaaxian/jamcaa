@@ -163,10 +163,12 @@ function SortableBlockCard({
 export function PageEditor({
     action,
     initial,
+    mayPublish,
     submitLabel
 }: {
     action: (state: PageFormState, formData: FormData) => Promise<PageFormState>;
     initial: { id?: string; title: string; address: string; status: string; blocks: BlockInstance[] };
+    mayPublish: boolean;
     submitLabel: string;
 }) {
     const [state, formAction, pending] = useActionState<PageFormState, FormData>(action, {});
@@ -260,7 +262,9 @@ export function PageEditor({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
+                        {mayPublish || status === "published" ?
+                            <SelectItem value="published">Published</SelectItem>
+                        :   null}
                     </SelectContent>
                 </Select>
             </div>

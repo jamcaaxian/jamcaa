@@ -11,12 +11,12 @@ import { requireSession } from "@/lib/session";
 
 export type PageFormState = { error?: string; saved?: boolean };
 
-async function permitted(): Promise<string | undefined> {
+async function permitted(action: "create" | "update" | "delete" | "publish"): Promise<string | undefined> {
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
 
-    if (!(await may(actor, "page", "manage"))) {
-        return "You do not have permission to manage pages.";
+    if (!(await may(actor, "page", action))) {
+        return `You do not have permission to ${action} pages.`;
     }
 
     return undefined;
@@ -48,7 +48,8 @@ function readStatus(formData: FormData): PageStatus {
 }
 
 export async function createPage(_previous: PageFormState, formData: FormData): Promise<PageFormState> {
-    const denied = await permitted();
+    const status = readStatus(formData);
+    const denied = (await permitted("create")) ?? (status === "published" ? await permitted("publish") : undefined);
 
     if (denied !== undefined) {
         return { error: denied };
@@ -60,12 +61,7 @@ export async function createPage(_previous: PageFormState, formData: FormData): 
     try {
         const body = readBody(formData);
         const { env } = getCloudflareContext();
-        const result = await pages(createDatabase(env.DB)).create({
-            title,
-            address,
-            body,
-            status: readStatus(formData)
-        });
+        const result = await pages(createDatabase(env.DB)).create({ title, address, body, status });
 
         if (result.status === "rejected") {
             return { error: result.message };
@@ -81,7 +77,8 @@ export async function createPage(_previous: PageFormState, formData: FormData): 
 }
 
 export async function updatePage(id: string, _previous: PageFormState, formData: FormData): Promise<PageFormState> {
-    const denied = await permitted();
+    const status = readStatus(formData);
+    const denied = (await permitted("update")) ?? (status === "published" ? await permitted("publish") : undefined);
 
     if (denied !== undefined) {
         return { error: denied };
@@ -93,12 +90,7 @@ export async function updatePage(id: string, _previous: PageFormState, formData:
     try {
         const body = readBody(formData);
         const { env } = getCloudflareContext();
-        const result = await pages(createDatabase(env.DB)).update(id, {
-            title,
-            address,
-            body,
-            status: readStatus(formData)
-        });
+        const result = await pages(createDatabase(env.DB)).update(id, { title, address, body, status });
 
         if (result.status === "rejected") {
             return { error: result.message };
@@ -114,7 +106,7 @@ export async function updatePage(id: string, _previous: PageFormState, formData:
 }
 
 export async function deletePage(id: string): Promise<PageFormState> {
-    const denied = await permitted();
+    const denied = await permitted("delete");
 
     if (denied !== undefined) {
         return { error: denied };
