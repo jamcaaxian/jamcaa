@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,26 @@ export const ACCENT_PRESETS = [
     { name: "Clay", color: "#C2571B" },
     { name: "Rose", color: "#C4456B" }
 ] as const;
+
+function CustomAccentField({ current, pending }: { current: string; pending: boolean }) {
+    const [value, setValue] = useState(current);
+
+    return (
+        <div className="flex max-w-sm gap-2">
+            <Input
+                id="custom-accent"
+                name="theme.accent"
+                value={value}
+                onChange={event => setValue(event.target.value)}
+                placeholder="#3388FF"
+                className="font-mono"
+            />
+            <Button type="submit" disabled={pending}>
+                {pending ? "Saving…" : "Apply"}
+            </Button>
+        </div>
+    );
+}
 
 export function AccentForm({ current }: { current: string }) {
     const [state, formAction, pending] = useActionState<AccentFormState, FormData>(saveAccent, {});
@@ -51,18 +71,7 @@ export function AccentForm({ current }: { current: string }) {
 
             <div className="space-y-3">
                 <Label htmlFor="custom-accent">Custom colour</Label>
-                <div className="flex max-w-sm gap-2">
-                    <Input
-                        id="custom-accent"
-                        name="theme.accent"
-                        defaultValue={current}
-                        placeholder="#3388FF"
-                        className="font-mono"
-                    />
-                    <Button type="submit" disabled={pending}>
-                        {pending ? "Saving…" : "Apply"}
-                    </Button>
-                </div>
+                <CustomAccentField key={current} current={current} pending={pending} />
                 <p className="text-muted-foreground text-sm">
                     Any CSS colour works. Text on top of it is kept legible automatically, and the whole site updates
                     the moment it is applied.

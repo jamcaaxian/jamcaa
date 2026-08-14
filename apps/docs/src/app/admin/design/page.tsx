@@ -20,6 +20,7 @@ export default async function DesignPage() {
 
     const { env } = getCloudflareContext();
     const settings = await getSettings(createDatabase(env.DB), siteSettings);
+    const accent = settings.get("theme.accent");
 
     return (
         <div className="space-y-8">
@@ -27,7 +28,7 @@ export default async function DesignPage() {
                 title="Design"
                 description="The accent colours every interactive surface. More of the theme becomes adjustable as the design system grows."
             />
-            <AccentForm current={settings.get("theme.accent")} />
+            <AccentForm current={accent} />
         </div>
     );
 }
