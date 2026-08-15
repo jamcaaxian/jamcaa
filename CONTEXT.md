@@ -40,6 +40,14 @@ _Avoid_: component instance, widget, section, module
 A freely created addressable page built from Blocks, such as a home page, an about page, or a portfolio. Pages have no Collection, Taxonomy, or search presence; they exist alongside Entries rather than inside a Collection.
 _Avoid_: static page, landing page (as a distinct concept), route
 
+**Locale**:
+A canonical BCP 47 language tag that identifies one authored language variant and its formatting conventions. Public reads, addresses, Search, Entry Summaries, and Former Addresses are partitioned by Locale.
+_Avoid_: language code, region, translation
+
+**Translation Set**:
+The stable identity shared by Locale variants of one Entry or Page. Each variant remains an independent Entry or Page with its own lifecycle and address.
+_Avoid_: translated fields, localized row, language group
+
 **Editing Control**:
 The interface control used to author one Field according to its kind.
 _Avoid_: editor or widget as names for the domain concept; implementation names such as `@jamcaaxian/editor` may use the shorter technical term.

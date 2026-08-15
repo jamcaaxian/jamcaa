@@ -5,20 +5,27 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { Button } from "@/components/ui/button";
+import { adminMessages } from "@/content/admin-locale";
+import { docsLocales, localizedPath } from "@/content/locales";
 import { pages } from "@/content/pages-store";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 import { updatePage } from "../actions";
 import { PageEditor } from "../page-editor";
 
-export const metadata: Metadata = { title: "Edit page" };
+export async function generateMetadata(): Promise<Metadata> {
+    const { copy } = await adminMessages();
+
+    return { title: copy.pages.form.editTitle };
+}
 
 export default async function EditPage({ params }: { params: Promise<{ id: string }> }) {
+    const { copy } = await adminMessages();
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
 
     if (!(await may(actor, "page", "update"))) {
-        return <p className="text-muted-foreground text-sm">You do not have permission to update pages.</p>;
+        return <p className="text-muted-foreground text-sm">{copy.pages.form.permissionUpdate}</p>;
     }
 
     const { id } = await params;
@@ -31,12 +38,14 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
 
     const action = updatePage.bind(null, page.id);
     const mayPublish = await may(actor, "page", "publish");
+    const pageLocale = docsLocales.canonical(page.locale);
+    const publicAddress = pageLocale === undefined ? page.address : localizedPath(pageLocale, page.address);
 
     return (
         <div className="space-y-8">
-            <AdminPageHeader title="Edit page">
-                <Button variant="outline" size="sm" nativeButton={false} render={<Link href={page.address} />}>
-                    View on site
+            <AdminPageHeader title={copy.pages.form.editTitle}>
+                <Button variant="outline" size="sm" nativeButton={false} render={<Link href={publicAddress} />}>
+                    {copy.pages.form.viewOnSite}
                 </Button>
             </AdminPageHeader>
             <PageEditor
@@ -49,7 +58,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
                     blocks: page.body.blocks
                 }}
                 mayPublish={mayPublish}
-                submitLabel="Save page"
+                submitLabel={copy.pages.form.save}
             />
         </div>
     );

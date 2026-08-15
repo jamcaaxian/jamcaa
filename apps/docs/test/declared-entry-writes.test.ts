@@ -50,6 +50,8 @@ function database() {
 function entry(overrides: Partial<Probe> = {}): Probe {
     return {
         id: "entry-1",
+        locale: "en-US",
+        translationId: "entry-1",
         slug: "entry-one",
         status: "draft",
         authorId: "author-1",
@@ -76,11 +78,13 @@ function insertStatement(value: Probe): D1PreparedStatement {
     return database()
         .$client.prepare(
             "INSERT INTO write_probe "
-                + `(id, slug, status, author_id, category_id, created_at, updated_at, published_at, ${fields.columns}) `
-                + `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${fields.placeholders})`
+                + `(id, locale, translation_id, slug, status, author_id, category_id, created_at, updated_at, published_at, ${fields.columns}) `
+                + `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${fields.placeholders})`
         )
         .bind(
             value.id,
+            value.locale,
+            value.translationId,
             value.slug,
             value.status,
             value.authorId,
@@ -116,6 +120,8 @@ function updateStatement(before: Probe, after: Probe): D1PreparedStatement {
 const createStatements = [
     `CREATE TABLE write_probe (
         id TEXT PRIMARY KEY NOT NULL,
+        locale TEXT NOT NULL DEFAULT 'und',
+        translation_id TEXT,
         slug TEXT NOT NULL,
         status TEXT NOT NULL,
         author_id TEXT NOT NULL,

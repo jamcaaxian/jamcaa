@@ -8,16 +8,22 @@ import { getSettings } from "@jamcaaxian/core/settings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { adminMessages } from "@/content/admin-locale";
 import { siteSettings } from "@/content/settings";
 import { postRevisions, posts } from "@/content/store";
 import { mayTouch } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 
-export const metadata: Metadata = { title: "Post Revisions" };
+export async function generateMetadata(): Promise<Metadata> {
+    const { copy } = await adminMessages();
+
+    return { title: copy.posts.revisions.title };
+}
 
 const tone = { published: "default", draft: "secondary", archived: "outline" } as const;
 
 export default async function PostRevisionsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { locale, copy } = await adminMessages();
     const { id } = await params;
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
@@ -40,19 +46,18 @@ export default async function PostRevisionsPage({ params }: { params: Promise<{ 
         <div className="space-y-6">
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="space-y-1">
-                    <h1 className="text-xl font-semibold tracking-tight">Revisions</h1>
+                    <h1 className="text-xl font-semibold tracking-tight">{copy.posts.revisions.title}</h1>
                     <p className="text-muted-foreground text-sm wrap-anywhere">
-                        {entry.title} ·{" "}
-                        {revisions.length === 1 ? "One saved state" : `${revisions.length} saved states`}
+                        {entry.title} · {copy.posts.revisions.count(revisions.length)}
                     </p>
                 </div>
                 <Button variant="outline" nativeButton={false} render={<Link href={`/admin/posts/${entry.id}`} />}>
-                    Back to Post
+                    {copy.posts.revisions.back}
                 </Button>
             </div>
 
             {revisions.length === 0 ?
-                <p className="text-muted-foreground text-sm">No Revisions have been saved yet.</p>
+                <p className="text-muted-foreground text-sm">{copy.posts.revisions.empty}</p>
             :   <>
                     <ul className="space-y-3 md:hidden">
                         {revisions.map(revision => (
@@ -67,16 +72,17 @@ export default async function PostRevisionsPage({ params }: { params: Promise<{ 
                                                 {revision.snapshot.fields.title}
                                             </h2>
                                             <p className="text-muted-foreground mt-1 truncate text-xs">
-                                                Slug: {revision.snapshot.slug}
+                                                {copy.posts.revisions.slug}: {revision.snapshot.slug}
                                             </p>
                                         </div>
                                         <Badge variant={tone[revision.snapshot.status]}>
-                                            {revision.snapshot.status}
+                                            {copy.common.status[revision.snapshot.status]}
                                         </Badge>
                                     </div>
                                     <p className="text-muted-foreground mt-3 text-xs">
-                                        Saved {formatMoment(revision.createdAt, datePattern)}{" "}
-                                        {formatMoment(revision.createdAt, timePattern)}
+                                        {copy.posts.revisions.savedAt(
+                                            `${formatMoment(revision.createdAt, datePattern, locale)} ${formatMoment(revision.createdAt, timePattern, locale)}`
+                                        )}
                                     </p>
                                 </Link>
                             </li>
@@ -86,9 +92,9 @@ export default async function PostRevisionsPage({ params }: { params: Promise<{ 
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Saved state</TableHead>
-                                    <TableHead className="w-32">Status</TableHead>
-                                    <TableHead className="w-44">Saved</TableHead>
+                                    <TableHead>{copy.posts.revisions.savedState}</TableHead>
+                                    <TableHead className="w-32">{copy.posts.revisions.status}</TableHead>
+                                    <TableHead className="w-44">{copy.posts.revisions.saved}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -102,17 +108,17 @@ export default async function PostRevisionsPage({ params }: { params: Promise<{ 
                                                 {revision.snapshot.fields.title}
                                             </Link>
                                             <div className="text-muted-foreground text-xs">
-                                                Slug: {revision.snapshot.slug}
+                                                {copy.posts.revisions.slug}: {revision.snapshot.slug}
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={tone[revision.snapshot.status]}>
-                                                {revision.snapshot.status}
+                                                {copy.common.status[revision.snapshot.status]}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-sm">
-                                            {formatMoment(revision.createdAt, datePattern)}{" "}
-                                            {formatMoment(revision.createdAt, timePattern)}
+                                            {formatMoment(revision.createdAt, datePattern, locale)}{" "}
+                                            {formatMoment(revision.createdAt, timePattern, locale)}
                                         </TableCell>
                                     </TableRow>
                                 ))}

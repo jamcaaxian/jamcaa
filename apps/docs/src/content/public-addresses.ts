@@ -1,6 +1,7 @@
 import type { EntryOf } from "@jamcaaxian/core/content";
 import type { Database } from "@jamcaaxian/core/db";
 import { post } from "./collections";
+import { docsLocales, type DocsLocale } from "./locales";
 import { isReservedPublicAddress, postAddress } from "./public-paths";
 import { formerPostAddresses, posts } from "./store";
 
@@ -23,11 +24,11 @@ export function publicPostAddresses(database: Database) {
     const entries = posts(database);
     const former = formerPostAddresses(database);
 
-    async function allEntries(): Promise<Post[]> {
+    async function allEntries(locale?: DocsLocale): Promise<Post[]> {
         const found: Post[] = [];
 
         for (let offset = 0; ; offset += 50) {
-            const page = await entries.list({ limit: 50, offset });
+            const page = await entries.list({ locale, limit: 50, offset });
 
             found.push(...page);
 
@@ -37,10 +38,10 @@ export function publicPostAddresses(database: Database) {
         }
     }
 
-    async function currentOwners(pattern: string): Promise<Map<string, string>> {
+    async function currentOwners(pattern: string, locale: DocsLocale): Promise<Map<string, string>> {
         const owners = new Map<string, string>();
 
-        for (const entry of await allEntries()) {
+        for (const entry of await allEntries(locale)) {
             const address = postAddress(pattern, entry);
             const existing = owners.get(address);
 
@@ -54,30 +55,39 @@ export function publicPostAddresses(database: Database) {
         return owners;
     }
 
-    async function assertCurrentAvailable(entryId: string | undefined, address: string): Promise<void> {
+    async function assertCurrentAvailable(
+        entryId: string | undefined,
+        address: string,
+        locale: DocsLocale = docsLocales.defaultLocale
+    ): Promise<void> {
         if (isReservedPublicAddress(address)) {
             throw new Error(`The current canonical address ${address} belongs to the Site itself.`);
         }
 
-        const formerOwner = await former.entryAt(address);
+        const formerOwner = await former.entryAt(address, locale);
 
         if (formerOwner !== undefined && formerOwner !== entryId) {
             throw new Error(`The current canonical address ${address} is another Entry's Former Address.`);
         }
     }
 
-    async function retain(entryId: string, address: string, pattern: string): Promise<void> {
+    async function retain(
+        entryId: string,
+        address: string,
+        pattern: string,
+        locale: DocsLocale = docsLocales.defaultLocale
+    ): Promise<void> {
         if (isReservedPublicAddress(address)) {
             throw new Error(`The Former Address ${address} belongs to the Site itself.`);
         }
 
-        const currentOwner = (await currentOwners(pattern)).get(address);
+        const currentOwner = (await currentOwners(pattern, locale)).get(address);
 
         if (currentOwner !== undefined && currentOwner !== entryId) {
             throw new Error(`The Former Address ${address} is another Entry's canonical address.`);
         }
 
-        await former.retain(entryId, address);
+        await former.retain(entryId, address, locale);
     }
 
     return {
@@ -89,14 +99,14 @@ export function publicPostAddresses(database: Database) {
             const afterAddress = postAddress(pattern, after);
             const statements: D1PreparedStatement[] = [];
 
-            await assertCurrentAvailable(before.id, afterAddress);
+            await assertCurrentAvailable(before.id, afterAddress, before.locale as DocsLocale);
 
             if (
                 before.status === "published"
                 && (beforeAddress !== afterAddress || after.status !== "published")
                 && !isReservedPublicAddress(beforeAddress)
             ) {
-                const currentOwner = (await currentOwners(pattern)).get(beforeAddress);
+                const currentOwner = (await currentOwners(pattern, before.locale as DocsLocale)).get(beforeAddress);
 
                 if (currentOwner !== undefined && currentOwner !== before.id) {
                     throw new Error(`The Former Address ${beforeAddress} is another Entry's canonical address.`);
@@ -105,20 +115,22 @@ export function publicPostAddresses(database: Database) {
                 statements.push(
                     database.$client
                         .prepare(
-                            "INSERT INTO _jamcaa_post_former_address (path, entry_id) VALUES (?, ?) "
-                                + "ON CONFLICT(path) DO UPDATE SET entry_id = CASE "
+                            "INSERT INTO _jamcaa_post_former_address (locale, path, entry_id) VALUES (?, ?, ?) "
+                                + "ON CONFLICT(locale, path) DO UPDATE SET entry_id = CASE "
                                 + "WHEN _jamcaa_post_former_address.entry_id = excluded.entry_id "
                                 + "THEN excluded.entry_id ELSE NULL END"
                         )
-                        .bind(beforeAddress, before.id)
+                        .bind(before.locale, beforeAddress, before.id)
                 );
             }
 
             if (after.status === "published") {
                 statements.push(
                     database.$client
-                        .prepare("DELETE FROM _jamcaa_post_former_address WHERE entry_id = ? AND path = ?")
-                        .bind(before.id, afterAddress)
+                        .prepare(
+                            "DELETE FROM _jamcaa_post_former_address WHERE entry_id = ? AND locale = ? AND path = ?"
+                        )
+                        .bind(before.id, after.locale, afterAddress)
                 );
             }
 
@@ -135,26 +147,33 @@ export function publicPostAddresses(database: Database) {
 
         async permalinkChangeStatements(beforePattern: string, afterPattern: string): Promise<D1PreparedStatement[]> {
             const everyEntry = await allEntries();
-            const afterOwners = await currentOwners(afterPattern);
             const retained = await former.all();
-            const retainedOwners = new Map(retained.map(candidate => [candidate.path, candidate.entryId]));
+            const retainedOwners = new Map(
+                retained.map(candidate => [`${candidate.locale}\u0000${candidate.path}`, candidate.entryId])
+            );
+            const ownersByLocale = new Map<DocsLocale, Map<string, string>>();
             const statements: D1PreparedStatement[] = [];
+
+            for (const locale of docsLocales.locales) {
+                ownersByLocale.set(locale, await currentOwners(afterPattern, locale));
+            }
 
             for (const entry of everyEntry) {
                 const afterAddress = postAddress(afterPattern, entry);
                 const beforeAddress = postAddress(beforePattern, entry);
+                const locale = entry.locale as DocsLocale;
 
                 if (isReservedPublicAddress(afterAddress)) {
                     throw new Error(`The current canonical address ${afterAddress} belongs to the Site itself.`);
                 }
 
-                const formerOwner = retainedOwners.get(afterAddress);
+                const formerOwner = retainedOwners.get(`${locale}\u0000${afterAddress}`);
 
                 if (formerOwner !== undefined && formerOwner !== entry.id) {
                     throw new Error(`The current canonical address ${afterAddress} is another Entry's Former Address.`);
                 }
 
-                const currentOwner = afterOwners.get(beforeAddress);
+                const currentOwner = ownersByLocale.get(locale)?.get(beforeAddress);
 
                 if (
                     entry.status === "published"
@@ -178,20 +197,22 @@ export function publicPostAddresses(database: Database) {
                     statements.push(
                         database.$client
                             .prepare(
-                                "INSERT INTO _jamcaa_post_former_address (path, entry_id) VALUES (?, ?) "
-                                    + "ON CONFLICT(path) DO UPDATE SET entry_id = CASE "
+                                "INSERT INTO _jamcaa_post_former_address (locale, path, entry_id) VALUES (?, ?, ?) "
+                                    + "ON CONFLICT(locale, path) DO UPDATE SET entry_id = CASE "
                                     + "WHEN _jamcaa_post_former_address.entry_id = excluded.entry_id "
                                     + "THEN excluded.entry_id ELSE NULL END"
                             )
-                            .bind(beforeAddress, entry.id)
+                            .bind(entry.locale, beforeAddress, entry.id)
                     );
                 }
 
                 if (entry.status === "published") {
                     statements.push(
                         database.$client
-                            .prepare("DELETE FROM _jamcaa_post_former_address WHERE entry_id = ? AND path = ?")
-                            .bind(entry.id, afterAddress)
+                            .prepare(
+                                "DELETE FROM _jamcaa_post_former_address WHERE entry_id = ? AND locale = ? AND path = ?"
+                            )
+                            .bind(entry.id, entry.locale, afterAddress)
                     );
                 }
             }
@@ -199,14 +220,18 @@ export function publicPostAddresses(database: Database) {
             return statements;
         },
 
-        async formerAt(pathSegments: readonly string[], pattern: string): Promise<FormerPostResolution | undefined> {
+        async formerAt(
+            pathSegments: readonly string[],
+            pattern: string,
+            locale: DocsLocale = docsLocales.defaultLocale
+        ): Promise<FormerPostResolution | undefined> {
             const requested = pathOf(pathSegments);
 
             if (isReservedPublicAddress(requested)) {
                 return undefined;
             }
 
-            const entryId = await former.entryAt(requested);
+            const entryId = await former.entryAt(requested, locale);
             const entry = entryId === undefined ? undefined : await entries.byId(entryId);
 
             if (entry?.status !== "published") {

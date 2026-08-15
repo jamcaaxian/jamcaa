@@ -82,6 +82,26 @@ export interface PublicPostListingState {
     announcement: string;
 }
 
+export interface PublicPostListingAnnouncements {
+    loading: string;
+    loaded(count: number, complete: boolean): string;
+    error: string;
+}
+
+const defaultAnnouncements: PublicPostListingAnnouncements = {
+    loading: "Loading the next page.",
+    loaded(count, complete) {
+        if (complete) {
+            return count === 0 ? "All Posts loaded." : (
+                    `${count} more ${count === 1 ? "Post" : "Posts"} loaded. All Posts loaded.`
+                );
+        }
+
+        return `${count} more ${count === 1 ? "Post" : "Posts"} loaded.`;
+    },
+    error: "The next page could not load automatically. Retry or use the Next page link."
+};
+
 export function publicPostListingPageFollows(state: PublicPostListingState, page: PublicPostListingPage): boolean {
     return state.next !== null && state.next.pageAddress === page.pageAddress;
 }
@@ -95,16 +115,20 @@ export function initialPublicPostListingState(page: PublicPostListingPage): Publ
     };
 }
 
-export function beginPublicPostListingLoad(state: PublicPostListingState): PublicPostListingState {
-    return state.next === null ? state : { ...state, phase: "loading", announcement: "Loading the next page." };
+export function beginPublicPostListingLoad(
+    state: PublicPostListingState,
+    announcements: PublicPostListingAnnouncements = defaultAnnouncements
+): PublicPostListingState {
+    return state.next === null ? state : { ...state, phase: "loading", announcement: announcements.loading };
 }
 
 export function appendPublicPostListingPage(
     state: PublicPostListingState,
-    page: PublicPostListingPage
+    page: PublicPostListingPage,
+    announcements: PublicPostListingAnnouncements = defaultAnnouncements
 ): PublicPostListingState {
     if (!publicPostListingPageFollows(state, page)) {
-        return failPublicPostListingLoad(state);
+        return failPublicPostListingLoad(state, announcements);
     }
 
     const known = new Set(state.items.map(item => item.id));
@@ -115,21 +139,15 @@ export function appendPublicPostListingPage(
         items: [...state.items, ...additions],
         next: page.next,
         phase: page.next === null ? "complete" : "idle",
-        announcement:
-            page.next === null ?
-                count === 0 ?
-                    "All Posts loaded."
-                :   `${count} more ${count === 1 ? "Post" : "Posts"} loaded. All Posts loaded.`
-            :   `${count} more ${count === 1 ? "Post" : "Posts"} loaded.`
+        announcement: announcements.loaded(count, page.next === null)
     };
 }
 
-export function failPublicPostListingLoad(state: PublicPostListingState): PublicPostListingState {
-    return {
-        ...state,
-        phase: "error",
-        announcement: "The next page could not load automatically. Retry or use the Next page link."
-    };
+export function failPublicPostListingLoad(
+    state: PublicPostListingState,
+    announcements: PublicPostListingAnnouncements = defaultAnnouncements
+): PublicPostListingState {
+    return { ...state, phase: "error", announcement: announcements.error };
 }
 
 export function cancelPublicPostListingLoad(state: PublicPostListingState): PublicPostListingState {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import type { EditingField, RichTextDocument } from "@jamcaaxian/core/content";
+import type { BlockDefinition, BlockDocument, EditingField, RichTextDocument } from "@jamcaaxian/core/content";
+import { BlockDocumentEditor, type BlockDocumentEditorMessages } from "./blocks/block-document-editor";
 import {
     defaultCollectionEditingControlMessages,
     type CollectionEditingControlMessages,
@@ -10,7 +11,8 @@ import {
 import type { RichTextMediaAdapter } from "./media";
 import { RichTextEditor } from "./rich-text-editor";
 
-export type EditingControlValue = string | number | boolean | Date | RichTextDocument | null | undefined;
+export type EditingControlValue =
+    string | number | boolean | Date | RichTextDocument | BlockDocument | null | undefined;
 
 export interface EditingControlOption {
     value: string;
@@ -23,6 +25,12 @@ export interface CollectionEditingControlsProps {
     choices?: Readonly<Record<string, readonly EditingControlOption[]>>;
     references?: Readonly<Record<string, readonly EditingControlOption[]>>;
     richText?: { media?: RichTextMediaAdapter; messages?: Partial<RichTextEditorMessages> };
+    blocks?: {
+        definitions: readonly BlockDefinition[];
+        media?: RichTextMediaAdapter;
+        messages?: Partial<BlockDocumentEditorMessages>;
+        richTextMessages?: Partial<RichTextEditorMessages>;
+    };
     messages?: Partial<CollectionEditingControlMessages>;
     registry?: EditingControlRegistry;
     onTextChange?(name: string, value: string): void;
@@ -36,6 +44,7 @@ export interface EditingControlContext {
     choices?: CollectionEditingControlsProps["choices"];
     references?: CollectionEditingControlsProps["references"];
     richText?: CollectionEditingControlsProps["richText"];
+    blocks?: CollectionEditingControlsProps["blocks"];
     onTextChange?: CollectionEditingControlsProps["onTextChange"];
 }
 
@@ -266,6 +275,26 @@ function RichTextControl({ context }: { context: EditingControlContext }) {
     );
 }
 
+function BlocksControl({ context }: { context: EditingControlContext }) {
+    const { field, value, blocks } = context;
+
+    if (blocks === undefined) {
+        throw new Error(`The blocks Editing Control for "${field.name}" needs Block definitions.`);
+    }
+
+    return (
+        <BlockDocumentEditor
+            name={editingInputName(field.name)}
+            label={field.label}
+            defaultValue={value as BlockDocument | undefined}
+            definitions={blocks.definitions}
+            media={blocks.media}
+            messages={blocks.messages}
+            richTextMessages={blocks.richTextMessages}
+        />
+    );
+}
+
 /** The controls every built-in Field kind resolves to. */
 export const builtInEditingControls: readonly EditingControlDefinition[] = [
     { id: "text", versions: [EDITING_PROTOCOL_VERSION], render: context => <TextControl context={context} /> },
@@ -279,7 +308,8 @@ export const builtInEditingControls: readonly EditingControlDefinition[] = [
         versions: [EDITING_PROTOCOL_VERSION],
         render: context => <ReferenceControl context={context} />
     },
-    { id: "richText", versions: [EDITING_PROTOCOL_VERSION], render: context => <RichTextControl context={context} /> }
+    { id: "richText", versions: [EDITING_PROTOCOL_VERSION], render: context => <RichTextControl context={context} /> },
+    { id: "blocks", versions: [EDITING_PROTOCOL_VERSION], render: context => <BlocksControl context={context} /> }
 ];
 
 const defaultEditingControlRegistry = createEditingControlRegistry(builtInEditingControls);
@@ -315,6 +345,7 @@ export function CollectionEditingControls({
     choices,
     references,
     richText,
+    blocks,
     messages,
     registry = defaultEditingControlRegistry,
     onTextChange
@@ -330,7 +361,11 @@ export function CollectionEditingControls({
                 <label
                     className="jamcaa-editing-field__label"
                     id={`${field.name}-label`}
-                    htmlFor={(field.editingKind ?? field.kind) === "richText" ? `${field.name}-editor` : field.name}
+                    htmlFor={
+                        ["richText", "blocks"].includes(field.editingKind ?? field.kind) ?
+                            `${field.name}-editor`
+                        :   field.name
+                    }
                 >
                     {field.label}
                 </label>
@@ -341,6 +376,7 @@ export function CollectionEditingControls({
                     choices,
                     references,
                     richText,
+                    blocks,
                     onTextChange
                 })}
                 {field.description ?

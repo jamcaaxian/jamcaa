@@ -5,19 +5,18 @@ import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type D
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-react";
-import { builtinBlocks } from "@jamcaaxian/editor/blocks";
 import type { BlockDefinition, BlockInstance } from "@jamcaaxian/core/content";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { localizedBuiltinBlocks } from "@/content/admin-content";
 import type { PageFormState } from "./actions";
 
-const INSERTABLE = Object.values(builtinBlocks).filter(block => block.name !== "builtin.richText");
-
-function newBlock(type: string): BlockInstance {
-    const definition = builtinBlocks[type as keyof typeof builtinBlocks] as BlockDefinition | undefined;
+function newBlock(type: string, definitions: ReadonlyMap<string, BlockDefinition>): BlockInstance {
+    const definition = definitions.get(type);
     const props: Record<string, unknown> = {};
 
     for (const [key, declaration] of Object.entries(definition?.props ?? {})) {
@@ -35,14 +34,15 @@ function newBlock(type: string): BlockInstance {
 
 function PropField({
     block,
+    definition,
     propName,
     onChange
 }: {
     block: BlockInstance;
+    definition: BlockDefinition;
     propName: string;
     onChange: (value: unknown) => void;
 }) {
-    const definition = builtinBlocks[block.type as keyof typeof builtinBlocks] as BlockDefinition;
     const declaration = definition.props[propName];
     const value = block.props[propName];
 
@@ -108,7 +108,11 @@ function SortableBlockCard({
     onMove,
     onRemove,
     title,
-    fields
+    fields,
+    dragLabel,
+    moveUpLabel,
+    moveDownLabel,
+    removeLabel
 }: {
     block: BlockInstance;
     index: number;
@@ -117,6 +121,10 @@ function SortableBlockCard({
     onRemove: () => void;
     title: React.ReactNode;
     fields: React.ReactNode;
+    dragLabel: string;
+    moveUpLabel: string;
+    moveDownLabel: string;
+    removeLabel: string;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
@@ -132,13 +140,20 @@ function SortableBlockCard({
                     {...attributes}
                     {...listeners}
                     className="text-muted-foreground hover:text-foreground cursor-grab rounded-md p-1 transition-colors active:cursor-grabbing"
-                    aria-label={`Drag block ${index + 1}`}
+                    aria-label={dragLabel}
                 >
                     <GripVertical className="size-4" />
                 </button>
                 {title}
                 <div className="ml-auto flex items-center gap-1">
-                    <Button type="button" variant="ghost" size="sm" onClick={() => onMove(-1)} disabled={index === 0}>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onMove(-1)}
+                        disabled={index === 0}
+                        aria-label={moveUpLabel}
+                    >
                         <ArrowUp className="size-4" />
                     </Button>
                     <Button
@@ -147,10 +162,11 @@ function SortableBlockCard({
                         size="sm"
                         onClick={() => onMove(1)}
                         disabled={index === total - 1}
+                        aria-label={moveDownLabel}
                     >
                         <ArrowDown className="size-4" />
                     </Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
+                    <Button type="button" variant="ghost" size="sm" onClick={onRemove} aria-label={removeLabel}>
                         <Trash2 className="size-4" />
                     </Button>
                 </div>
@@ -171,11 +187,15 @@ export function PageEditor({
     mayPublish: boolean;
     submitLabel: string;
 }) {
+    const { locale, copy } = useAdminI18n();
     const [state, formAction, pending] = useActionState<PageFormState, FormData>(action, {});
     const [title, setTitle] = useState(initial.title);
     const [address, setAddress] = useState(initial.address);
     const [status, setStatus] = useState(initial.status);
     const [blocks, setBlocks] = useState<BlockInstance[]>(initial.blocks);
+    const definitions = localizedBuiltinBlocks(locale);
+    const definitionsByName = new Map(definitions.map(definition => [definition.name, definition]));
+    const insertable = definitions.filter(block => block.name !== "builtin.richText");
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
     function patchBlock(id: string, propName: string, value: unknown) {
@@ -201,7 +221,7 @@ export function PageEditor({
     }
 
     function add(type: string) {
-        setBlocks(current => [...current, newBlock(type)]);
+        setBlocks(current => [...current, newBlock(type, definitionsByName)]);
     }
 
     function onDragEnd(event: DragEndEvent) {
@@ -229,7 +249,7 @@ export function PageEditor({
 
             <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                    <Label htmlFor="page-title">Title</Label>
+                    <Label htmlFor="page-title">{copy.pages.form.title}</Label>
                     <Input
                         id="page-title"
                         name="title"
@@ -238,7 +258,7 @@ export function PageEditor({
                     />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="page-address">Address</Label>
+                    <Label htmlFor="page-address">{copy.pages.form.address}</Label>
                     <Input
                         id="page-address"
                         name="address"
@@ -250,9 +270,10 @@ export function PageEditor({
             </div>
 
             <div className="max-w-xs">
-                <Label>Status</Label>
+                <Label>{copy.pages.form.status}</Label>
                 <Select
                     value={status}
+                    disabled={!mayPublish}
                     onValueChange={value => {
                         if (value) setStatus(value);
                     }}
@@ -261,25 +282,24 @@ export function PageEditor({
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="draft">{copy.common.status.draft}</SelectItem>
                         {mayPublish || status === "published" ?
-                            <SelectItem value="published">Published</SelectItem>
+                            <SelectItem value="published">{copy.common.status.published}</SelectItem>
                         :   null}
                     </SelectContent>
                 </Select>
             </div>
 
             <div className="space-y-3">
-                <Label>Blocks</Label>
+                <Label>{copy.pages.form.blocks}</Label>
                 {blocks.length === 0 ?
                     <div className="rounded-2xl border border-dashed px-8 py-12 text-center text-sm text-muted-foreground">
-                        No blocks yet. Add the first one below.
+                        {copy.pages.form.empty}
                     </div>
                 :   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                         <SortableContext items={blocks.map(block => block.id)} strategy={verticalListSortingStrategy}>
                             {blocks.map((block, index) => {
-                                const definition = builtinBlocks[block.type as keyof typeof builtinBlocks] as
-                                    BlockDefinition | undefined;
+                                const definition = definitionsByName.get(block.type);
                                 const propEntries = Object.entries(definition?.props ?? {});
 
                                 return (
@@ -290,6 +310,10 @@ export function PageEditor({
                                         total={blocks.length}
                                         onMove={direction => move(index, direction)}
                                         onRemove={() => remove(block.id)}
+                                        dragLabel={copy.pages.form.dragBlock(index + 1)}
+                                        moveUpLabel={copy.editor.blocks.moveUp}
+                                        moveDownLabel={copy.editor.blocks.moveDown}
+                                        removeLabel={copy.editor.blocks.remove}
                                         title={
                                             <span className="text-sm font-medium">
                                                 {definition?.label ?? block.type}
@@ -299,7 +323,7 @@ export function PageEditor({
                                             </span>
                                         }
                                         fields={
-                                            propEntries.length > 0 ?
+                                            definition !== undefined && propEntries.length > 0 ?
                                                 <div className="grid gap-3 sm:grid-cols-2">
                                                     {propEntries.map(([propName, declaration]) => (
                                                         <div
@@ -315,6 +339,7 @@ export function PageEditor({
                                                             :   null}
                                                             <PropField
                                                                 block={block}
+                                                                definition={definition}
                                                                 propName={propName}
                                                                 onChange={value =>
                                                                     patchBlock(block.id, propName, value)
@@ -341,11 +366,11 @@ export function PageEditor({
                 >
                     <SelectTrigger className="w-fit">
                         <span className="inline-flex items-center gap-2">
-                            <Plus className="size-4" /> Add a block
+                            <Plus className="size-4" /> {copy.pages.form.addBlock}
                         </span>
                     </SelectTrigger>
                     <SelectContent>
-                        {INSERTABLE.map(block => (
+                        {insertable.map(block => (
                             <SelectItem key={block.name} value={block.name}>
                                 {block.label}
                             </SelectItem>
@@ -356,13 +381,13 @@ export function PageEditor({
 
             <div className="flex items-center gap-3">
                 <Button type="submit" disabled={pending}>
-                    {pending ? "Saving…" : submitLabel}
+                    {pending ? copy.common.saving : submitLabel}
                 </Button>
                 {state.error ?
                     <p className="text-destructive text-sm">{state.error}</p>
                 :   null}
                 {state.saved ?
-                    <p className="text-sm">Saved. Published changes are live on the site.</p>
+                    <p className="text-sm">{copy.pages.form.savedLive}</p>
                 :   null}
             </div>
         </form>

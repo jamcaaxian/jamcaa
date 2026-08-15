@@ -1,67 +1,68 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { createDatabase } from "@jamcaaxian/core";
-import { ProgressivePostList } from "@/components/public/progressive-post-list";
-import { PageContent } from "@/components/public/page-content";
-import { pages } from "@/content/pages-store";
-import { publicPostListing } from "@/content/public-listing";
-import { publicPostPage } from "@/content/public-listing-page";
-import { publicSiteSettings } from "@/content/public-site";
-import { postSummaries } from "@/content/store";
+import { ArrowRight, Languages } from "lucide-react";
+import { docsLocales, localeAlternates, localizedPath } from "@/content/locales";
+import { publicCopy } from "@/content/public-copy";
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+    title: "Jamcaa Docs",
+    description: "Choose a language for the Jamcaa documentation.",
+    alternates: { canonical: "/", languages: localeAlternates("/", true) }
+};
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ cursor?: string }> }) {
-    const { env } = getCloudflareContext();
-    const cursor = (await searchParams).cursor;
-    const database = createDatabase(env.DB);
-    const [entries, settings, homePage] = await Promise.all([
-        publicPostPage(() => postSummaries(database).list({ limit: 20, cursor })),
-        publicSiteSettings(),
-        pages(database).byAddress("/")
-    ]);
+const languages = docsLocales.definitions.map(definition => ({
+    locale: definition.tag,
+    label: definition.label,
+    detail: publicCopy(definition.tag).languageChooserDetail
+}));
 
-    if (homePage !== undefined) {
-        return <PageContent title={homePage.title} body={homePage.body} />;
-    }
-
-    const siteTitle = settings.get("site.title");
-    const siteDescription = settings.get("site.description").trim();
-    const listing = publicPostListing(entries, {
-        path: "/",
-        cursor,
-        permalink: settings.get("permalink.post"),
-        datePattern: settings.get("format.date"),
-        timePattern: settings.get("format.time")
-    });
-
+export default function LanguageChooser() {
     return (
-        <main id="main-content" className="relative mx-auto min-h-dvh max-w-3xl px-4 py-12 sm:px-6 sm:py-20">
-            <div
-                aria-hidden="true"
-                className="bg-primary/8 pointer-events-none absolute -top-24 -right-40 -z-10 h-96 w-96 rounded-full blur-3xl"
-            />
-            <header className="mb-16 space-y-5">
-                <Link
-                    href="/"
-                    className="text-primary inline-flex items-center gap-2 text-sm font-semibold tracking-tight"
-                >
-                    <span className="bg-primary/10 rounded-md px-1.5 py-0.5 font-mono text-xs">{siteTitle}</span>
-                </Link>
-                <h1 className="max-w-2xl text-4xl leading-tight font-semibold tracking-tight text-balance sm:text-6xl">
-                    Published with the platform.
-                </h1>
-                <p className="text-muted-foreground max-w-xl text-lg leading-8">
-                    {siteDescription
-                        || "The documentation site uses the same Collection, Entry, Media, and publishing interfaces it demonstrates."}
-                </p>
-            </header>
+        <main
+            id="main-content"
+            className="relative grid min-h-dvh place-items-center overflow-hidden px-4 py-16 sm:px-6"
+        >
+            <div aria-hidden="true" className="docs-language-glow absolute inset-0 -z-10" />
+            <section className="w-full max-w-3xl">
+                <header className="mx-auto mb-10 max-w-2xl text-center">
+                    <span className="bg-foreground text-background mx-auto mb-6 grid size-12 place-items-center rounded-2xl font-mono text-lg font-bold shadow-lifted">
+                        J
+                    </span>
+                    <p className="text-primary mb-3 flex items-center justify-center gap-2 text-sm font-semibold">
+                        <Languages className="size-4" />
+                        Jamcaa Documentation
+                    </p>
+                    <h1 className="text-4xl leading-[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-6xl">
+                        Choose your language.
+                    </h1>
+                    <p className="text-muted-foreground mt-5 text-lg leading-8 text-pretty">
+                        选择你的语言。Each language is an independent, canonical content variant powered by the same
+                        Jamcaa Site.
+                    </p>
+                </header>
 
-            <ProgressivePostList
-                key={listing.pageAddress}
-                initialPage={listing}
-                emptyMessage="No Posts have been published yet."
-            />
+                <div className="grid gap-4 sm:grid-cols-2">
+                    {languages.map(language => (
+                        <Link
+                            key={language.locale}
+                            href={localizedPath(language.locale)}
+                            hrefLang={language.locale}
+                            className="group bg-card/80 hover:bg-card focus-visible:ring-ring rounded-3xl border p-6 shadow-soft backdrop-blur-xl transition-[transform,box-shadow,background-color] duration-200 ease-spring-snappy hover:-translate-y-0.5 hover:shadow-lifted focus-visible:ring-3 focus-visible:outline-none active:scale-[0.99] sm:p-8"
+                        >
+                            <div className="flex items-start justify-between gap-5">
+                                <div>
+                                    <p className="font-mono text-xs text-muted-foreground">{language.locale}</p>
+                                    <h2 className="mt-3 text-2xl font-semibold tracking-tight">{language.label}</h2>
+                                    <p className="text-muted-foreground mt-2 leading-7">{language.detail}</p>
+                                </div>
+                                <span className="bg-secondary group-hover:bg-primary group-hover:text-primary-foreground grid size-10 shrink-0 place-items-center rounded-full transition-colors duration-200">
+                                    <ArrowRight className="size-4 transition-transform duration-200 ease-spring-snappy group-hover:translate-x-0.5" />
+                                </span>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            </section>
         </main>
     );
 }

@@ -168,6 +168,7 @@ export interface RichTextEditorProps {
     media?: RichTextMediaAdapter;
     messages?: Partial<RichTextEditorMessages>;
     className?: string;
+    onChange?: (document: RichTextDocument) => void;
 }
 
 export function RichTextEditor({
@@ -177,7 +178,8 @@ export function RichTextEditor({
     defaultValue,
     media,
     messages,
-    className
+    className,
+    onChange
 }: RichTextEditorProps) {
     const copy = useMemo(() => ({ ...defaultRichTextEditorMessages, ...messages }), [messages]);
     const extensions = useMemo(() => richTextExtensions(media?.address), [media]);
@@ -195,7 +197,11 @@ export function RichTextEditor({
                 "data-placeholder": copy.placeholder
             }
         },
-        onUpdate: ({ editor: current }) => setValue(JSON.stringify(richTextDocumentForSubmission(current.getJSON())))
+        onUpdate: ({ editor: current }) => {
+            const document = richTextDocumentForSubmission(current.getJSON());
+            setValue(JSON.stringify(document));
+            onChange?.(document);
+        }
     });
     const state = useEditorState({
         editor,

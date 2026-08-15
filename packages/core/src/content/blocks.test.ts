@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blockPlainText, type BlockDocument } from "./blocks";
+import { blockPlainText, defineBlock, parseBlockDocument, validateBlockProps, type BlockDocument } from "./blocks";
 import { blocks } from "./fields";
 import { capsuleOf } from "./field-capsule";
 import { richTextPlainText } from "./rich-text";
@@ -49,6 +49,83 @@ describe("blockPlainText", () => {
         };
 
         expect(blockPlainText(document)).toBe("");
+    });
+
+    it("lets a Block declaration exclude implementation details from Search", () => {
+        const definition = defineBlock({
+            name: "test.linkCard",
+            label: "Link card",
+            props: { title: { kind: "text", label: "Title" }, href: { kind: "link", label: "Address" } },
+            plainText: props => String(props.title ?? "")
+        });
+        const document: BlockDocument = {
+            version: 1,
+            blocks: [{ id: "card", type: definition.name, props: { title: "Read the guide", href: "/private-path" } }]
+        };
+
+        expect(blockPlainText(document, { [definition.name]: definition })).toBe("Read the guide");
+    });
+
+    it("indexes nothing when a declared Block owns no Search projection", () => {
+        const definition = defineBlock({
+            name: "test.integration",
+            label: "Integration",
+            props: { secret: { kind: "text", label: "Secret" } }
+        });
+        const document: BlockDocument = {
+            version: 1,
+            blocks: [{ id: "integration", type: definition.name, props: { secret: "do-not-index" } }]
+        };
+
+        expect(blockPlainText(document, { [definition.name]: definition })).toBe("");
+    });
+});
+
+describe("Block validation", () => {
+    it("rejects duplicate and blank block ids", () => {
+        const divider = defineBlock({ name: "test.divider", label: "Divider", props: {} });
+        const parsed = parseBlockDocument(
+            {
+                version: 1,
+                blocks: [
+                    { id: "same", type: divider.name, props: {} },
+                    { id: "same", type: divider.name, props: {} },
+                    { id: "", type: divider.name, props: {} }
+                ]
+            },
+            { [divider.name]: divider }
+        );
+
+        expect(parsed.ok).toBe(false);
+        expect(parsed.errors).toContain('Block id "same" is used more than once.');
+        expect(parsed.errors).toContain("Every block needs an id and a type.");
+        expect(parsed.document.blocks).toHaveLength(1);
+    });
+
+    it("validates choice, link and rich-text attributes", () => {
+        const definition = defineBlock({
+            name: "test.notice",
+            label: "Notice",
+            props: {
+                tone: { kind: "choice", label: "Tone", choices: ["note", "warning"] },
+                href: { kind: "link", label: "Address" },
+                body: { kind: "richText", label: "Body" }
+            }
+        });
+        const valid = validateBlockProps(definition, {
+            tone: "note",
+            href: "/docs",
+            body: { type: "doc", content: [{ type: "paragraph" }] }
+        });
+        const invalid = validateBlockProps(definition, {
+            tone: "danger",
+            href: "javascript:alert(1)",
+            body: { type: "unsupported" }
+        });
+
+        expect(valid.ok).toBe(true);
+        expect(invalid.ok).toBe(false);
+        expect(invalid.errors).toHaveLength(3);
     });
 });
 

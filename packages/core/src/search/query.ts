@@ -1,9 +1,12 @@
+import { canonicalLocale } from "../i18n";
+
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 
 interface SearchCursor {
     rank: number;
     rowId: number;
+    locale?: string;
 }
 
 function cursorProblem(): never {
@@ -60,7 +63,13 @@ export function encodeSearchCursor(cursor: SearchCursor): string {
         cursorProblem();
     }
 
-    return base64Url(JSON.stringify({ v: 1, r: cursor.rank, i: cursor.rowId }));
+    return base64Url(
+        JSON.stringify(
+            cursor.locale === undefined ?
+                { v: 1, r: cursor.rank, i: cursor.rowId }
+            :   { v: 2, r: cursor.rank, i: cursor.rowId, l: canonicalLocale(cursor.locale) }
+        )
+    );
 }
 
 export function decodeSearchCursor(cursor: string | undefined): SearchCursor | undefined {
@@ -72,17 +81,22 @@ export function decodeSearchCursor(cursor: string | undefined): SearchCursor | u
         const value = JSON.parse(fromBase64Url(cursor)) as Record<string, unknown>;
 
         if (
-            value.v !== 1
+            ![1, 2].includes(value.v as number)
             || typeof value.r !== "number"
             || !Number.isFinite(value.r)
             || typeof value.i !== "number"
             || !Number.isSafeInteger(value.i)
             || value.i < 1
+            || (value.v === 2 && typeof value.l !== "string")
         ) {
             cursorProblem();
         }
 
-        return { rank: value.r, rowId: value.i };
+        return {
+            rank: value.r,
+            rowId: value.i,
+            ...(value.v === 2 ? { locale: canonicalLocale(value.l as string) } : {})
+        };
     } catch (error) {
         if (error instanceof Error && error.message === "The search cursor is invalid.") {
             throw error;

@@ -1,6 +1,7 @@
 import type { EntrySummaryPage } from "@jamcaaxian/core/content";
 import { formatMoment } from "@jamcaaxian/core/dates";
 import type { post } from "@/content/collections";
+import { localizedPath, type DocsLocale } from "@/content/locales";
 import { postAddress } from "@/content/public-paths";
 import type { PublicPostListingPage } from "@/content/public-listing-protocol";
 
@@ -12,6 +13,7 @@ export interface PublicPostListingDescription {
     permalink: string;
     datePattern: string;
     timePattern: string;
+    locale?: DocsLocale;
 }
 
 export function isInvalidEntrySummaryCursor(error: unknown): boolean {
@@ -29,6 +31,7 @@ function pageAddress(path: string, cursor: string | undefined): string {
 function dataAddress(description: PublicPostListingDescription, cursor: string): string {
     const query = new URLSearchParams();
 
+    if (description.locale) query.set("locale", description.locale);
     if (description.categorySlug) query.set("category", description.categorySlug);
     if (description.tagSlug) query.set("tag", description.tagSlug);
     query.set("cursor", cursor);
@@ -45,14 +48,18 @@ export function publicPostListing(
         pageAddress: pageAddress(description.path, description.cursor),
         items: page.summaries.map(entry => {
             const publishedAt = entry.publishedAt ?? entry.createdAt;
-            const published = `${formatMoment(publishedAt, description.datePattern)} ${formatMoment(
+            const published = `${formatMoment(publishedAt, description.datePattern, description.locale)} ${formatMoment(
                 publishedAt,
-                description.timePattern
+                description.timePattern,
+                description.locale
             )}`;
 
             return {
                 id: entry.id,
-                address: postAddress(description.permalink, entry),
+                address:
+                    description.locale === undefined ?
+                        postAddress(description.permalink, entry)
+                    :   localizedPath(description.locale, postAddress(description.permalink, entry)),
                 title: entry.title,
                 excerpt: entry.excerpt,
                 published: { dateTime: publishedAt.toISOString(), label: published }

@@ -100,6 +100,8 @@ const revisionTable = buildRevisionTable(place.name, table);
 
 const createPlaceTable = `CREATE TABLE place (
     id TEXT PRIMARY KEY NOT NULL,
+    locale TEXT NOT NULL DEFAULT 'und',
+    translation_id TEXT,
     slug TEXT NOT NULL,
     status TEXT NOT NULL,
     author_id TEXT NOT NULL,

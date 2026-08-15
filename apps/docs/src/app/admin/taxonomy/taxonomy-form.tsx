@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { Category, Tag } from "@jamcaaxian/core/content";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -11,14 +12,17 @@ import { deleteCategory, deleteTag, saveCategory, saveTag, type TaxonomyFormStat
 const NONE = "__none__";
 
 function Feedback({ state }: { state: TaxonomyFormState }) {
+    const { copy } = useAdminI18n();
+
     if (state.error) {
         return <FieldError errors={[{ message: state.error }]} />;
     }
 
-    return state.saved ? <p className="text-muted-foreground text-sm">Saved.</p> : null;
+    return state.saved ? <p className="text-muted-foreground text-sm">{copy.common.saved}</p> : null;
 }
 
 function CategoryForm({ category, categories }: { category?: Category; categories: Category[] }) {
+    const { copy } = useAdminI18n();
     const [state, action, pending] = useActionState<TaxonomyFormState, FormData>(saveCategory, {});
     const parents = categories.filter(candidate => candidate.id !== category?.id);
 
@@ -29,7 +33,7 @@ function CategoryForm({ category, categories }: { category?: Category; categorie
             :   null}
             <FieldGroup>
                 <Field>
-                    <FieldLabel htmlFor={`category-name-${category?.id ?? "new"}`}>Name</FieldLabel>
+                    <FieldLabel htmlFor={`category-name-${category?.id ?? "new"}`}>{copy.taxonomy.name}</FieldLabel>
                     <Input
                         id={`category-name-${category?.id ?? "new"}`}
                         name="name"
@@ -38,17 +42,17 @@ function CategoryForm({ category, categories }: { category?: Category; categorie
                     />
                 </Field>
                 <Field>
-                    <FieldLabel htmlFor={`category-slug-${category?.id ?? "new"}`}>Slug</FieldLabel>
+                    <FieldLabel htmlFor={`category-slug-${category?.id ?? "new"}`}>{copy.taxonomy.slug}</FieldLabel>
                     <Input id={`category-slug-${category?.id ?? "new"}`} name="slug" defaultValue={category?.slug} />
-                    <FieldDescription>Leave empty to derive it from the name.</FieldDescription>
+                    <FieldDescription>{copy.taxonomy.slugDescription}</FieldDescription>
                 </Field>
                 <Field>
-                    <FieldLabel htmlFor={`category-parent-${category?.id ?? "new"}`}>Parent</FieldLabel>
+                    <FieldLabel htmlFor={`category-parent-${category?.id ?? "new"}`}>{copy.taxonomy.parent}</FieldLabel>
                     <Select
                         name="parentId"
                         defaultValue={category?.parentId ?? NONE}
                         items={[
-                            { value: NONE, label: "No parent" },
+                            { value: NONE, label: copy.taxonomy.noParent },
                             ...parents.map(parent => ({ value: parent.id, label: parent.name }))
                         ]}
                     >
@@ -56,7 +60,7 @@ function CategoryForm({ category, categories }: { category?: Category; categorie
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value={NONE}>No parent</SelectItem>
+                            <SelectItem value={NONE}>{copy.taxonomy.noParent}</SelectItem>
                             {parents.map(parent => (
                                 <SelectItem key={parent.id} value={parent.id}>
                                     {parent.name}
@@ -69,18 +73,18 @@ function CategoryForm({ category, categories }: { category?: Category; categorie
                 <div className="flex flex-wrap gap-2">
                     <Button type="submit" disabled={pending}>
                         {pending ?
-                            "Saving…"
+                            copy.common.saving
                         : category ?
-                            "Save category"
-                        :   "Add category"}
+                            copy.taxonomy.saveCategory
+                        :   copy.taxonomy.addCategory}
                     </Button>
                     {category ?
                         <Button
                             variant="outline"
                             nativeButton
-                            render={<button type="submit" formAction={deleteCategory} name="id" value={category.id} />}
+                            render={<button type="submit" formAction={deleteCategory} />}
                         >
-                            Delete
+                            {copy.common.delete}
                         </Button>
                     :   null}
                 </div>
@@ -90,6 +94,7 @@ function CategoryForm({ category, categories }: { category?: Category; categorie
 }
 
 function TagForm({ tag }: { tag?: Tag }) {
+    const { copy } = useAdminI18n();
     const [state, action, pending] = useActionState<TaxonomyFormState, FormData>(saveTag, {});
 
     return (
@@ -99,30 +104,26 @@ function TagForm({ tag }: { tag?: Tag }) {
             :   null}
             <FieldGroup>
                 <Field>
-                    <FieldLabel htmlFor={`tag-name-${tag?.id ?? "new"}`}>Name</FieldLabel>
+                    <FieldLabel htmlFor={`tag-name-${tag?.id ?? "new"}`}>{copy.taxonomy.name}</FieldLabel>
                     <Input id={`tag-name-${tag?.id ?? "new"}`} name="name" defaultValue={tag?.name} required />
                 </Field>
                 <Field>
-                    <FieldLabel htmlFor={`tag-slug-${tag?.id ?? "new"}`}>Slug</FieldLabel>
+                    <FieldLabel htmlFor={`tag-slug-${tag?.id ?? "new"}`}>{copy.taxonomy.slug}</FieldLabel>
                     <Input id={`tag-slug-${tag?.id ?? "new"}`} name="slug" defaultValue={tag?.slug} />
-                    <FieldDescription>Leave empty to derive it from the name.</FieldDescription>
+                    <FieldDescription>{copy.taxonomy.slugDescription}</FieldDescription>
                 </Field>
                 <Feedback state={state} />
                 <div className="flex flex-wrap gap-2">
                     <Button type="submit" disabled={pending}>
                         {pending ?
-                            "Saving…"
+                            copy.common.saving
                         : tag ?
-                            "Save tag"
-                        :   "Add tag"}
+                            copy.taxonomy.saveTag
+                        :   copy.taxonomy.addTag}
                     </Button>
                     {tag ?
-                        <Button
-                            variant="outline"
-                            nativeButton
-                            render={<button type="submit" formAction={deleteTag} name="id" value={tag.id} />}
-                        >
-                            Delete
+                        <Button variant="outline" nativeButton render={<button type="submit" formAction={deleteTag} />}>
+                            {copy.common.delete}
                         </Button>
                     :   null}
                 </div>
@@ -132,12 +133,14 @@ function TagForm({ tag }: { tag?: Tag }) {
 }
 
 export function TaxonomyForms({ categories, tags }: { categories: Category[]; tags: Tag[] }) {
+    const { copy } = useAdminI18n();
+
     return (
         <div className="grid gap-8 xl:grid-cols-2">
             <section className="space-y-4">
                 <div>
-                    <h2 className="font-semibold tracking-tight">Categories</h2>
-                    <p className="text-muted-foreground text-sm">Hierarchical. Every Post belongs to exactly one.</p>
+                    <h2 className="font-semibold tracking-tight">{copy.taxonomy.categories}</h2>
+                    <p className="text-muted-foreground text-sm">{copy.taxonomy.categoriesDescription}</p>
                 </div>
                 <CategoryForm categories={categories} />
                 {categories.map(category => (
@@ -147,8 +150,8 @@ export function TaxonomyForms({ categories, tags }: { categories: Category[]; ta
 
             <section className="space-y-4">
                 <div>
-                    <h2 className="font-semibold tracking-tight">Tags</h2>
-                    <p className="text-muted-foreground text-sm">Flat labels. A Post may use any number of them.</p>
+                    <h2 className="font-semibold tracking-tight">{copy.taxonomy.tags}</h2>
+                    <p className="text-muted-foreground text-sm">{copy.taxonomy.tagsDescription}</p>
                 </div>
                 <TagForm />
                 {tags.map(tag => (

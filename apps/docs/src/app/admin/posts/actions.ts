@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
+import { adminMessages } from "@/content/admin-locale";
 import { compareAndIncrementPublicAddressRevision, publicAddressRevision } from "@/content/public-address-revision";
 import { commitPostState } from "@/content/post-writes";
 import { posts, writePostWithTags } from "@/content/store";
@@ -24,9 +25,10 @@ async function workspace() {
 }
 
 export async function savePost(_previous: PostFormState, formData: FormData): Promise<PostFormState> {
+    const { copy } = await adminMessages();
     const { actor, database, store } = await workspace();
 
-    const submission = readPostSubmission(formData);
+    const submission = readPostSubmission(formData, copy.posts.errors);
 
     if ("error" in submission) {
         return submission;
@@ -36,7 +38,7 @@ export async function savePost(_previous: PostFormState, formData: FormData): Pr
     const existing = id ? await store.byId(id) : undefined;
 
     if (id && existing === undefined) {
-        return { error: "That post no longer exists." };
+        return { error: copy.posts.errors.missing };
     }
 
     const owner = existing?.authorId ?? actor.id;
@@ -44,22 +46,22 @@ export async function savePost(_previous: PostFormState, formData: FormData): Pr
     const allowed = existing ? await mayTouch(actor, "post", "update", owner) : await may(actor, "post", "create");
 
     if (!allowed) {
-        return { error: "You do not have permission to write this post." };
+        return { error: copy.posts.errors.writeDenied };
     }
 
     if (!(await may(actor, "taxonomy", "read"))) {
-        return { error: "You do not have permission to assign taxonomy." };
+        return { error: copy.posts.errors.taxonomyDenied };
     }
 
     const terms = taxonomy(database);
 
     if ((await terms.categoryById(categoryId)) === undefined) {
-        return { error: "The selected category no longer exists." };
+        return { error: copy.posts.errors.categoryMissing };
     }
 
     for (const tagId of new Set(tagIds)) {
         if ((await terms.tagById(tagId)) === undefined) {
-            return { error: "One of the selected tags no longer exists." };
+            return { error: copy.posts.errors.tagMissing };
         }
     }
 
@@ -69,7 +71,7 @@ export async function savePost(_previous: PostFormState, formData: FormData): Pr
 
     // Checked on the server because the form only hides what it must not offer.
     if (!mayPublish && (requestsPublished || takesPublishedOffline)) {
-        return { error: "You may write this post, but not change whether it is published." };
+        return { error: copy.posts.errors.publishDenied };
     }
 
     await commitPostState({
@@ -84,6 +86,7 @@ export async function savePost(_previous: PostFormState, formData: FormData): Pr
 }
 
 export async function deletePost(formData: FormData): Promise<void> {
+    const { copy } = await adminMessages();
     const { actor, database, store } = await workspace();
     const id = String(formData.get("id") ?? "");
     const existing = await store.byId(id);
@@ -93,7 +96,7 @@ export async function deletePost(formData: FormData): Promise<void> {
     }
 
     if (!(await mayTouch(actor, "post", "delete", existing.authorId))) {
-        throw new Error("You do not have permission to delete this post.");
+        throw new Error(copy.posts.errors.deleteDenied);
     }
 
     const expectedAddressRevision = await publicAddressRevision(database);

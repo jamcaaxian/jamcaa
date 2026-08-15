@@ -10,6 +10,7 @@ import { d1SearchAdapter } from "@jamcaaxian/core/search";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import { post } from "@/content/collections";
+import { docsLocales } from "@/content/locales";
 import { postTable, postTagTable } from "@/content/schema";
 import { searchPosts } from "@/content/search";
 import { posts, replacePostTags } from "@/content/store";
@@ -25,7 +26,8 @@ function search() {
     return d1SearchAdapter({
         database: database(),
         tableFor: collectionName => (collectionName === post.name ? postTable : undefined),
-        tagTableFor: collectionName => (collectionName === post.name ? postTagTable : undefined)
+        tagTableFor: collectionName => (collectionName === post.name ? postTagTable : undefined),
+        locales: docsLocales
     });
 }
 
@@ -218,6 +220,56 @@ describe("published Entry search", () => {
         expect(second.matches).toHaveLength(1);
         expect(new Set([...first.matches, ...second.matches].map(match => match.entryId))).toHaveLength(3);
         expect(second.nextCursor).toBeUndefined();
+    });
+
+    it("partitions Search results and cursors by Locale", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+        const english = await store.create({
+            slug: "locale-search",
+            authorId,
+            categoryId,
+            title: "Shared locale term",
+            body: blockBody(richTextFromPlainText("English")),
+            status: "published"
+        });
+        const chinese = await store.create({
+            slug: "locale-search",
+            locale: "zh-Hans-CN",
+            translationId: english.translationId,
+            authorId,
+            categoryId,
+            title: "Shared locale term",
+            body: blockBody(richTextFromPlainText("中文")),
+            status: "published"
+        });
+
+        expect((await search().search({ collection: post, query: "Shared locale term" })).matches).toEqual([
+            expect.objectContaining({ entryId: english.id })
+        ]);
+        expect(
+            (await search().search({ collection: post, query: "Shared locale term", locale: "zh-Hans-CN" })).matches
+        ).toEqual([expect.objectContaining({ entryId: chinese.id })]);
+
+        await store.create({
+            slug: "locale-search-two",
+            authorId,
+            categoryId,
+            title: "Shared locale term",
+            body: blockBody(richTextFromPlainText("English second")),
+            status: "published"
+        });
+        const first = await search().search({ collection: post, query: "Shared locale term", limit: 1 });
+
+        await expect(
+            search().search({
+                collection: post,
+                query: "Shared locale term",
+                locale: "zh-Hans-CN",
+                limit: 1,
+                cursor: first.nextCursor
+            })
+        ).rejects.toThrow(/cursor is invalid/i);
     });
 
     it("resolves Search Matches to typed Entries without changing rank order", async () => {

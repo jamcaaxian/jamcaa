@@ -1,3 +1,5 @@
+"use client";
+
 import { LogOut } from "lucide-react";
 import { signOut } from "@/app/admin/actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,6 +13,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { useAdminI18n } from "./admin-i18n";
 
 function initials(name: string) {
     return name
@@ -26,6 +29,10 @@ export function UserMenu({
 }: {
     user: { name: string; email: string; image?: string | null; role?: string | null };
 }) {
+    const { copy } = useAdminI18n();
+    const role =
+        user.role ? (copy.roles.roleLabels[user.role as keyof typeof copy.roles.roleLabels] ?? user.role) : null;
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger
@@ -37,7 +44,7 @@ export function UserMenu({
                             :   null}
                             <AvatarFallback className="text-xs">{initials(user.name)}</AvatarFallback>
                         </Avatar>
-                        <span className="sr-only">Account</span>
+                        <span className="sr-only">{copy.shell.account.open}</span>
                     </Button>
                 }
             />
@@ -47,8 +54,8 @@ export function UserMenu({
                     <DropdownMenuLabel className="font-normal">
                         <div className="truncate text-sm font-medium">{user.name}</div>
                         <div className="text-muted-foreground truncate text-xs">{user.email}</div>
-                        {user.role ?
-                            <div className="text-muted-foreground mt-1 text-xs capitalize">{user.role}</div>
+                        {role ?
+                            <div className="text-muted-foreground mt-1 text-xs">{role}</div>
                         :   null}
                     </DropdownMenuLabel>
                 </DropdownMenuGroup>
@@ -58,7 +65,7 @@ export function UserMenu({
                         nativeButton tells Base UI the render target is already a button. */}
                     <DropdownMenuItem nativeButton render={<button type="submit" className="w-full" />}>
                         <LogOut className="size-4" />
-                        Sign out
+                        {copy.shell.account.signOut}
                     </DropdownMenuItem>
                 </form>
             </DropdownMenuContent>

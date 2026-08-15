@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NextPageLink } from "@/components/public/next-page-link";
 import { PostList } from "@/components/public/post-list";
 import {
@@ -11,8 +11,11 @@ import {
     initialPublicPostListingState,
     publicPostListingPageFollows,
     publicPostListingPageFrom,
+    type PublicPostListingAnnouncements,
     type PublicPostListingPage
 } from "@/content/public-listing-protocol";
+import type { DocsLocale } from "@/content/locales";
+import { publicCopy } from "@/content/public-copy";
 
 interface ActiveRequest {
     controller: AbortController;
@@ -21,11 +24,22 @@ interface ActiveRequest {
 
 export function ProgressivePostList({
     initialPage,
-    emptyMessage
+    emptyMessage,
+    locale = "en-US"
 }: {
     initialPage: PublicPostListingPage;
     emptyMessage: string;
+    locale?: DocsLocale;
 }) {
+    const messages = publicCopy(locale);
+    const announcements: PublicPostListingAnnouncements = useMemo(
+        () => ({
+            loading: messages.loadingAnnouncement,
+            loaded: messages.loadedAnnouncement,
+            error: messages.loadErrorAnnouncement
+        }),
+        [messages]
+    );
     const [state, setState] = useState(() => initialPublicPostListingState(initialPage));
     const [automaticLoadingPaused, setAutomaticLoadingPaused] = useState(false);
     const [retryControlVisible, setRetryControlVisible] = useState(false);
@@ -41,7 +55,7 @@ export function ProgressivePostList({
 
         const request = { controller: new AbortController(), address: next.dataAddress };
         activeRequest.current = request;
-        setState(beginPublicPostListingLoad);
+        setState(current => beginPublicPostListingLoad(current, announcements));
 
         try {
             const response = await fetch(request.address, {
@@ -72,20 +86,20 @@ export function ProgressivePostList({
                 return;
             }
 
-            setState(current => appendPublicPostListingPage(current, page));
+            setState(current => appendPublicPostListingPage(current, page, announcements));
             window.history.replaceState(null, "", page.pageAddress);
         } catch {
             if (activeRequest.current !== request || request.controller.signal.aborted) {
                 return;
             }
 
-            setState(failPublicPostListingLoad);
+            setState(current => failPublicPostListingLoad(current, announcements));
         } finally {
             if (activeRequest.current === request) {
                 activeRequest.current = null;
             }
         }
-    }, [state]);
+    }, [announcements, state]);
 
     useEffect(() => {
         if (
@@ -157,17 +171,18 @@ export function ProgressivePostList({
                         {state.next !== null && (
                             <NextPageLink
                                 href={state.next.pageAddress}
+                                label={messages.nextPage}
                                 onFocus={pauseAutomaticLoading}
                                 onBlur={() => setAutomaticLoadingPaused(false)}
                             />
                         )}
-                        {state.phase === "loading" && <p className="text-muted-foreground text-sm">Loading…</p>}
+                        {state.phase === "loading" && (
+                            <p className="text-muted-foreground text-sm">{messages.loading}</p>
+                        )}
                         {(state.phase === "error" || retryControlVisible) && (
                             <div className="flex flex-wrap items-center gap-3">
                                 {state.phase === "error" && (
-                                    <p className="text-destructive text-sm">
-                                        The next page could not load automatically.
-                                    </p>
+                                    <p className="text-destructive text-sm">{messages.loadError}</p>
                                 )}
                                 <button
                                     type="button"
@@ -177,10 +192,10 @@ export function ProgressivePostList({
                                     className="bg-secondary text-secondary-foreground h-11 rounded-lg px-5 text-sm font-semibold"
                                 >
                                     {state.phase === "loading" ?
-                                        "Retrying…"
+                                        messages.retrying
                                     : state.phase === "error" ?
-                                        "Retry"
-                                    :   "Page loaded"}
+                                        messages.retry
+                                    :   messages.pageLoaded}
                                 </button>
                             </div>
                         )}
@@ -188,7 +203,7 @@ export function ProgressivePostList({
                 )}
 
                 {state.next === null && state.items.length > 0 && (
-                    <p className="text-muted-foreground mt-10 text-sm">All Posts loaded.</p>
+                    <p className="text-muted-foreground mt-10 text-sm">{messages.allPostsLoaded}</p>
                 )}
             </section>
 

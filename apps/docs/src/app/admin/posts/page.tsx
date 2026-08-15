@@ -8,21 +8,29 @@ import { getSettings } from "@jamcaaxian/core/settings";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { adminMessages } from "@/content/admin-locale";
+import { docsLocales, localizedPath } from "@/content/locales";
+import { postAddress } from "@/content/public-paths";
 import { posts } from "@/content/store";
 import { siteSettings } from "@/content/settings";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 
-export const metadata: Metadata = { title: "Posts" };
+export async function generateMetadata(): Promise<Metadata> {
+    const { copy } = await adminMessages();
+
+    return { title: copy.posts.list.title };
+}
 
 const tone = { published: "default", draft: "secondary", archived: "outline" } as const;
 
 export default async function PostsPage() {
+    const { locale, copy } = await adminMessages();
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
 
     if (!(await may(actor, "post", "read"))) {
-        return <p className="text-muted-foreground text-sm">You do not have permission to read posts.</p>;
+        return <p className="text-muted-foreground text-sm">{copy.posts.list.permission}</p>;
     }
 
     const { env } = getCloudflareContext();
@@ -50,93 +58,115 @@ export default async function PostsPage() {
     }
     const datePattern = settings.get("format.date");
     const timePattern = settings.get("format.time");
+    const permalink = settings.get("permalink.post");
     const mayCreate = await may(actor, "post", "create");
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="space-y-1">
-                    <h1 className="text-xl font-semibold tracking-tight">Posts</h1>
-                    <p className="text-muted-foreground text-sm">
-                        {entries.length === 1 ? "One post" : `${entries.length} posts`}
-                    </p>
+                    <h1 className="text-xl font-semibold tracking-tight">{copy.posts.list.title}</h1>
+                    <p className="text-muted-foreground text-sm">{copy.posts.list.count(entries.length)}</p>
                 </div>
                 {mayCreate ?
                     <Button nativeButton={false} render={<Link href="/admin/posts/new" />}>
-                        New post
+                        {copy.posts.list.new}
                     </Button>
                 :   null}
             </div>
 
             {entries.length === 0 ?
                 <div className="rounded-2xl border border-dashed px-8 py-16 text-center">
-                    <p className="font-medium">Nothing written yet.</p>
+                    <p className="font-medium">{copy.posts.list.emptyTitle}</p>
                     <p className="text-muted-foreground mt-1 text-sm">
-                        {mayCreate ?
-                            "Create the first post to see it here."
-                        :   "Posts will appear here once they exist."}
+                        {mayCreate ? copy.posts.list.emptyCreate : copy.posts.list.emptyWait}
                     </p>
                 </div>
             :   <>
                     <ul className="space-y-3 md:hidden">
-                        {entries.map(entry => (
-                            <li key={entry.id}>
-                                <Link
-                                    href={`/admin/posts/${entry.id}`}
-                                    className="block rounded-xl border p-4 transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
-                                >
-                                    <div className="flex min-w-0 items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <h2 className="font-medium wrap-anywhere">{entry.title}</h2>
-                                            <p className="text-muted-foreground mt-1 truncate text-xs">/{entry.slug}</p>
+                        {entries.map(entry => {
+                            const entryLocale = docsLocales.canonical(entry.locale);
+                            const address = postAddress(permalink, entry);
+                            const publicAddress =
+                                entryLocale === undefined ? address : localizedPath(entryLocale, address);
+
+                            return (
+                                <li key={entry.id}>
+                                    <Link
+                                        href={`/admin/posts/${entry.id}`}
+                                        className="block rounded-xl border p-4 transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
+                                    >
+                                        <div className="flex min-w-0 items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <h2 className="font-medium wrap-anywhere">{entry.title}</h2>
+                                                <p className="text-muted-foreground mt-1 truncate text-xs">
+                                                    {publicAddress}
+                                                </p>
+                                            </div>
+                                            <Badge variant={tone[entry.status]}>
+                                                {copy.common.status[entry.status]}
+                                            </Badge>
                                         </div>
-                                        <Badge variant={tone[entry.status]}>{entry.status}</Badge>
-                                    </div>
-                                    <p className="text-muted-foreground mt-3 text-xs">
-                                        {views === undefined ? null : `${views.get(entry.id) ?? 0} views · `}
-                                        Last edited {formatMoment(entry.updatedAt, datePattern)}{" "}
-                                        {formatMoment(entry.updatedAt, timePattern)}
-                                    </p>
-                                </Link>
-                            </li>
-                        ))}
+                                        <p className="text-muted-foreground mt-3 text-xs">
+                                            {views === undefined ? null : (
+                                                `${copy.posts.list.views(views.get(entry.id) ?? 0)} · `
+                                            )}
+                                            {copy.posts.list.lastEdited(
+                                                `${formatMoment(entry.updatedAt, datePattern, locale)} ${formatMoment(entry.updatedAt, timePattern, locale)}`
+                                            )}
+                                        </p>
+                                    </Link>
+                                </li>
+                            );
+                        })}
                     </ul>
                     <div className="hidden md:block">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Title</TableHead>
-                                    <TableHead className="w-32">Status</TableHead>
-                                    {views === undefined ? null : <TableHead className="w-20">Views</TableHead>}
-                                    <TableHead className="w-44">Last edited</TableHead>
+                                    <TableHead>{copy.posts.list.titleColumn}</TableHead>
+                                    <TableHead className="w-32">{copy.posts.list.statusColumn}</TableHead>
+                                    {views === undefined ? null : (
+                                        <TableHead className="w-20">{copy.posts.list.viewsColumn}</TableHead>
+                                    )}
+                                    <TableHead className="w-44">{copy.posts.list.lastEditedColumn}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {entries.map(entry => (
-                                    <TableRow key={entry.id}>
-                                        <TableCell>
-                                            <Link
-                                                href={`/admin/posts/${entry.id}`}
-                                                className="font-medium hover:underline"
-                                            >
-                                                {entry.title}
-                                            </Link>
-                                            <div className="text-muted-foreground text-xs">/{entry.slug}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={tone[entry.status]}>{entry.status}</Badge>
-                                        </TableCell>
-                                        {views === undefined ? null : (
-                                            <TableCell className="text-muted-foreground text-sm">
-                                                {views.get(entry.id) ?? 0}
+                                {entries.map(entry => {
+                                    const entryLocale = docsLocales.canonical(entry.locale);
+                                    const address = postAddress(permalink, entry);
+                                    const publicAddress =
+                                        entryLocale === undefined ? address : localizedPath(entryLocale, address);
+
+                                    return (
+                                        <TableRow key={entry.id}>
+                                            <TableCell>
+                                                <Link
+                                                    href={`/admin/posts/${entry.id}`}
+                                                    className="font-medium hover:underline"
+                                                >
+                                                    {entry.title}
+                                                </Link>
+                                                <div className="text-muted-foreground text-xs">{publicAddress}</div>
                                             </TableCell>
-                                        )}
-                                        <TableCell className="text-muted-foreground text-sm">
-                                            {formatMoment(entry.updatedAt, datePattern)}{" "}
-                                            {formatMoment(entry.updatedAt, timePattern)}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                            <TableCell>
+                                                <Badge variant={tone[entry.status]}>
+                                                    {copy.common.status[entry.status]}
+                                                </Badge>
+                                            </TableCell>
+                                            {views === undefined ? null : (
+                                                <TableCell className="text-muted-foreground text-sm">
+                                                    {views.get(entry.id) ?? 0}
+                                                </TableCell>
+                                            )}
+                                            <TableCell className="text-muted-foreground text-sm">
+                                                {formatMoment(entry.updatedAt, datePattern, locale)}{" "}
+                                                {formatMoment(entry.updatedAt, timePattern, locale)}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>

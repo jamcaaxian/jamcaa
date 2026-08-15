@@ -11,6 +11,10 @@ export const page = sqliteTable(
     "page",
     {
         id: text("id").primaryKey(),
+        /** Canonical BCP 47 Locale; `und` keeps non-localised Sites compatible. */
+        locale: text("locale").notNull().default("und"),
+        /** Stable identity shared by all translations of one Page. */
+        translationId: text("translation_id"),
         title: text("title").notNull(),
         /** Public address, starting with "/". "/" is the home page. */
         address: text("address").notNull(),
@@ -24,5 +28,8 @@ export const page = sqliteTable(
             .notNull(),
         updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull()
     },
-    table => [uniqueIndex("page_address").on(table.address)]
+    table => [
+        uniqueIndex("page_locale_address_key").on(table.locale, table.address),
+        uniqueIndex("page_translation_locale_key").on(table.translationId, table.locale)
+    ]
 );

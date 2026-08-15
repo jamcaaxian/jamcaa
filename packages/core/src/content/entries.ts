@@ -1,6 +1,7 @@
-import { and, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, inArray, sql, type SQL } from "drizzle-orm";
 import type { SQLiteColumn, SQLiteTable } from "drizzle-orm/sqlite-core";
 import type { Database } from "../db/client";
+import { canonicalLocale, type LocaleCatalogue } from "../i18n";
 import type { Collection, EntryOf, FieldMap } from "./collection";
 import { capsuleOf, type SQLiteCell } from "./field-capsule";
 import { canonicalFieldValue } from "./field-values";
@@ -26,16 +27,21 @@ export type NewEntry<TFields extends FieldMap> = {
     slug: string;
     authorId: string;
     categoryId: string;
+    /** Canonical BCP 47 Locale. Defaults to the Store's configured Locale. */
+    locale?: string;
+    /** Existing Translation Set identity when creating another Locale variant. */
+    translationId?: string;
     status?: EntryStatus;
     publishedAt?: Date | null;
 } & DeclaredValues<TFields>;
 
-export type EntryChanges<TFields extends FieldMap> = Partial<NewEntry<TFields>>;
+export type EntryChanges<TFields extends FieldMap> = Partial<Omit<NewEntry<TFields>, "locale" | "translationId">>;
 
 export interface EntryQuery {
     status?: EntryStatus;
     categoryId?: string;
     tagId?: string;
+    locale?: string;
     limit?: number;
     offset?: number;
 }
@@ -47,7 +53,8 @@ export interface EntryStore<TFields extends FieldMap> {
     byId(id: string): Promise<EntryOf<Collection<TFields>> | undefined>;
     /** Preserves requested order and omits identifiers that no longer exist. */
     byIds(ids: readonly string[]): Promise<EntryOf<Collection<TFields>>[]>;
-    bySlug(slug: string): Promise<EntryOf<Collection<TFields>> | undefined>;
+    bySlug(slug: string, locale?: string): Promise<EntryOf<Collection<TFields>> | undefined>;
+    translations(translationId: string): Promise<EntryOf<Collection<TFields>>[]>;
     list(query?: EntryQuery): Promise<EntryOf<Collection<TFields>>[]>;
 }
 
@@ -131,11 +138,40 @@ export function entryStore<TFields extends FieldMap>(options: {
     collection: Collection<TFields>;
     table: SQLiteTable;
     tagTable?: SQLiteTable;
+    locales?: LocaleCatalogue;
 }): EntryStore<TFields> {
-    const { database, collection, table, tagTable } = options;
+    const { database, collection, table, tagTable, locales } = options;
     const layout = physicalLayout(collection.name, collection.fields);
+    const defaultLocale = locales?.defaultLocale ?? "und";
 
     type Entry = EntryOf<Collection<TFields>>;
+
+    function locale(value: unknown): string {
+        const candidate = typeof value === "string" && value.trim() ? value : defaultLocale;
+        const supported = locales?.canonical(candidate);
+
+        if (locales !== undefined) {
+            if (supported === undefined) {
+                throw new Error(`Locale "${candidate}" is not supported by this Site.`);
+            }
+
+            return supported;
+        }
+
+        return canonicalLocale(candidate);
+    }
+
+    function translationId(value: unknown, id: unknown): string {
+        if (typeof value === "string" && value.trim()) {
+            return value;
+        }
+
+        if (typeof id === "string" && id.trim()) {
+            return id;
+        }
+
+        throw new Error("An Entry needs a Translation Set identity.");
+    }
 
     function parseDeclaredValues(values: Record<string, unknown>) {
         const parsed = { ...values };
@@ -173,6 +209,9 @@ export function entryStore<TFields extends FieldMap>(options: {
                 }
             }
         }
+
+        parsed.locale = locale(parsed.locale);
+        parsed.translationId = translationId(parsed.translationId, parsed.id);
 
         return parsed;
     }
@@ -214,7 +253,7 @@ export function entryStore<TFields extends FieldMap>(options: {
 
     const asEntries = (rows: Record<string, unknown>[]) => rows.map(parseDeclaredValues) as Entry[];
 
-    async function one(where: ReturnType<typeof eq>): Promise<Entry | undefined> {
+    async function one(where: SQL): Promise<Entry | undefined> {
         const rows = await database.select().from(table).where(where).limit(1);
 
         return asEntries(rows)[0];
@@ -223,8 +262,12 @@ export function entryStore<TFields extends FieldMap>(options: {
     return {
         async create(entry) {
             const id = crypto.randomUUID();
+            const entryLocale = locale(entry.locale);
+            const entryTranslationId = translationId(entry.translationId, id);
 
-            await database.insert(table).values({ ...physicalValues(entry), id });
+            await database
+                .insert(table)
+                .values({ ...physicalValues(entry), id, locale: entryLocale, translationId: entryTranslationId });
 
             const created = await one(eq(columnNamed(table, "id"), id));
 
@@ -280,7 +323,18 @@ export function entryStore<TFields extends FieldMap>(options: {
             return ordered;
         },
 
-        bySlug: slug => one(eq(columnNamed(table, "slug"), slug)),
+        bySlug: (slug, requestedLocale) =>
+            one(and(eq(columnNamed(table, "slug"), slug), eq(columnNamed(table, "locale"), locale(requestedLocale)))!),
+
+        async translations(requestedTranslationId) {
+            const rows = await database
+                .select()
+                .from(table)
+                .where(eq(columnNamed(table, "translationId"), requestedTranslationId))
+                .orderBy(columnNamed(table, "locale"));
+
+            return asEntries(rows);
+        },
 
         async list(query = {}) {
             const conditions = [];
@@ -306,6 +360,10 @@ export function entryStore<TFields extends FieldMap>(options: {
                           AND ${columnNamed(tagTable, "tagId")} = ${query.tagId}
                     )`
                 );
+            }
+
+            if (query.locale !== undefined) {
+                conditions.push(eq(columnNamed(table, "locale"), locale(query.locale)));
             }
 
             const rows = await database

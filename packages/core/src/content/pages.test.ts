@@ -13,12 +13,16 @@ async function prepareTable() {
     await db.run(sql`
         create table page (
             id text primary key,
+            locale text not null default 'und',
+            translation_id text,
             title text not null,
-            address text not null unique,
+            address text not null,
             body text not null,
             status text not null default 'draft',
             created_at integer not null,
-            updated_at integer not null
+            updated_at integer not null,
+            unique(locale, address),
+            unique(translation_id, locale)
         )
     `);
 
@@ -68,6 +72,8 @@ describe("pageStore", () => {
         );
 
         expect(page.title).toBe("Home");
+        expect(page.locale).toBe("und");
+        expect(page.translationId).toBe(page.id);
         expect(page.body.blocks).toHaveLength(1);
     });
 
@@ -104,5 +110,26 @@ describe("pageStore", () => {
         await store().update(page.id, { status: "published" });
 
         expect(await store().byAddress("/draft")).toBeDefined();
+    });
+
+    it("allows the same address in different Locales within one Translation Set", async () => {
+        const english = pageOf(
+            await store().create({ title: "Docs", address: "/docs", locale: "en-US", body: body([]) })
+        );
+        const chinese = pageOf(
+            await store().create({
+                title: "文档",
+                address: "/docs",
+                locale: "zh-Hans-CN",
+                translationId: english.translationId,
+                body: body([])
+            })
+        );
+
+        expect(chinese.translationId).toBe(english.translationId);
+        expect((await store().translations(english.translationId)).map(item => item.locale)).toEqual([
+            "en-US",
+            "zh-Hans-CN"
+        ]);
     });
 });

@@ -6,19 +6,21 @@ import { createDatabase } from "@jamcaaxian/core";
 import { claimFirstAdministrator } from "@jamcaaxian/core/auth";
 import { ensureInstalled } from "@jamcaaxian/core/install";
 import { coreSettings, writeSettings } from "@jamcaaxian/core/settings";
+import { adminMessages } from "@/content/admin-locale";
 import { installPlan } from "@/content/install";
 import { getAuth } from "@/lib/auth";
 
 export type SetupState = { error?: string };
 
 export async function createFirstAdministrator(_previous: SetupState, formData: FormData): Promise<SetupState> {
+    const { copy } = await adminMessages();
     const name = String(formData.get("name") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const siteTitle = String(formData.get("siteTitle") ?? "").trim();
 
     if (!name || !email || !password || !siteTitle) {
-        return { error: "Fill in every field to finish setting the site up." };
+        return { error: copy.auth.setup.required };
     }
 
     const { env } = getCloudflareContext();
@@ -32,7 +34,7 @@ export async function createFirstAdministrator(_previous: SetupState, formData: 
     }
 
     if (result.status === "rejected") {
-        return { error: result.message };
+        return { error: copy.auth.setup.rejected };
     }
 
     await ensureInstalled(database, installPlan);

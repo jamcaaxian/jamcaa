@@ -12,6 +12,7 @@ import { text, type Field } from "./fields";
 import { defineContentModel } from "./model";
 import { buildRevisionTable, entryRevisionSnapshot, entryRevisionStore } from "./revisions";
 import { entrySummaryReader } from "./summaries";
+import { systemFieldNames } from "./system-fields";
 import { buildTable } from "./table";
 
 interface GeoPoint {
@@ -103,6 +104,8 @@ const revisionTable = buildRevisionTable(place.name, table);
 
 const createPlaceTable = `CREATE TABLE place (
     id TEXT PRIMARY KEY NOT NULL,
+    locale TEXT NOT NULL DEFAULT 'und',
+    translation_id TEXT,
     slug TEXT NOT NULL,
     status TEXT NOT NULL,
     author_id TEXT NOT NULL,
@@ -145,7 +148,7 @@ describe("multi-column Field layouts", () => {
     it("resolves compound slots to field__slot columns and keeps single slots plain", () => {
         const layout = physicalLayout(place.name, place.fields);
 
-        expect(layout.total).toBe(8 + 1 + 2 + 2);
+        expect(layout.total).toBe(systemFieldNames.length + 1 + 2 + 2);
         expect(layout.byField.location?.columns).toEqual(["location__latitude", "location__longitude"]);
         expect(layout.byField.title?.columns).toEqual(["title"]);
     });
@@ -167,13 +170,14 @@ describe("multi-column Field layouts", () => {
     it("counts physical columns against the D1 budget", () => {
         const fields: Record<string, Field> = { title: text({ required: true }) };
 
-        for (let index = 0; index < 46; index += 1) {
+        for (let index = 0; index < 45; index += 1) {
             fields[`point${index}`] = geoPoint();
         }
 
         expect(() => defineCollection({ name: "too_wide", label: "x", plural: "x", fields })).toThrow(/D1 allows 100/i);
 
-        delete fields.point45;
+        delete fields.point44;
+        fields.subtitle = text();
         expect(() => defineCollection({ name: "exact", label: "x", plural: "x", fields })).not.toThrow();
     });
 

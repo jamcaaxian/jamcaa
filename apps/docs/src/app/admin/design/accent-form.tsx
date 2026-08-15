@@ -2,21 +2,23 @@
 
 import { useActionState, useState } from "react";
 import { Check } from "lucide-react";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveAccent, type AccentFormState } from "./actions";
 
 export const ACCENT_PRESETS = [
-    { name: "Ink Blue", color: "#3388FF" },
-    { name: "Deep Indigo", color: "#5B5BD6" },
-    { name: "Forest", color: "#3A8D5C" },
-    { name: "Teal", color: "#0F766E" },
-    { name: "Clay", color: "#C2571B" },
-    { name: "Rose", color: "#C4456B" }
+    { name: "inkBlue", color: "#3388FF" },
+    { name: "deepIndigo", color: "#5B5BD6" },
+    { name: "forest", color: "#3A8D5C" },
+    { name: "teal", color: "#0F766E" },
+    { name: "clay", color: "#C2571B" },
+    { name: "rose", color: "#C4456B" }
 ] as const;
 
 function CustomAccentField({ current, pending }: { current: string; pending: boolean }) {
+    const { copy } = useAdminI18n();
     const [value, setValue] = useState(current);
 
     return (
@@ -30,19 +32,20 @@ function CustomAccentField({ current, pending }: { current: string; pending: boo
                 className="font-mono"
             />
             <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Apply"}
+                {pending ? copy.common.saving : copy.design.apply}
             </Button>
         </div>
     );
 }
 
 export function AccentForm({ current }: { current: string }) {
+    const { copy } = useAdminI18n();
     const [state, formAction, pending] = useActionState<AccentFormState, FormData>(saveAccent, {});
 
     return (
         <form action={formAction} className="space-y-8">
             <div className="space-y-3">
-                <Label>Presets</Label>
+                <Label>{copy.design.presets}</Label>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {ACCENT_PRESETS.map(preset => (
                         <button
@@ -58,7 +61,9 @@ export function AccentForm({ current }: { current: string }) {
                                 style={{ backgroundColor: preset.color }}
                             />
                             <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-medium">{preset.name}</span>
+                                <span className="block truncate text-sm font-medium">
+                                    {copy.design.presetNames[preset.name]}
+                                </span>
                                 <span className="block font-mono text-xs text-muted-foreground">{preset.color}</span>
                             </span>
                             {current.toLowerCase() === preset.color.toLowerCase() ?
@@ -70,19 +75,16 @@ export function AccentForm({ current }: { current: string }) {
             </div>
 
             <div className="space-y-3">
-                <Label htmlFor="custom-accent">Custom colour</Label>
+                <Label htmlFor="custom-accent">{copy.design.custom}</Label>
                 <CustomAccentField key={current} current={current} pending={pending} />
-                <p className="text-muted-foreground text-sm">
-                    Any CSS colour works. Text on top of it is kept legible automatically, and the whole site updates
-                    the moment it is applied.
-                </p>
+                <p className="text-muted-foreground text-sm">{copy.design.customDescription}</p>
             </div>
 
             {state.error ?
                 <p className="text-destructive text-sm">{state.error}</p>
             :   null}
             {state.saved ?
-                <p className="text-sm">Accent applied across the site.</p>
+                <p className="text-sm">{copy.design.applied}</p>
             :   null}
         </form>
     );

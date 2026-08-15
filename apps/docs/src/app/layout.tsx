@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import Script from "next/script";
+import { headers } from "next/headers";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { docsLocales, localizedPath } from "@/content/locales";
+import { publicCopy } from "@/content/public-copy";
 import { publicSiteMetadata } from "@/content/public-site";
 import { siteThemeCss } from "@/content/theme";
-import { ThemeScript } from "@/components/theme-script";
+import { themeScript } from "@/components/theme-script";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +18,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+    const requestHeaders = await headers();
+    const locale = docsLocales.canonical(requestHeaders.get("x-jamcaa-locale") ?? "") ?? docsLocales.defaultLocale;
+    const messages = publicCopy(locale);
     let themeCss = "";
 
     try {
@@ -24,21 +31,23 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     }
 
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html lang={locale} data-scroll-behavior="smooth" suppressHydrationWarning>
             <head>
                 <link rel="icon" href="/favicon.svg" type="image/svg+xml"></link>
-                <link rel="alternate" type="application/feed+json" href="/feed.json" />
+                <link rel="alternate" type="application/feed+json" href={localizedPath(locale, "/feed.json")} />
                 {themeCss ?
                     <style dangerouslySetInnerHTML={{ __html: themeCss }} />
                 :   null}
-                <ThemeScript />
+                <Script id="jamcaa-theme" strategy="beforeInteractive">
+                    {themeScript}
+                </Script>
             </head>
             <body className="antialiased">
                 <a
                     href="#main-content"
                     className="bg-background text-foreground focus-visible:ring-ring fixed top-2 left-2 z-100 -translate-y-20 rounded-lg px-3 py-2 text-sm font-medium shadow-lg focus:translate-y-0 focus-visible:ring-3"
                 >
-                    Skip to content
+                    {messages.skipToContent}
                 </a>
                 <TooltipProvider delay={300}>{children}</TooltipProvider>
             </body>

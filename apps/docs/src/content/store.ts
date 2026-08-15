@@ -9,20 +9,21 @@ import {
 import type { EntryRevisionSnapshot } from "@jamcaaxian/core/content";
 import type { Database } from "@jamcaaxian/core/db";
 import { post } from "./collections";
+import { docsLocales } from "./locales";
 import { contentModel, formerPostAddressTable, postRevisionTable, postTable, postTagTable } from "./schema";
 
 export type PostRevisionSnapshot = EntryRevisionSnapshot<typeof post>;
 
 export function posts(database: Database) {
-    return entryStore({ database, collection: post, table: postTable, tagTable: postTagTable });
+    return entryStore({ database, collection: post, table: postTable, tagTable: postTagTable, locales: docsLocales });
 }
 
 export function postSummaries(database: Database) {
-    return entrySummaryReader({ database, model: contentModel, collection: post });
+    return entrySummaryReader({ database, model: contentModel, collection: post, locales: docsLocales });
 }
 
 export function formerPostAddresses(database: Database) {
-    return formerAddressStore(database, formerPostAddressTable);
+    return formerAddressStore(database, formerPostAddressTable, docsLocales);
 }
 
 export function postRevisions(database: Database) {

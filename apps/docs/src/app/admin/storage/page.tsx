@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { AdminCopy } from "@/content/admin-copy";
+import { adminMessages } from "@/content/admin-locale";
 import { mediaRuntime } from "@/lib/media";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
@@ -15,42 +17,54 @@ import { DeleteStorageButton } from "./delete-storage-button";
 import { FallbackForm } from "./fallback-form";
 import { RuleForm } from "./rule-form";
 
-export const metadata: Metadata = { title: "Storage" };
+export async function generateMetadata(): Promise<Metadata> {
+    const { copy } = await adminMessages();
+
+    return { title: copy.storage.title };
+}
 
 function readableSize(bytes: number) {
     return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${bytes / (1024 * 1024)} MB`;
 }
 
-function conditionSummary(conditions: StorageConditions | undefined) {
+function conditionSummary(conditions: StorageConditions | undefined, copy: AdminCopy["storage"]["rules"]) {
     if (conditions === undefined) {
-        return "Damaged conditions — this rule is skipped";
+        return copy.damaged;
     }
 
     const parts = [
-        conditions.collections?.length ? `collection: ${conditions.collections.join(", ")}` : undefined,
-        conditions.categories?.length ? `category: ${conditions.categories.join(", ")}` : undefined,
-        conditions.tags?.length ? `tag: ${conditions.tags.join(", ")}` : undefined,
-        conditions.authorRoles?.length ? `role: ${conditions.authorRoles.join(", ")}` : undefined,
-        conditions.authorIds?.length ?
-            `${conditions.authorIds.length} author ID${conditions.authorIds.length === 1 ? "" : "s"}`
-        :   undefined,
-        conditions.mimePrefixes?.length ? `type: ${conditions.mimePrefixes.join(", ")}` : undefined,
-        conditions.minSize !== undefined ? `at least ${readableSize(conditions.minSize)}` : undefined,
-        conditions.maxSize !== undefined ? `at most ${readableSize(conditions.maxSize)}` : undefined,
-        conditions.from ? `from ${conditions.from.slice(0, 10)}` : undefined,
-        conditions.until ? `until ${conditions.until.slice(0, 10)}` : undefined
+        conditions.collections?.length ? copy.collection(conditions.collections.join(", ")) : undefined,
+        conditions.categories?.length ? copy.category(conditions.categories.join(", ")) : undefined,
+        conditions.tags?.length ? copy.tag(conditions.tags.join(", ")) : undefined,
+        conditions.authorRoles?.length ? copy.role(conditions.authorRoles.join(", ")) : undefined,
+        conditions.authorIds?.length ? copy.authorIds(conditions.authorIds.length) : undefined,
+        conditions.mimePrefixes?.length ? copy.type(conditions.mimePrefixes.join(", ")) : undefined,
+        conditions.minSize !== undefined ? copy.atLeast(readableSize(conditions.minSize)) : undefined,
+        conditions.maxSize !== undefined ? copy.atMost(readableSize(conditions.maxSize)) : undefined,
+        conditions.from ? copy.from(conditions.from.slice(0, 10)) : undefined,
+        conditions.until ? copy.until(conditions.until.slice(0, 10)) : undefined
     ].filter(Boolean);
 
-    return parts.length > 0 ? parts.join(" · ") : "Every upload";
+    return parts.length > 0 ? parts.join(" · ") : copy.everyUpload;
 }
 
-function MoveRuleButtons({ rule, index, total }: { rule: ManagedStorageRule; index: number; total: number }) {
+function MoveRuleButtons({
+    rule,
+    index,
+    total,
+    labels
+}: {
+    rule: ManagedStorageRule;
+    index: number;
+    total: number;
+    labels: Pick<AdminCopy["storage"]["rules"], "moveUp" | "moveDown">;
+}) {
     return (
         <div className="flex items-center">
             <form action={moveRule}>
                 <input type="hidden" name="id" value={rule.id} />
                 <input type="hidden" name="direction" value="up" />
-                <Button type="submit" variant="ghost" size="icon-sm" disabled={index === 0} aria-label="Move rule up">
+                <Button type="submit" variant="ghost" size="icon-sm" disabled={index === 0} aria-label={labels.moveUp}>
                     <ArrowUp />
                 </Button>
             </form>
@@ -62,7 +76,7 @@ function MoveRuleButtons({ rule, index, total }: { rule: ManagedStorageRule; ind
                     variant="ghost"
                     size="icon-sm"
                     disabled={index === total - 1}
-                    aria-label="Move rule down"
+                    aria-label={labels.moveDown}
                 >
                     <ArrowDown />
                 </Button>
@@ -73,25 +87,26 @@ function MoveRuleButtons({ rule, index, total }: { rule: ManagedStorageRule; ind
 
 type InspectedBucket = Awaited<ReturnType<ReturnType<typeof createStorageConfiguration>["inspect"]>>["buckets"][number];
 
-function BucketStatus({ bucket }: { bucket: InspectedBucket }) {
+function BucketStatus({ bucket, copy }: { bucket: InspectedBucket; copy: AdminCopy["storage"]["buckets"] }) {
     return (
         <div className="flex flex-wrap gap-1.5">
             <Badge variant={bucket.reachable ? "secondary" : "destructive"}>
-                {bucket.reachable ? "Reachable" : "Unavailable"}
+                {bucket.reachable ? copy.reachable : copy.unavailable}
             </Badge>
             {bucket.isFallbackTarget ?
-                <Badge variant="outline">Fallback</Badge>
+                <Badge variant="outline">{copy.fallback}</Badge>
             :   null}
         </div>
     );
 }
 
 export default async function StoragePage() {
+    const { copy } = await adminMessages();
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
 
     if (!(await may(actor, "settings", "read"))) {
-        return <p className="text-muted-foreground text-sm">You do not have permission to see storage settings.</p>;
+        return <p className="text-muted-foreground text-sm">{copy.storage.permission}</p>;
     }
 
     const { database, bindings } = mediaRuntime();
@@ -101,22 +116,22 @@ export default async function StoragePage() {
     ]);
     const fallback = configuration.rules.find(rule => rule.isFallback);
     const rules = configuration.rules.filter(rule => !rule.isFallback);
+    const deleteBlocker = (reason: string | undefined) =>
+        reason === "Move or delete every rule that uses this bucket first." ? copy.storage.buckets.blockedByRules
+        : reason === "This bucket still holds media." ? copy.storage.buckets.blockedByMedia
+        : reason;
 
     return (
         <div className="space-y-8">
             <div className="space-y-1">
-                <h1 className="text-xl font-semibold tracking-tight">Storage</h1>
-                <p className="text-muted-foreground text-sm">
-                    Buckets describe reachable storage. Ordered rules decide where each new file lands.
-                </p>
+                <h1 className="text-xl font-semibold tracking-tight">{copy.storage.title}</h1>
+                <p className="text-muted-foreground text-sm">{copy.storage.description}</p>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Fallback destination</CardTitle>
-                    <CardDescription>
-                        This catches every upload no earlier rule claims. It cannot be removed.
-                    </CardDescription>
+                    <CardTitle>{copy.storage.fallback.title}</CardTitle>
+                    <CardDescription>{copy.storage.fallback.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {fallback ?
@@ -127,32 +142,28 @@ export default async function StoragePage() {
                                     ?? fallback.bucketId}
                             </p>
 
-                    :   <p className="text-destructive text-sm">The fallback rule is missing. Uploads may fail.</p>}
+                    :   <p className="text-destructive text-sm">{copy.storage.fallback.missing}</p>}
                 </CardContent>
             </Card>
 
             <section className="space-y-4">
                 <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                     <div>
-                        <h2 className="text-sm font-semibold tracking-tight">Buckets</h2>
+                        <h2 className="text-sm font-semibold tracking-tight">{copy.storage.buckets.title}</h2>
                         <p className="text-muted-foreground text-sm">
-                            {configuration.buckets.length === 1 ?
-                                "One destination"
-                            :   `${configuration.buckets.length} destinations`}
+                            {copy.storage.buckets.count(configuration.buckets.length)}
                         </p>
                     </div>
                     {mayManage ?
                         <Sheet>
                             <SheetTrigger render={<Button size="sm" />}>
                                 <Plus />
-                                Add bucket
+                                {copy.storage.buckets.add}
                             </SheetTrigger>
                             <SheetContent className="sm:max-w-md">
                                 <SheetHeader>
-                                    <SheetTitle>Add an R2 bucket</SheetTitle>
-                                    <SheetDescription>
-                                        The deployment binding must exist before it can be registered here.
-                                    </SheetDescription>
+                                    <SheetTitle>{copy.storage.buckets.addTitle}</SheetTitle>
+                                    <SheetDescription>{copy.storage.buckets.addDescription}</SheetDescription>
                                 </SheetHeader>
                                 <BucketForm />
                             </SheetContent>
@@ -170,32 +181,34 @@ export default async function StoragePage() {
                                         {bucket.id}
                                     </p>
                                 </div>
-                                <BucketStatus bucket={bucket} />
+                                <BucketStatus bucket={bucket} copy={copy.storage.buckets} />
                             </div>
                             <dl className="grid gap-3 text-sm sm:grid-cols-2">
                                 <div>
-                                    <dt className="text-muted-foreground text-xs">Location</dt>
+                                    <dt className="text-muted-foreground text-xs">{copy.storage.buckets.location}</dt>
                                     <dd className="mt-1 font-mono text-xs wrap-anywhere">
                                         {bucket.binding ?? bucket.endpoint}
                                         {bucket.bucketName ? ` / ${bucket.bucketName}` : ""}
                                     </dd>
                                 </div>
                                 <div>
-                                    <dt className="text-muted-foreground text-xs">Use</dt>
+                                    <dt className="text-muted-foreground text-xs">{copy.storage.buckets.use}</dt>
                                     <dd className="mt-1 text-xs">
-                                        {bucket.mediaCount} media · {bucket.ruleCount} rules
+                                        {copy.storage.buckets.usage(bucket.mediaCount, bucket.ruleCount)}
                                     </dd>
                                 </div>
                             </dl>
                             {mayManage ?
                                 <div className="flex flex-wrap justify-end gap-1 border-t pt-3">
                                     <Sheet>
-                                        <SheetTrigger render={<Button variant="ghost" size="sm" />}>Edit</SheetTrigger>
+                                        <SheetTrigger render={<Button variant="ghost" size="sm" />}>
+                                            {copy.common.edit}
+                                        </SheetTrigger>
                                         <SheetContent className="sm:max-w-md">
                                             <SheetHeader>
-                                                <SheetTitle>Edit {bucket.label}</SheetTitle>
+                                                <SheetTitle>{copy.storage.buckets.editTitle(bucket.label)}</SheetTitle>
                                                 <SheetDescription>
-                                                    Rename the destination or change how stored files are served.
+                                                    {copy.storage.buckets.editDescription}
                                                 </SheetDescription>
                                             </SheetHeader>
                                             <BucketForm bucket={bucket} />
@@ -206,7 +219,7 @@ export default async function StoragePage() {
                                         id={bucket.id}
                                         label={bucket.label}
                                         disabled={!bucket.mayDelete}
-                                        reason={bucket.deleteBlocker}
+                                        reason={deleteBlocker(bucket.deleteBlocker)}
                                     />
                                 </div>
                             :   null}
@@ -218,12 +231,12 @@ export default async function StoragePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Bucket</TableHead>
-                                <TableHead>Location</TableHead>
-                                <TableHead>Use</TableHead>
-                                <TableHead>Status</TableHead>
+                                <TableHead>{copy.storage.buckets.bucket}</TableHead>
+                                <TableHead>{copy.storage.buckets.location}</TableHead>
+                                <TableHead>{copy.storage.buckets.use}</TableHead>
+                                <TableHead>{copy.storage.buckets.status}</TableHead>
                                 {mayManage ?
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead className="text-right">{copy.storage.buckets.actions}</TableHead>
                                 :   null}
                             </TableRow>
                         </TableHeader>
@@ -241,24 +254,25 @@ export default async function StoragePage() {
                                         :   null}
                                     </TableCell>
                                     <TableCell className="text-muted-foreground text-xs">
-                                        {bucket.mediaCount} media · {bucket.ruleCount} rules
+                                        {copy.storage.buckets.usage(bucket.mediaCount, bucket.ruleCount)}
                                     </TableCell>
                                     <TableCell>
-                                        <BucketStatus bucket={bucket} />
+                                        <BucketStatus bucket={bucket} copy={copy.storage.buckets} />
                                     </TableCell>
                                     {mayManage ?
                                         <TableCell>
                                             <div className="flex justify-end gap-1">
                                                 <Sheet>
                                                     <SheetTrigger render={<Button variant="ghost" size="sm" />}>
-                                                        Edit
+                                                        {copy.common.edit}
                                                     </SheetTrigger>
                                                     <SheetContent className="sm:max-w-md">
                                                         <SheetHeader>
-                                                            <SheetTitle>Edit {bucket.label}</SheetTitle>
+                                                            <SheetTitle>
+                                                                {copy.storage.buckets.editTitle(bucket.label)}
+                                                            </SheetTitle>
                                                             <SheetDescription>
-                                                                Rename the destination or change how stored files are
-                                                                served.
+                                                                {copy.storage.buckets.editDescription}
                                                             </SheetDescription>
                                                         </SheetHeader>
                                                         <BucketForm bucket={bucket} />
@@ -269,7 +283,7 @@ export default async function StoragePage() {
                                                     id={bucket.id}
                                                     label={bucket.label}
                                                     disabled={!bucket.mayDelete}
-                                                    reason={bucket.deleteBlocker}
+                                                    reason={deleteBlocker(bucket.deleteBlocker)}
                                                 />
                                             </div>
                                         </TableCell>
@@ -280,32 +294,25 @@ export default async function StoragePage() {
                     </Table>
                 </div>
 
-                <p className="text-muted-foreground text-xs">
-                    External S3-compatible credentials are deliberately not editable here until jamcaa can seal them at
-                    rest.
-                </p>
+                <p className="text-muted-foreground text-xs">{copy.storage.buckets.credentialsNote}</p>
             </section>
 
             <section className="space-y-4">
                 <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                     <div>
-                        <h2 className="text-sm font-semibold tracking-tight">Routing rules</h2>
-                        <p className="text-muted-foreground text-sm">
-                            First matching rule wins. The fallback always runs last.
-                        </p>
+                        <h2 className="text-sm font-semibold tracking-tight">{copy.storage.rules.title}</h2>
+                        <p className="text-muted-foreground text-sm">{copy.storage.rules.description}</p>
                     </div>
                     {mayManage ?
                         <Sheet>
                             <SheetTrigger render={<Button size="sm" />}>
                                 <Plus />
-                                Add rule
+                                {copy.storage.rules.add}
                             </SheetTrigger>
                             <SheetContent className="sm:max-w-lg">
                                 <SheetHeader>
-                                    <SheetTitle>Add a routing rule</SheetTitle>
-                                    <SheetDescription>
-                                        Choose a destination and describe which uploads it claims.
-                                    </SheetDescription>
+                                    <SheetTitle>{copy.storage.rules.addTitle}</SheetTitle>
+                                    <SheetDescription>{copy.storage.rules.addDescription}</SheetDescription>
                                 </SheetHeader>
                                 <RuleForm buckets={configuration.buckets} />
                             </SheetContent>
@@ -316,12 +323,12 @@ export default async function StoragePage() {
                 {rules.length === 0 ?
                     <Card size="sm">
                         <CardHeader>
-                            <CardTitle>No routing rules</CardTitle>
-                            <CardDescription>Every upload currently goes to the fallback destination.</CardDescription>
+                            <CardTitle>{copy.storage.rules.emptyTitle}</CardTitle>
+                            <CardDescription>{copy.storage.rules.emptyDescription}</CardDescription>
                         </CardHeader>
                         {mayManage ?
                             <CardAction>
-                                <Badge variant="outline">Safe default</Badge>
+                                <Badge variant="outline">{copy.storage.rules.safeDefault}</Badge>
                             </CardAction>
                         :   null}
                     </Card>
@@ -333,16 +340,23 @@ export default async function StoragePage() {
                                         <div className="min-w-0">
                                             <h3 className="font-medium wrap-anywhere">{rule.label}</h3>
                                             <p className="text-muted-foreground mt-1 text-xs">
-                                                Priority {rule.priority}
+                                                {copy.storage.rules.priority(rule.priority)}
                                             </p>
                                         </div>
                                         {mayManage ?
-                                            <MoveRuleButtons rule={rule} index={index} total={rules.length} />
+                                            <MoveRuleButtons
+                                                rule={rule}
+                                                index={index}
+                                                total={rules.length}
+                                                labels={copy.storage.rules}
+                                            />
                                         :   null}
                                     </div>
                                     <dl className="grid gap-3 text-sm sm:grid-cols-2">
                                         <div>
-                                            <dt className="text-muted-foreground text-xs">Conditions</dt>
+                                            <dt className="text-muted-foreground text-xs">
+                                                {copy.storage.rules.conditions}
+                                            </dt>
                                             <dd
                                                 className={
                                                     rule.conditions === undefined ?
@@ -350,11 +364,13 @@ export default async function StoragePage() {
                                                     :   "mt-1 text-xs wrap-anywhere"
                                                 }
                                             >
-                                                {conditionSummary(rule.conditions)}
+                                                {conditionSummary(rule.conditions, copy.storage.rules)}
                                             </dd>
                                         </div>
                                         <div>
-                                            <dt className="text-muted-foreground text-xs">Destination</dt>
+                                            <dt className="text-muted-foreground text-xs">
+                                                {copy.storage.rules.destination}
+                                            </dt>
                                             <dd className="mt-1 wrap-anywhere">
                                                 {configuration.buckets.find(bucket => bucket.id === rule.bucketId)
                                                     ?.label ?? rule.bucketId}
@@ -365,14 +381,15 @@ export default async function StoragePage() {
                                         <div className="flex flex-wrap justify-end gap-1 border-t pt-3">
                                             <Sheet>
                                                 <SheetTrigger render={<Button variant="ghost" size="sm" />}>
-                                                    Edit
+                                                    {copy.common.edit}
                                                 </SheetTrigger>
                                                 <SheetContent className="sm:max-w-lg">
                                                     <SheetHeader>
-                                                        <SheetTitle>Edit {rule.label}</SheetTitle>
+                                                        <SheetTitle>
+                                                            {copy.storage.rules.editTitle(rule.label)}
+                                                        </SheetTitle>
                                                         <SheetDescription>
-                                                            Existing media stays where it is; this changes future
-                                                            uploads only.
+                                                            {copy.storage.rules.editDescription}
                                                         </SheetDescription>
                                                     </SheetHeader>
                                                     <RuleForm rule={rule} buckets={configuration.buckets} />
@@ -389,13 +406,13 @@ export default async function StoragePage() {
                                 <TableHeader>
                                     <TableRow>
                                         {mayManage ?
-                                            <TableHead className="w-20">Order</TableHead>
+                                            <TableHead className="w-20">{copy.storage.rules.order}</TableHead>
                                         :   null}
-                                        <TableHead>Rule</TableHead>
-                                        <TableHead>Conditions</TableHead>
-                                        <TableHead>Destination</TableHead>
+                                        <TableHead>{copy.storage.rules.rule}</TableHead>
+                                        <TableHead>{copy.storage.rules.conditions}</TableHead>
+                                        <TableHead>{copy.storage.rules.destination}</TableHead>
                                         {mayManage ?
-                                            <TableHead className="text-right">Actions</TableHead>
+                                            <TableHead className="text-right">{copy.storage.rules.actions}</TableHead>
                                         :   null}
                                     </TableRow>
                                 </TableHeader>
@@ -404,13 +421,18 @@ export default async function StoragePage() {
                                         <TableRow key={rule.id}>
                                             {mayManage ?
                                                 <TableCell>
-                                                    <MoveRuleButtons rule={rule} index={index} total={rules.length} />
+                                                    <MoveRuleButtons
+                                                        rule={rule}
+                                                        index={index}
+                                                        total={rules.length}
+                                                        labels={copy.storage.rules}
+                                                    />
                                                 </TableCell>
                                             :   null}
                                             <TableCell>
                                                 <div className="font-medium">{rule.label}</div>
                                                 <div className="text-muted-foreground text-xs">
-                                                    Priority {rule.priority}
+                                                    {copy.storage.rules.priority(rule.priority)}
                                                 </div>
                                             </TableCell>
                                             <TableCell
@@ -421,7 +443,7 @@ export default async function StoragePage() {
                                                 }
                                             >
                                                 <div className="max-w-md whitespace-normal text-xs">
-                                                    {conditionSummary(rule.conditions)}
+                                                    {conditionSummary(rule.conditions, copy.storage.rules)}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -433,14 +455,15 @@ export default async function StoragePage() {
                                                     <div className="flex justify-end gap-1">
                                                         <Sheet>
                                                             <SheetTrigger render={<Button variant="ghost" size="sm" />}>
-                                                                Edit
+                                                                {copy.common.edit}
                                                             </SheetTrigger>
                                                             <SheetContent className="sm:max-w-lg">
                                                                 <SheetHeader>
-                                                                    <SheetTitle>Edit {rule.label}</SheetTitle>
+                                                                    <SheetTitle>
+                                                                        {copy.storage.rules.editTitle(rule.label)}
+                                                                    </SheetTitle>
                                                                     <SheetDescription>
-                                                                        Existing media stays where it is; this changes
-                                                                        future uploads only.
+                                                                        {copy.storage.rules.editDescription}
                                                                     </SheetDescription>
                                                                 </SheetHeader>
                                                                 <RuleForm rule={rule} buckets={configuration.buckets} />

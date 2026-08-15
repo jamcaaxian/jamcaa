@@ -18,6 +18,10 @@ on:
 permissions:
     contents: read
 
+concurrency:
+    group: deploy-docs-production
+    cancel-in-progress: false
+
 jobs:
     deploy:
         runs-on: ubuntu-latest
@@ -39,6 +43,10 @@ jobs:
                   CI='1' pnpm format:check
                   pnpm lint
                   pnpm typecheck
+
+            - name: Apply docs database migrations
+              if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+              run: pnpm --filter @jamcaaxian/docs run db:migrate:remote
 
             - name: Deploy the docs Site
               if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''

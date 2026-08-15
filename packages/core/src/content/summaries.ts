@@ -1,6 +1,7 @@
 import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import type { SQLiteColumn, SQLiteTable } from "drizzle-orm/sqlite-core";
 import type { Database } from "../db/client";
+import { canonicalLocale, type LocaleCatalogue } from "../i18n";
 import type { Collection, EntryOf } from "./collection";
 import { type SQLiteCell } from "./field-capsule";
 import { canonicalFieldValue } from "./field-values";
@@ -20,6 +21,7 @@ export type EntrySummaryOf<TCollection extends Collection> = Readonly<
 export interface EntrySummaryQuery {
     categoryId?: string;
     tagId?: string;
+    locale?: string;
     limit?: number;
     cursor?: string;
 }
@@ -35,6 +37,7 @@ const MAX_LIMIT = 50;
 interface SummaryCursor {
     publishedAt: number;
     id: string;
+    locale?: string;
 }
 
 function cursorProblem(): never {
@@ -68,7 +71,13 @@ export function encodeEntrySummaryCursor(cursor: SummaryCursor): string {
         cursorProblem();
     }
 
-    return base64Url(JSON.stringify({ v: 1, p: cursor.publishedAt, i: cursor.id }));
+    return base64Url(
+        JSON.stringify(
+            cursor.locale === undefined ?
+                { v: 1, p: cursor.publishedAt, i: cursor.id }
+            :   { v: 2, p: cursor.publishedAt, i: cursor.id, l: canonicalLocale(cursor.locale) }
+        )
+    );
 }
 
 export function decodeEntrySummaryCursor(cursor: string | undefined): SummaryCursor | undefined {
@@ -80,16 +89,21 @@ export function decodeEntrySummaryCursor(cursor: string | undefined): SummaryCur
         const value = JSON.parse(fromBase64Url(cursor)) as Record<string, unknown>;
 
         if (
-            value.v !== 1
+            ![1, 2].includes(value.v as number)
             || typeof value.p !== "number"
             || !Number.isSafeInteger(value.p)
             || typeof value.i !== "string"
             || value.i.length === 0
+            || (value.v === 2 && typeof value.l !== "string")
         ) {
             cursorProblem();
         }
 
-        return { publishedAt: value.p as number, id: value.i as string };
+        return {
+            publishedAt: value.p as number,
+            id: value.i as string,
+            ...(value.v === 2 ? { locale: canonicalLocale(value.l as string) } : {})
+        };
     } catch (error) {
         if (error instanceof Error && error.message === "The Entry Summary cursor is invalid.") {
             throw error;
@@ -129,8 +143,9 @@ export function entrySummaryReader<TCollection extends Collection>(options: {
     database: Database;
     model: ContentModel;
     collection: TCollection;
+    locales?: LocaleCatalogue;
 }): EntrySummaryReader<TCollection> {
-    const { database, model, collection } = options;
+    const { database, model, collection, locales } = options;
     const table = model.table(collection.name);
     const tagTable = model.tagTable(collection.name);
 
@@ -144,6 +159,8 @@ export function entrySummaryReader<TCollection extends Collection>(options: {
 
     const systemFields = [
         "id",
+        "locale",
+        "translationId",
         "slug",
         "status",
         "authorId",
@@ -173,8 +190,25 @@ export function entrySummaryReader<TCollection extends Collection>(options: {
         async list(query = {}) {
             const limit = summaryLimit(query.limit);
             const cursor = decodeEntrySummaryCursor(query.cursor);
+            const locale =
+                query.locale === undefined ?
+                    locales?.defaultLocale
+                :   (locales?.canonical(query.locale) ?? canonicalLocale(query.locale));
+
+            if (query.locale !== undefined && locales !== undefined && locales.canonical(query.locale) === undefined) {
+                throw new Error(`Locale "${query.locale}" is not supported by this Site.`);
+            }
+
+            if (cursor !== undefined && cursor.locale !== locale) {
+                cursorProblem();
+            }
+
             const publicationMoment = sql`coalesce(${columnNamed(table, "publishedAt")}, ${columnNamed(table, "createdAt")})`;
             const conditions = [eq(columnNamed(table, "status"), "published")];
+
+            if (locale !== undefined) {
+                conditions.push(eq(columnNamed(table, "locale"), locale));
+            }
 
             if (query.categoryId !== undefined) {
                 conditions.push(eq(columnNamed(table, "categoryId"), query.categoryId));
@@ -241,7 +275,8 @@ export function entrySummaryReader<TCollection extends Collection>(options: {
                     rows.length > limit && last !== undefined ?
                         encodeEntrySummaryCursor({
                             publishedAt: (last.publishedAt ?? last.createdAt).getTime(),
-                            id: last.id
+                            id: last.id,
+                            ...(locale === undefined ? {} : { locale })
                         })
                     :   undefined
             };

@@ -36,7 +36,7 @@ Everything an adopter must do by hand is listed there, summarized here:
 - **Cloudflare resources**: two D1 databases, two R2 buckets, the counters Worker; copy generated `database_id` values into `wrangler.jsonc`.
 - **Production secrets** on the docs Worker: `BETTER_AUTH_SECRET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
 - **GitHub Secrets** for CI: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `NPM_TOKEN`.
-- **After first deploy**: `db:migrate:remote`, `db:docs:migrate:remote`, then `/setup` on the deployed address.
+- **Production initialization**: apply `db:migrate:remote` before a manual Worker deploy; then run `db:docs:migrate:remote` and open `/setup` on the deployed address. The `develop` deploy workflow applies pending D1 migrations automatically before deployment.
 
 ## Contributing
 

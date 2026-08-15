@@ -12,28 +12,28 @@ import {
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { deletePost } from "./actions";
 
 export function DeletePostButton({ id, title }: { id: string; title: string }) {
+    const { copy } = useAdminI18n();
+
     return (
         <AlertDialog>
             <AlertDialogTrigger
                 render={
                     <Button variant="ghost" className="text-destructive">
-                        Delete
+                        {copy.common.delete}
                     </Button>
                 }
             />
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Delete “{title}”?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        The post and everything in it goes for good. To take it out of sight without losing it, archive
-                        it instead.
-                    </AlertDialogDescription>
+                    <AlertDialogTitle>{copy.posts.delete.title(title)}</AlertDialogTitle>
+                    <AlertDialogDescription>{copy.posts.delete.description}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>Keep it</AlertDialogCancel>
+                    <AlertDialogCancel>{copy.common.keep}</AlertDialogCancel>
                     <form action={deletePost} className="w-full sm:w-auto">
                         <input type="hidden" name="id" value={id} />
                         <AlertDialogAction
@@ -41,7 +41,7 @@ export function DeletePostButton({ id, title }: { id: string; title: string }) {
                             render={<button type="submit" />}
                             className="bg-destructive text-white hover:bg-destructive/90"
                         >
-                            Delete
+                            {copy.common.delete}
                         </AlertDialogAction>
                     </form>
                 </AlertDialogFooter>

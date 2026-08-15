@@ -34,7 +34,9 @@ export function buildTable(collection: Collection) {
     const columns = { ...systemColumns(), ...declared };
 
     return sqliteTable(collection.name, columns, table => [
-        // One slug may name only one entry within a collection.
-        uniqueIndex(`${collection.name}_slug_key`).on(table.slug)
+        // One slug may name one Entry per Locale within a Collection.
+        uniqueIndex(`${collection.name}_locale_slug_key`).on(table.locale, table.slug),
+        // A Translation Set may contain at most one Entry for each Locale.
+        uniqueIndex(`${collection.name}_translation_locale_key`).on(table.translationId, table.locale)
     ]);
 }

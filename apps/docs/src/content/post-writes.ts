@@ -15,11 +15,14 @@ import { postAddressState } from "./settings";
 import { formerPostAddresses, postRevisions, posts, writePostWithTags } from "./store";
 import { taxonomy } from "./taxonomy";
 import { post } from "./collections";
+import { docsLocales, type DocsLocale } from "./locales";
 
 type Post = EntryOf<typeof post>;
 
 export type DesiredPostState = {
     id?: string;
+    locale?: DocsLocale;
+    translationId?: string;
     status: EntryStatus;
     slug: string;
     categoryId: string;
@@ -66,11 +69,13 @@ function insertPostStatement(database: Database, entry: Post): D1PreparedStateme
     return database.$client
         .prepare(
             "INSERT INTO post "
-                + `(id, slug, status, author_id, category_id, created_at, updated_at, published_at, ${fields.columns}) `
-                + `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${fields.placeholders})`
+                + `(id, locale, translation_id, slug, status, author_id, category_id, created_at, updated_at, published_at, ${fields.columns}) `
+                + `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${fields.placeholders})`
         )
         .bind(
             entry.id,
+            entry.locale,
+            entry.translationId,
             entry.slug,
             entry.status,
             entry.authorId,
@@ -135,6 +140,12 @@ export async function commitPostState(options: CommitPostStateOptions): Promise<
     }
 
     const createdAt = current?.createdAt ?? new Date();
+    const locale = current?.locale ?? docsLocales.canonical(desired.locale ?? docsLocales.defaultLocale);
+
+    if (locale === undefined) {
+        throw new Error(`Locale "${desired.locale}" is not supported by this Site.`);
+    }
+
     const wantedSlug = toSlug(
         current === undefined || mayPublish ? desired.slug || desired.title : current.slug || desired.title
     );
@@ -150,9 +161,10 @@ export async function commitPostState(options: CommitPostStateOptions): Promise<
         publishedAt,
         createdAt,
         isTaken: async candidate => {
-            const taken = await store.bySlug(candidate);
+            const taken = await store.bySlug(candidate, locale);
             const formerOwner = await formerPostAddresses(database).entryAt(
-                postAddress(pattern, { slug: candidate, publishedAt, createdAt })
+                postAddress(pattern, { slug: candidate, publishedAt, createdAt }),
+                locale
             );
 
             return (
@@ -163,10 +175,13 @@ export async function commitPostState(options: CommitPostStateOptions): Promise<
     });
     const updatedAt = nextUpdatedAt(current);
     const fields = declaredValues(post, desired);
+    const id = current?.id ?? crypto.randomUUID();
     const stored: Post =
         current === undefined ?
             {
-                id: crypto.randomUUID(),
+                id,
+                locale,
+                translationId: desired.translationId?.trim() || id,
                 slug,
                 status: desired.status,
                 authorId: actorId,
@@ -200,7 +215,8 @@ export async function commitPostState(options: CommitPostStateOptions): Promise<
             if (current === undefined) {
                 await addresses.assertCurrentAvailable(
                     undefined,
-                    postAddress(pattern, { slug, publishedAt, createdAt })
+                    postAddress(pattern, { slug, publishedAt, createdAt }),
+                    stored.locale as DocsLocale
                 );
 
                 return {

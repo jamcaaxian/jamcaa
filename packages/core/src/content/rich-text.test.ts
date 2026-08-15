@@ -180,6 +180,18 @@ describe("the rich text interface", () => {
         );
     });
 
+    it("lets the caller assign escaped heading anchors without changing default markup", () => {
+        const body = parseRichText({
+            type: "doc",
+            content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Install & run" }] }]
+        });
+
+        expect(renderRichTextToHtml(body)).toBe("<h2>Install &amp; run</h2>");
+        expect(renderRichTextToHtml(body, { headingId: heading => `section-${heading.text}-\"` })).toBe(
+            '<h2 id="section-Install &amp; run-&quot;">Install &amp; run</h2>'
+        );
+    });
+
     it("extracts searchable text including image alternatives", () => {
         const body = parseRichText({
             type: "doc",

@@ -8,6 +8,8 @@ export interface SearchFilters {
 export interface SearchRequest {
     collection: Collection;
     query: string;
+    /** Canonical BCP 47 Locale. Omit only for deliberately cross-language Search. */
+    locale?: string;
     filters?: SearchFilters;
     limit?: number;
     cursor?: string;

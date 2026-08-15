@@ -60,8 +60,9 @@ export interface SearchFieldArtifact {
 }
 
 export interface SearchArtifactDescriptor {
-    formatVersion: 1;
+    formatVersion: 1 | 2;
     collection: string;
+    partition?: "locale";
     fields: SearchFieldArtifact[];
 }
 
@@ -74,8 +75,9 @@ export function searchArtifactDescriptor(collection: Collection): SearchArtifact
     const layout = physicalLayout(collection.name, collection.fields);
 
     return {
-        formatVersion: 1,
+        formatVersion: 2,
         collection: collection.name,
+        partition: "locale",
         fields: searchFields(collection).map(fieldName => {
             const field = collection.fields[fieldName]!;
             const capsule = capsuleOf(field);

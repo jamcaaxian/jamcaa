@@ -92,6 +92,13 @@
       "when": 1786636227773,
       "tag": "0013_post_body_blocks",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1786712854154,
+      "tag": "0015_localized_content",
+      "breakpoints": true
     }
   ]
 }

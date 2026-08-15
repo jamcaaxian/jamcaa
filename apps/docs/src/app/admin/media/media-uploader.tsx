@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { createHttpMediaAdapter } from "@jamcaaxian/editor/media";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { Button } from "@/components/ui/button";
 import { mediaUploadProblem } from "./media-upload-problem";
 
@@ -18,6 +19,7 @@ interface Attempt {
 }
 
 export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
+    const { copy } = useAdminI18n();
     const router = useRouter();
     const input = useRef<HTMLInputElement>(null);
     const [attempts, setAttempts] = useState<Attempt[]>([]);
@@ -60,7 +62,7 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
                 });
                 settle("done");
             } catch (error) {
-                settle("failed", mediaUploadProblem(error));
+                settle("failed", mediaUploadProblem(error, copy.media));
             }
         }
 
@@ -86,11 +88,11 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
             >
                 <Upload className="text-muted-foreground size-6" />
                 <div className="space-y-1">
-                    <p className="text-sm font-medium">Drop files here</p>
-                    <p className="text-muted-foreground text-xs">Up to {maxMegabytes} MB each.</p>
+                    <p className="text-sm font-medium">{copy.media.drop}</p>
+                    <p className="text-muted-foreground text-xs">{copy.media.limit(maxMegabytes)}</p>
                 </div>
                 <Button type="button" variant="outline" onClick={() => input.current?.click()}>
-                    Choose files
+                    {copy.media.choose}
                 </Button>
                 <input
                     ref={input}
@@ -113,15 +115,15 @@ export function MediaUploader({ maxMegabytes }: { maxMegabytes: number }) {
                         <li key={attempt.key} className="flex min-w-0 flex-wrap items-baseline gap-2">
                             <span className="min-w-0 max-w-full flex-1 truncate font-medium">{attempt.filename}</span>
                             {attempt.state === "preparing" ?
-                                <span className="text-muted-foreground text-xs">preparing…</span>
+                                <span className="text-muted-foreground text-xs">{copy.media.preparing}</span>
                             : attempt.state === "sending" ?
                                 <span className="text-muted-foreground text-xs">
-                                    sending{attempt.progress === undefined ? "…" : ` ${attempt.progress}%`}
+                                    {copy.media.sending(attempt.progress)}
                                 </span>
                             : attempt.state === "confirming" ?
-                                <span className="text-muted-foreground text-xs">confirming…</span>
+                                <span className="text-muted-foreground text-xs">{copy.media.confirming}</span>
                             : attempt.state === "done" ?
-                                <span className="text-muted-foreground text-xs">stored</span>
+                                <span className="text-muted-foreground text-xs">{copy.media.stored}</span>
                             :   <span className="text-destructive text-xs">{attempt.problem}</span>}
                         </li>
                     ))}

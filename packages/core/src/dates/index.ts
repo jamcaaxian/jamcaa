@@ -1,4 +1,6 @@
 import { format } from "date-fns";
+import { enUS, zhCN } from "date-fns/locale";
+import { canonicalLocale } from "../i18n/locale";
 
 /** Sample used to show what a pattern produces, and to check that it can be used.
  *  Local rather than UTC so the example reads the same wherever it is shown. */
@@ -44,9 +46,15 @@ export function describePattern(pattern: string): string | undefined {
  * A pattern reaches this from configuration, so it is checked here too: a bad one
  * should leave a date looking wrong on one page, not take the page down.
  */
-export function formatMoment(moment: Date, pattern: string): string {
+export function formatMoment(moment: Date, pattern: string, locale?: string): string {
     try {
-        return format(moment, pattern);
+        const canonical = locale === undefined ? undefined : canonicalLocale(locale);
+        const dateLocale =
+            canonical === "zh-Hans-CN" ? zhCN
+            : canonical === "en-US" ? enUS
+            : undefined;
+
+        return format(moment, pattern, dateLocale === undefined ? undefined : { locale: dateLocale });
     } catch {
         return moment.toISOString().slice(0, 10);
     }

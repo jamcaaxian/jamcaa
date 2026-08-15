@@ -1,10 +1,11 @@
 import { EditorMediaError, type EditorMediaErrorCode } from "@jamcaaxian/editor/media";
+import { adminCopy, type AdminCopy } from "@/content/admin-copy";
 
-const messages: Record<EditorMediaErrorCode, string> = {
-    "image-upload-failed": "The upload failed.",
-    "media-unavailable": "The Media library could not be read."
-};
+export function mediaUploadProblem(error: unknown, copy: AdminCopy["media"] = adminCopy("en-US").media) {
+    const messages: Record<EditorMediaErrorCode, string> = {
+        "image-upload-failed": copy.uploadFailed,
+        "media-unavailable": copy.unavailable
+    };
 
-export function mediaUploadProblem(error: unknown) {
-    return error instanceof EditorMediaError ? messages[error.code] : "The upload failed.";
+    return error instanceof EditorMediaError ? messages[error.code] : copy.uploadFailed;
 }

@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import { FileText } from "lucide-react";
 import { listMedia } from "@jamcaaxian/core/media";
 import { coreSettings, loadSettings } from "@jamcaaxian/core/settings";
+import { adminMessages } from "@/content/admin-locale";
 import { mediaRuntime } from "@/lib/media";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 import { DeleteMediaButton } from "./delete-media-button";
 import { MediaUploader } from "./media-uploader";
 
-export const metadata: Metadata = { title: "Media" };
+export async function generateMetadata(): Promise<Metadata> {
+    const { copy } = await adminMessages();
+
+    return { title: copy.media.title };
+}
 
 function readableSize(bytes: number) {
     return bytes < 1024 * 1024 ?
@@ -17,11 +22,12 @@ function readableSize(bytes: number) {
 }
 
 export default async function MediaPage() {
+    const { copy } = await adminMessages();
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
 
     if (!(await may(actor, "media", "read"))) {
-        return <p className="text-muted-foreground text-sm">You do not have permission to see media.</p>;
+        return <p className="text-muted-foreground text-sm">{copy.media.permission}</p>;
     }
 
     const { database } = mediaRuntime();
@@ -39,10 +45,8 @@ export default async function MediaPage() {
     return (
         <div className="space-y-6">
             <div className="space-y-1">
-                <h1 className="text-xl font-semibold tracking-tight">Media</h1>
-                <p className="text-muted-foreground text-sm">
-                    {files.length === 1 ? "One file" : `${files.length} files`}
-                </p>
+                <h1 className="text-xl font-semibold tracking-tight">{copy.media.title}</h1>
+                <p className="text-muted-foreground text-sm">{copy.media.count(files.length)}</p>
             </div>
 
             {mayUpload ?
@@ -50,7 +54,7 @@ export default async function MediaPage() {
             :   null}
 
             {files.length === 0 ?
-                <p className="text-muted-foreground text-sm">Nothing uploaded yet.</p>
+                <p className="text-muted-foreground text-sm">{copy.media.empty}</p>
             :   <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                     {files.map(file => (
                         <li key={file.id} className="space-y-2">

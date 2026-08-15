@@ -107,6 +107,61 @@
       },
       "migrationSha256": "2b331f17ef0edc0c3fdec7d1e77d4b4c7e8db2cee52320af1c3f45061ba6ed66",
       "status": "active"
+    },
+    {
+      "collection": "post",
+      "migration": "0016_search.sql",
+      "artifactSha256": "d8891e2e5a8f7f00ff4d70e0324141722504d857bff59706f8c2a42d274bf4c7",
+      "descriptorSha256": "e862e1b4b4abd82bd7b94f23b5bdabb1813de86627ede86af015907f3a48efa0",
+      "artifact": {
+        "formatVersion": 2,
+        "collection": "post",
+        "partition": "locale",
+        "fields": [
+          {
+            "name": "title",
+            "kind": "text",
+            "storageVersion": 1,
+            "searchVersion": 1,
+            "columns": [
+              "title"
+            ],
+            "expression": {
+              "type": "column-text",
+              "slot": "value"
+            }
+          },
+          {
+            "name": "excerpt",
+            "kind": "text",
+            "storageVersion": 1,
+            "searchVersion": 1,
+            "columns": [
+              "excerpt"
+            ],
+            "expression": {
+              "type": "column-text",
+              "slot": "value"
+            }
+          },
+          {
+            "name": "body",
+            "kind": "blocks",
+            "storageVersion": 2,
+            "searchVersion": 3,
+            "columns": [
+              "body__value",
+              "body__plain"
+            ],
+            "expression": {
+              "type": "column-text",
+              "slot": "plain"
+            }
+          }
+        ]
+      },
+      "migrationSha256": "a8a55c5c90a01049df1fc7e2f58304a2196c939f45d816805957ba1249117765",
+      "status": "active"
     }
   ]
 }

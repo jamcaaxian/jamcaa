@@ -2,15 +2,16 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import type { BlockDocument, Category, EditingField, Tag } from "@jamcaaxian/core/content";
-import { blocksToRichText } from "@jamcaaxian/core/content";
+import type { Category, EditingField, Tag } from "@jamcaaxian/core/content";
 import { CollectionEditingControls, type EditingControlValue } from "@jamcaaxian/editor";
 import { createHttpMediaAdapter } from "@jamcaaxian/editor/media";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { localizedBuiltinBlocks } from "@/content/admin-content";
 import { setAdminCrumb } from "@/lib/admin-crumb";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { savePost, type PostFormState } from "./actions";
 
 export interface PostDraft {
@@ -25,12 +26,6 @@ export interface PostAddressSettings {
     pattern: string;
     mayChooseSlug: boolean;
 }
-
-const allStatuses = [
-    { value: "draft", label: "Draft" },
-    { value: "published", label: "Published" },
-    { value: "archived", label: "Archived" }
-];
 
 const postMedia = createHttpMediaAdapter({ collection: "post" });
 
@@ -53,6 +48,7 @@ export function PostForm({
     tags: Tag[];
     selectedTagIds: string[];
 }) {
+    const { locale, copy } = useAdminI18n();
     const [state, action, pending] = useActionState<PostFormState, FormData>(savePost, {});
     const [title, setTitle] = useState(String(post?.fields[titleFieldName] ?? ""));
     const titleField = fields.find(field => field.name === titleFieldName);
@@ -60,15 +56,13 @@ export function PostForm({
         field => field.name !== titleFieldName && field.kind !== "richText" && field.kind !== "blocks"
     );
     const richTextFields = fields.filter(field => field.kind === "richText" || field.kind === "blocks");
-    const fieldValues =
-        post ?
-            {
-                ...post.fields,
-                ...(typeof post.fields.body === "object" ?
-                    { body: blocksToRichText(post.fields.body as unknown as BlockDocument) }
-                :   {})
-            }
-        :   {};
+    const fieldValues = post?.fields ?? {};
+    const blockDefinitions = localizedBuiltinBlocks(locale);
+    const allStatuses = [
+        { value: "draft", label: copy.common.status.draft },
+        { value: "published", label: copy.common.status.published },
+        { value: "archived", label: copy.common.status.archived }
+    ];
     // Publishing is withheld from the form as well as the action, so it is not
     // offered as something to attempt and be refused.
     const statuses = allStatuses.filter(status => status.value !== "published" || mayPublish);
@@ -76,10 +70,10 @@ export function PostForm({
     // The breadcrumb sits in the layout and only knows the address, which for a post
     // is an identifier. Telling it the title as it is typed is the point.
     useEffect(() => {
-        setAdminCrumb(title.trim() || "Untitled");
+        setAdminCrumb(title.trim() || copy.posts.form.untitled);
 
         return () => setAdminCrumb(null);
-    }, [title]);
+    }, [copy.posts.form.untitled, title]);
 
     return (
         <form action={action} className="max-w-3xl [--jamcaa-editor-sticky-offset:3.5rem]">
@@ -91,6 +85,7 @@ export function PostForm({
                 <CollectionEditingControls
                     fields={titleField ? [titleField] : []}
                     values={{ ...fieldValues, [titleFieldName]: title }}
+                    messages={copy.editor.collection}
                     onTextChange={(name, value) => {
                         if (name === titleFieldName) {
                             setTitle(value);
@@ -100,22 +95,31 @@ export function PostForm({
 
                 {address.mayChooseSlug ?
                     <Field>
-                        <FieldLabel htmlFor="slug">Slug</FieldLabel>
-                        <Input id="slug" name="slug" defaultValue={post?.slug} placeholder="Taken from the title" />
-                        <FieldDescription>
-                            Leave this empty and the title decides. Public addresses follow {address.pattern}.
-                        </FieldDescription>
+                        <FieldLabel htmlFor="slug">{copy.posts.form.slug}</FieldLabel>
+                        <Input
+                            id="slug"
+                            name="slug"
+                            defaultValue={post?.slug}
+                            placeholder={copy.posts.form.slugPlaceholder}
+                        />
+                        <FieldDescription>{copy.posts.form.slugDescription(address.pattern)}</FieldDescription>
                     </Field>
                 :   <>
                         <input type="hidden" name="slug" value={post?.slug ?? ""} />
-                        <p className="text-muted-foreground text-sm">Public addresses follow {address.pattern}.</p>
+                        <p className="text-muted-foreground text-sm">
+                            {copy.posts.form.addressDescription(address.pattern)}
+                        </p>
                     </>
                 }
 
-                <CollectionEditingControls fields={scalarFields} values={fieldValues} />
+                <CollectionEditingControls
+                    fields={scalarFields}
+                    values={fieldValues}
+                    messages={copy.editor.collection}
+                />
 
                 <Field>
-                    <FieldLabel htmlFor="categoryId">Category</FieldLabel>
+                    <FieldLabel htmlFor="categoryId">{copy.posts.form.category}</FieldLabel>
                     <Select
                         name="categoryId"
                         defaultValue={post?.categoryId ?? categories[0]?.id}
@@ -123,7 +127,7 @@ export function PostForm({
                         required
                     >
                         <SelectTrigger id="categoryId" className="w-full sm:w-72">
-                            <SelectValue placeholder="Select a category" />
+                            <SelectValue placeholder={copy.posts.form.selectCategory} />
                         </SelectTrigger>
                         <SelectContent>
                             {categories.map(category => (
@@ -134,14 +138,14 @@ export function PostForm({
                         </SelectContent>
                     </Select>
                     {categories.length === 0 ?
-                        <FieldDescription>Create a category before saving a Post.</FieldDescription>
+                        <FieldDescription>{copy.posts.form.categoryRequired}</FieldDescription>
                     :   null}
                 </Field>
 
                 <Field>
-                    <FieldLabel>Tags</FieldLabel>
+                    <FieldLabel>{copy.posts.form.tags}</FieldLabel>
                     {tags.length === 0 ?
-                        <FieldDescription>No tags are available yet.</FieldDescription>
+                        <FieldDescription>{copy.posts.form.noTags}</FieldDescription>
                     :   <div className="grid gap-2 sm:grid-cols-2">
                             {tags.map(tag => (
                                 <label key={tag.id} className="flex items-center gap-2 text-sm font-normal">
@@ -162,11 +166,24 @@ export function PostForm({
                 <CollectionEditingControls
                     fields={richTextFields}
                     values={fieldValues}
-                    richText={{ media: postMedia, messages: { placeholder: "Write the Post body…" } }}
+                    messages={copy.editor.collection}
+                    richText={{
+                        media: postMedia,
+                        messages: { ...copy.editor.richText, placeholder: copy.posts.form.bodyPlaceholder }
+                    }}
+                    blocks={{
+                        definitions: blockDefinitions,
+                        media: postMedia,
+                        messages: copy.editor.blocks,
+                        richTextMessages: {
+                            ...copy.editor.richText,
+                            placeholder: copy.posts.form.richTextBlockPlaceholder
+                        }
+                    }}
                 />
 
                 <Field>
-                    <FieldLabel htmlFor="status">Status</FieldLabel>
+                    <FieldLabel htmlFor="status">{copy.posts.form.status}</FieldLabel>
                     <Select name="status" defaultValue={post?.status ?? "draft"} items={statuses}>
                         <SelectTrigger id="status" className="w-full sm:w-56">
                             <SelectValue />
@@ -187,7 +204,7 @@ export function PostForm({
 
                 <div className="flex flex-col gap-2 sm:flex-row">
                     <Button type="submit" disabled={pending || categories.length === 0} className="w-full sm:w-auto">
-                        {pending ? "Saving…" : "Save"}
+                        {pending ? copy.common.saving : copy.posts.form.save}
                     </Button>
                     <Button
                         variant="ghost"
@@ -195,7 +212,7 @@ export function PostForm({
                         render={<Link href="/admin/posts" />}
                         className="w-full sm:w-auto"
                     >
-                        Cancel
+                        {copy.common.cancel}
                     </Button>
                 </div>
             </FieldGroup>

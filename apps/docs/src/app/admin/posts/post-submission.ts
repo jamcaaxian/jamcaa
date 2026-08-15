@@ -1,4 +1,5 @@
 import { parseCollectionSubmission, type BlockDocument, type EntryStatus } from "@jamcaaxian/core/content";
+import { adminCopy, type AdminCopy } from "@/content/admin-copy";
 import { post } from "@/content/collections";
 
 const statuses: EntryStatus[] = ["draft", "published", "archived"];
@@ -14,7 +15,10 @@ export interface PostSubmission {
     tagIds: string[];
 }
 
-export function readPostSubmission(formData: FormData): PostSubmission | { error: string } {
+export function readPostSubmission(
+    formData: FormData,
+    errors: AdminCopy["posts"]["errors"] = adminCopy("en-US").posts.errors
+): PostSubmission | { error: string } {
     const fields = parseCollectionSubmission(post, formData);
 
     if (!fields.success) {
@@ -23,28 +27,28 @@ export function readPostSubmission(formData: FormData): PostSubmission | { error
         );
 
         if (invalidRichText) {
-            return { error: "The Post body is not valid rich text." };
+            return { error: errors.invalidBody };
         }
 
         if (fields.issues.some(issue => issue.code === "required")) {
-            return { error: "A Post needs a title and a body." };
+            return { error: errors.required };
         }
 
-        return { error: "One of the Post fields is not valid." };
+        return { error: errors.invalidField };
     }
 
     const { title, body } = fields.values;
     const excerpt = fields.values.excerpt ?? "";
 
     if (!title) {
-        return { error: "A Post needs a title and a body." };
+        return { error: errors.required };
     }
 
     const candidate = String(formData.get("status") ?? "draft") as EntryStatus;
     const categoryId = String(formData.get("categoryId") ?? "").trim();
 
     if (!categoryId) {
-        return { error: "Select a category." };
+        return { error: errors.selectCategory };
     }
 
     return {

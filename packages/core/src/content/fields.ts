@@ -1,6 +1,6 @@
 import { integer as sqliteInteger, real as sqliteReal, text as sqliteText } from "drizzle-orm/sqlite-core";
 import { parseRichText, isRichTextEmpty, type RichTextDocument } from "./rich-text";
-import { blockPlainText, parseBlockDocument, type BlockDocument } from "./blocks";
+import { blockPlainText, parseBlockDocument, type BlockDocument, type BlockRegistry } from "./blocks";
 import { builtinContractVersions, compileField, revisionCodecV1, slot } from "./field-capsule";
 
 export type FieldKind =
@@ -174,7 +174,7 @@ export function richText<const TOptions extends FieldOptions = FieldOptions>(
  * Accepts either a BlockDocument or a legacy RichTextDocument, which predates
  * composable bodies and is wrapped into a single rich-text Block.
  */
-export function parseBlocksValue(value: unknown): BlockDocument {
+export function parseBlocksValue(value: unknown, registry: BlockRegistry = {}): BlockDocument {
     if (typeof value === "string") {
         try {
             value = JSON.parse(value) as unknown;
@@ -197,17 +197,25 @@ export function parseBlocksValue(value: unknown): BlockDocument {
         return { version: 1, blocks: [{ id: "legacy-body", type: "builtin.richText", props: { document } }] };
     }
 
-    return parseBlockDocument(value, {}).document;
+    return parseBlockDocument(value, registry).document;
+}
+
+export interface BlocksOptions extends FieldOptions {
+    /** Worker-safe declarations used for validation and Search text projection. */
+    registry?: BlockRegistry;
+    /** Bump when a registered Block changes its Search projection. */
+    searchVersion?: number;
 }
 
 /** A body composed of Blocks; Rich Text is one Block among others. */
-export function blocks<const TOptions extends FieldOptions = FieldOptions>(
+export function blocks<const TOptions extends BlocksOptions = BlocksOptions>(
     options?: TOptions
 ): Field<Held<BlockDocument, TOptions>, "blocks"> {
     const definition = base("blocks", options);
+    const registry = options?.registry ?? {};
 
     return compileField(
-        { ...definition, editingKind: "richText", parse: value => parseBlocksValue(value) },
+        { ...definition, editingKind: "blocks", parse: value => parseBlocksValue(value, registry) },
         {
             slots: () => ({
                 value: slot({
@@ -216,7 +224,10 @@ export function blocks<const TOptions extends FieldOptions = FieldOptions>(
                 }),
                 plain: slot({ affinity: "text", buildColumn: name => sqliteText(name).$type<string>() })
             }),
-            encode: (value: BlockDocument) => ({ value: JSON.stringify(value), plain: blockPlainText(value) }),
+            encode: (value: BlockDocument) => ({
+                value: JSON.stringify(value),
+                plain: blockPlainText(value, registry)
+            }),
             decode: cells => cells.value,
             snapshotValue: (value: BlockDocument) => value,
             valueFromSnapshot: value => value,
@@ -230,7 +241,7 @@ export function blocks<const TOptions extends FieldOptions = FieldOptions>(
             // and the Search text expression moved from rich-text to the plain
             // column. Both contracts bump so migration tooling demands handoffs.
             storageVersion: () => 2,
-            searchVersion: () => 2,
+            searchVersion: () => options?.searchVersion ?? 2,
             submissionValue: raw => JSON.parse(raw) as unknown,
             isBlankSubmission: raw => raw.length === 0,
             isRequiredValueMissing: value => {

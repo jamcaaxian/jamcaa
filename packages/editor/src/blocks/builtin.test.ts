@@ -23,6 +23,29 @@ describe("built-in block declarations", () => {
         expect(validated.ok).toBe(false);
     });
 
+    it("constrains button destinations and visual variants", () => {
+        const valid = validateBlockProps(builtinBlocks.button, {
+            label: "Get started",
+            href: "/docs",
+            variant: "tertiary"
+        });
+        const invalid = validateBlockProps(builtinBlocks.button, {
+            label: "Unsafe",
+            href: "javascript:alert(1)",
+            variant: "rainbow"
+        });
+
+        expect(valid.ok).toBe(true);
+        expect(invalid.ok).toBe(false);
+        expect(invalid.errors).toHaveLength(2);
+    });
+
+    it("installs documentation-oriented built-ins", () => {
+        expect(Object.keys(builtinBlockRegistry)).toEqual(
+            expect.arrayContaining(["builtin.callout", "builtin.feature", "builtin.stat"])
+        );
+    });
+
     it("parses a document and reports unknown block types without dropping them", () => {
         const parsed = parseBlockDocument(
             {

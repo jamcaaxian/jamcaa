@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { ManagedBucket, ManagedStorageRule, StorageConditions } from "@jamcaaxian/core/media";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -23,24 +24,24 @@ function datePart(value: string | undefined) {
 }
 
 function ConditionsFields({ conditions = {} }: { conditions?: StorageConditions }) {
+    const { copy } = useAdminI18n();
+
     return (
         <>
             <Field>
-                <FieldLabel htmlFor="rule-mime-prefixes">File types</FieldLabel>
+                <FieldLabel htmlFor="rule-mime-prefixes">{copy.storage.rules.fileTypes}</FieldLabel>
                 <Input
                     id="rule-mime-prefixes"
                     name="mimePrefixes"
                     defaultValue={joined(conditions.mimePrefixes)}
                     placeholder="image/, application/pdf"
                 />
-                <FieldDescription>
-                    Comma separated MIME types or prefixes. For example, image/ matches every image.
-                </FieldDescription>
+                <FieldDescription>{copy.storage.rules.fileTypesDescription}</FieldDescription>
             </Field>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field>
-                    <FieldLabel htmlFor="rule-min-size">Minimum MB</FieldLabel>
+                    <FieldLabel htmlFor="rule-min-size">{copy.storage.rules.minimum}</FieldLabel>
                     <Input
                         id="rule-min-size"
                         name="minMegabytes"
@@ -51,7 +52,7 @@ function ConditionsFields({ conditions = {} }: { conditions?: StorageConditions 
                     />
                 </Field>
                 <Field>
-                    <FieldLabel htmlFor="rule-max-size">Maximum MB</FieldLabel>
+                    <FieldLabel htmlFor="rule-max-size">{copy.storage.rules.maximum}</FieldLabel>
                     <Input
                         id="rule-max-size"
                         name="maxMegabytes"
@@ -64,10 +65,10 @@ function ConditionsFields({ conditions = {} }: { conditions?: StorageConditions 
             </div>
 
             <details className="group rounded-lg border px-3 py-2">
-                <summary className="cursor-pointer text-sm font-medium select-none">More conditions</summary>
+                <summary className="cursor-pointer text-sm font-medium select-none">{copy.storage.rules.more}</summary>
                 <div className="mt-4 space-y-5">
                     <Field>
-                        <FieldLabel htmlFor="rule-collections">Collections</FieldLabel>
+                        <FieldLabel htmlFor="rule-collections">{copy.storage.rules.collections}</FieldLabel>
                         <Input
                             id="rule-collections"
                             name="collections"
@@ -76,7 +77,7 @@ function ConditionsFields({ conditions = {} }: { conditions?: StorageConditions 
                         />
                     </Field>
                     <Field>
-                        <FieldLabel htmlFor="rule-categories">Categories</FieldLabel>
+                        <FieldLabel htmlFor="rule-categories">{copy.storage.rules.categories}</FieldLabel>
                         <Input
                             id="rule-categories"
                             name="categories"
@@ -85,7 +86,7 @@ function ConditionsFields({ conditions = {} }: { conditions?: StorageConditions 
                         />
                     </Field>
                     <Field>
-                        <FieldLabel htmlFor="rule-tags">Tags</FieldLabel>
+                        <FieldLabel htmlFor="rule-tags">{copy.storage.rules.tags}</FieldLabel>
                         <Input
                             id="rule-tags"
                             name="tags"
@@ -94,7 +95,7 @@ function ConditionsFields({ conditions = {} }: { conditions?: StorageConditions 
                         />
                     </Field>
                     <Field>
-                        <FieldLabel htmlFor="rule-author-roles">Author roles</FieldLabel>
+                        <FieldLabel htmlFor="rule-author-roles">{copy.storage.rules.authorRoles}</FieldLabel>
                         <Input
                             id="rule-author-roles"
                             name="authorRoles"
@@ -103,22 +104,22 @@ function ConditionsFields({ conditions = {} }: { conditions?: StorageConditions 
                         />
                     </Field>
                     <Field>
-                        <FieldLabel htmlFor="rule-author-ids">Author IDs</FieldLabel>
+                        <FieldLabel htmlFor="rule-author-ids">{copy.storage.rules.authorIdsLabel}</FieldLabel>
                         <Textarea
                             id="rule-author-ids"
                             name="authorIds"
                             defaultValue={conditions.authorIds?.join("\n") ?? ""}
                             rows={3}
-                            placeholder="One user ID per line"
+                            placeholder={copy.storage.rules.authorIdsPlaceholder}
                         />
                     </Field>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <Field>
-                            <FieldLabel htmlFor="rule-from">From</FieldLabel>
+                            <FieldLabel htmlFor="rule-from">{copy.storage.rules.fromLabel}</FieldLabel>
                             <Input id="rule-from" name="from" type="date" defaultValue={datePart(conditions.from)} />
                         </Field>
                         <Field>
-                            <FieldLabel htmlFor="rule-until">Until</FieldLabel>
+                            <FieldLabel htmlFor="rule-until">{copy.storage.rules.untilLabel}</FieldLabel>
                             <Input id="rule-until" name="until" type="date" defaultValue={datePart(conditions.until)} />
                         </Field>
                     </div>
@@ -129,6 +130,7 @@ function ConditionsFields({ conditions = {} }: { conditions?: StorageConditions 
 }
 
 export function RuleForm({ rule, buckets }: { rule?: ManagedStorageRule; buckets: ManagedBucket[] }) {
+    const { copy } = useAdminI18n();
     const isNew = rule === undefined;
     const [state, action, pending] = useActionState<StorageFormState, FormData>(isNew ? createRule : saveRule, {});
     const bucketItems = buckets.map(bucket => ({ value: bucket.id, label: bucket.label }));
@@ -142,18 +144,20 @@ export function RuleForm({ rule, buckets }: { rule?: ManagedStorageRule; buckets
 
                 <FieldGroup>
                     <Field>
-                        <FieldLabel htmlFor={`rule-${rule?.id ?? "new"}-label`}>Name</FieldLabel>
+                        <FieldLabel htmlFor={`rule-${rule?.id ?? "new"}-label`}>{copy.storage.rules.name}</FieldLabel>
                         <Input
                             id={`rule-${rule?.id ?? "new"}-label`}
                             name="label"
                             defaultValue={rule?.label}
-                            placeholder="Large videos"
+                            placeholder={copy.storage.rules.namePlaceholder}
                             required
                         />
                     </Field>
 
                     <Field>
-                        <FieldLabel htmlFor={`rule-${rule?.id ?? "new"}-bucket`}>Destination bucket</FieldLabel>
+                        <FieldLabel htmlFor={`rule-${rule?.id ?? "new"}-bucket`}>
+                            {copy.storage.rules.destinationBucket}
+                        </FieldLabel>
                         <Select name="bucketId" defaultValue={rule?.bucketId ?? buckets[0]?.id} items={bucketItems}>
                             <SelectTrigger id={`rule-${rule?.id ?? "new"}-bucket`} className="w-full">
                                 <SelectValue />
@@ -168,15 +172,10 @@ export function RuleForm({ rule, buckets }: { rule?: ManagedStorageRule; buckets
                         </Select>
                     </Field>
 
-                    <p className="text-muted-foreground text-sm">
-                        Every filled condition must match. Leave all conditions empty only when this rule should claim
-                        every upload before the fallback.
-                    </p>
+                    <p className="text-muted-foreground text-sm">{copy.storage.rules.matchDescription}</p>
 
                     {rule !== undefined && rule.conditions === undefined ?
-                        <FieldError
-                            errors={[{ message: "This rule has damaged conditions. Saving will replace them." }]}
-                        />
+                        <FieldError errors={[{ message: copy.storage.rules.damagedDescription }]} />
                     :   null}
 
                     <ConditionsFields conditions={rule?.conditions} />
@@ -184,7 +183,7 @@ export function RuleForm({ rule, buckets }: { rule?: ManagedStorageRule; buckets
                     {state.error ?
                         <FieldError errors={[{ message: state.error }]} />
                     : state.saved ?
-                        <p className="text-muted-foreground text-sm">Saved.</p>
+                        <p className="text-muted-foreground text-sm">{copy.common.saved}</p>
                     :   null}
                 </FieldGroup>
             </div>
@@ -192,13 +191,13 @@ export function RuleForm({ rule, buckets }: { rule?: ManagedStorageRule; buckets
             <SheetFooter className="border-t">
                 <Button type="submit" disabled={pending || buckets.length === 0} className="w-full sm:w-auto">
                     {pending ?
-                        "Saving…"
+                        copy.common.saving
                     : isNew ?
-                        "Add rule"
-                    :   "Save rule"}
+                        copy.storage.rules.addSubmit
+                    :   copy.storage.rules.saveSubmit}
                 </Button>
                 <SheetClose render={<Button type="button" variant="outline" className="w-full sm:w-auto" />}>
-                    Close
+                    {copy.storage.close}
                 </SheetClose>
             </SheetFooter>
         </form>

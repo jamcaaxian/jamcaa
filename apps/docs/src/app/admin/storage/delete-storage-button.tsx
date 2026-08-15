@@ -12,6 +12,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { Button } from "@/components/ui/button";
 import { deleteBucket, deleteRule, type StorageFormState } from "./actions";
 
@@ -28,6 +29,7 @@ export function DeleteStorageButton({
     disabled?: boolean;
     reason?: string;
 }) {
+    const { copy } = useAdminI18n();
     const [state, action, pending] = useActionState<StorageFormState, FormData>(
         kind === "bucket" ? deleteBucket : deleteRule,
         {}
@@ -36,7 +38,7 @@ export function DeleteStorageButton({
     if (disabled) {
         return (
             <Button type="button" variant="ghost" size="sm" disabled title={reason}>
-                Delete
+                {copy.common.delete}
             </Button>
         );
     }
@@ -44,22 +46,22 @@ export function DeleteStorageButton({
     return (
         <AlertDialog>
             <AlertDialogTrigger render={<Button variant="ghost" size="sm" className="text-destructive" />}>
-                Delete
+                {copy.common.delete}
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Delete “{label}”?</AlertDialogTitle>
+                    <AlertDialogTitle>{copy.storage.delete.title(label)}</AlertDialogTitle>
                     <AlertDialogDescription>
                         {kind === "bucket" ?
-                            "Only an unused bucket can be removed. Its deployment binding and Cloudflare bucket remain untouched."
-                        :   "Future uploads will no longer be routed by this rule. Existing files stay where they are."}
+                            copy.storage.delete.bucketDescription
+                        :   copy.storage.delete.ruleDescription}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 {state.error ?
                     <p className="text-destructive text-sm">{state.error}</p>
                 :   null}
                 <AlertDialogFooter>
-                    <AlertDialogCancel>Keep it</AlertDialogCancel>
+                    <AlertDialogCancel>{copy.common.keep}</AlertDialogCancel>
                     <form action={action} className="w-full sm:w-auto">
                         <input type="hidden" name="id" value={id} />
                         <AlertDialogAction
@@ -67,7 +69,7 @@ export function DeleteStorageButton({
                             render={<button type="submit" disabled={pending} />}
                             className="bg-destructive hover:bg-destructive/90 text-white"
                         >
-                            {pending ? "Deleting…" : "Delete"}
+                            {pending ? copy.storage.delete.deleting : copy.common.delete}
                         </AlertDialogAction>
                     </form>
                 </AlertDialogFooter>

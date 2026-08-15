@@ -12,6 +12,7 @@ import {
     BreadcrumbSeparator
 } from "@/components/ui/breadcrumb";
 import { readAdminCrumb, subscribeToAdminCrumb } from "@/lib/admin-crumb";
+import { useAdminI18n } from "./admin-i18n";
 
 function toLabel(segment: string) {
     return segment.replace(/-/g, " ").replace(/^\w/, character => character.toUpperCase());
@@ -28,13 +29,26 @@ function isIdentifier(segment: string) {
 export function AdminBreadcrumb() {
     const path = usePathname().split("/").filter(Boolean).slice(1);
     const published = useSyncExternalStore(subscribeToAdminCrumb, readAdminCrumb, () => null);
+    const { copy } = useAdminI18n();
+    const routeLabels: Record<string, string> = {
+        posts: copy.shell.navigation.posts,
+        pages: copy.shell.navigation.pages,
+        taxonomy: copy.shell.navigation.taxonomy,
+        media: copy.shell.navigation.media,
+        design: copy.shell.navigation.design,
+        roles: copy.shell.navigation.roles,
+        storage: copy.shell.navigation.storage,
+        settings: copy.shell.navigation.settings,
+        new: copy.shell.breadcrumb.new,
+        revisions: copy.shell.breadcrumb.revisions
+    };
 
     // Addresses are built from every segment, then the opaque ones are dropped, so
     // a crumb after an identifier still links to the right place.
     const items = path
         .map((segment, index) => ({
             key: segment,
-            label: toLabel(segment),
+            label: routeLabels[segment] ?? toLabel(segment),
             href: `/admin/${path.slice(0, index + 1).join("/")}`
         }))
         .filter(item => !isIdentifier(item.key));
@@ -52,8 +66,11 @@ export function AdminBreadcrumb() {
             <BreadcrumbList className="min-w-0 flex-nowrap overflow-hidden">
                 <BreadcrumbItem className={items.length > 0 ? "hidden sm:inline-flex" : undefined}>
                     {items.length === 0 ?
-                        <BreadcrumbPage>Overview</BreadcrumbPage>
-                    :   <BreadcrumbLink render={<Link href="/admin" />}>Overview</BreadcrumbLink>}
+                        <BreadcrumbPage>{copy.shell.navigation.overview}</BreadcrumbPage>
+                    :   <BreadcrumbLink render={<Link href="/admin" />}>
+                            {copy.shell.navigation.overview}
+                        </BreadcrumbLink>
+                    }
                 </BreadcrumbItem>
 
                 {items.map((item, index) => (

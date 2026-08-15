@@ -112,13 +112,14 @@ wrangler secret put R2_SECRET_ACCESS_KEY
 
 The R2 credentials let the server sign addresses for browser uploads. Also add CORS rules to the media bucket for every admin origin that performs direct uploads, including `http://localhost:2727` while developing locally.
 
-Add GitHub Secrets when CI should deploy automatically: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (the deploy workflow), and `NPM_TOKEN` (the release workflow). Until they exist, the affected steps are skipped.
+Add GitHub Secrets when CI should deploy automatically: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (the deploy workflow), and `NPM_TOKEN` (the release workflow). The Cloudflare token needs Workers deploy, D1 edit, and the resource access required by the configured bindings. Until the secrets exist, the affected steps are skipped.
 
 ## Deploy
 
 The Site expects the D1, R2, Durable Object, service, and image bindings declared in `wrangler.jsonc`. After those resources and secrets exist in the target Cloudflare account:
 
 ```bash
+pnpm db:migrate:remote
 pnpm run deploy
 ```
 
@@ -130,8 +131,8 @@ pnpm exec wrangler deploy --config wrangler.counters.jsonc
 
 Use `pnpm run upload` instead when the deployment artifact should be uploaded without immediately deploying it.
 
-On every push to `develop`, the deploy workflow builds and deploys both Workers automatically once the Cloudflare secrets are configured.
+On every push to `develop`, the deploy workflow verifies the repository, applies pending Docs D1 migrations, then deploys both Workers automatically once the Cloudflare secrets are configured.
 
-After the first deploy: run `pnpm db:migrate:remote`, run `pnpm db:docs:migrate:remote` to publish the documentation, and open `/setup` on the deployed address to create its administrator.
+After the first deploy: run `pnpm db:docs:migrate:remote` to publish the documentation, and open `/setup` on the deployed address to create its administrator. Manual deployments must apply `pnpm db:migrate:remote` before publishing a Worker that depends on a new schema.
 
 View counts appear once the counters Worker is deployed; local `wrangler dev` does not start it, and the admin list simply omits the Views column until the `COUNTERS` service binding resolves.

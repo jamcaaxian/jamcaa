@@ -81,11 +81,15 @@ export async function ensureInstalled(database: Database, plan: InstallPlan): Pr
     return { from, to: INSTALL_VERSION, ran: true };
 }
 
+export type RequirementCode = "database-migrated" | "bucket-bound" | "signing-secret" | "site-address";
+
 export interface Requirement {
+    code: RequirementCode;
     name: string;
     met: boolean;
     /** What to do about it, addressed to whoever is deploying. */
     remedy: string;
+    bucket?: { label: string; binding: string | undefined; bucketName: string | undefined };
 }
 
 /**
@@ -112,6 +116,7 @@ export async function checkRequirements(options: {
     }
 
     requirements.push({
+        code: "database-migrated",
         name: "The database has had its migrations applied",
         met: migrated,
         remedy: "Run: pnpm db:migrate (add --remote for the deployed database)."
@@ -123,19 +128,23 @@ export async function checkRequirements(options: {
         }
 
         requirements.push({
+            code: "bucket-bound",
             name: `The bucket "${seed.label}" is bound as ${seed.binding}`,
             met: seed.binding !== undefined && options.bindings[seed.binding] !== undefined,
-            remedy: `Add an r2_buckets entry binding ${seed.binding} to ${seed.bucketName ?? "your bucket"} in wrangler.jsonc.`
+            remedy: `Add an r2_buckets entry binding ${seed.binding} to ${seed.bucketName ?? "your bucket"} in wrangler.jsonc.`,
+            bucket: { label: seed.label, binding: seed.binding, bucketName: seed.bucketName }
         });
     }
 
     requirements.push({
+        code: "signing-secret",
         name: "A signing secret is configured",
         met: (options.authSecret?.length ?? 0) >= 32,
         remedy: "Set BETTER_AUTH_SECRET to at least 32 characters. Generate one with: openssl rand -base64 32"
     });
 
     requirements.push({
+        code: "site-address",
         name: "The address this site is served from is known",
         met: Boolean(options.authUrl),
         remedy: "Set BETTER_AUTH_URL to the address readers use, such as https://example.com."

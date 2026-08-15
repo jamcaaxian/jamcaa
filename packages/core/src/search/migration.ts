@@ -20,13 +20,14 @@ export function searchMigrationSql(collection: Collection): string {
     const searchableColumns = collection.search!.fields.map(fieldName => quoteIdentifier(fieldName));
     const entryProjection = searchProjectionSql(collection, "entry");
     const newProjection = searchProjectionSql(collection, "new");
-    const insertColumns = ["entry_id", ...searchableColumns].join(", ");
-    const selectProjection = ["entry.id", ...entryProjection].join(",\n        ");
-    const insertValues = ["new.id", ...newProjection].join(",\n            ");
+    const insertColumns = ["entry_id", "locale", ...searchableColumns].join(", ");
+    const selectProjection = ["entry.id", "entry.locale", ...entryProjection].join(",\n        ");
+    const insertValues = ["new.id", "new.locale", ...newProjection].join(",\n            ");
     const prefix = `_jamcaa_${collection.name}_fts`;
 
     return `CREATE VIRTUAL TABLE ${ftsTable} USING fts5(
     entry_id UNINDEXED,
+    locale UNINDEXED,
     ${searchableColumns.join(",\n    ")},
     tokenize = 'unicode61 remove_diacritics 2'
 );

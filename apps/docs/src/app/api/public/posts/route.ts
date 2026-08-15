@@ -1,6 +1,7 @@
 import { createDatabase } from "@jamcaaxian/core";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { isInvalidEntrySummaryCursor, publicPostListing } from "@/content/public-listing";
+import { docsLocales, localizedPath } from "@/content/locales";
 import { publicSiteSettings } from "@/content/public-site";
 import { postSummaries } from "@/content/store";
 import { taxonomy } from "@/content/taxonomy";
@@ -16,17 +17,23 @@ export async function GET(request: Request) {
     const cursors = url.searchParams.getAll("cursor");
     const categories = url.searchParams.getAll("category");
     const tags = url.searchParams.getAll("tag");
+    const locales = url.searchParams.getAll("locale");
 
-    if (cursors.length !== 1 || categories.length > 1 || tags.length > 1) {
+    if (cursors.length !== 1 || categories.length > 1 || tags.length > 1 || locales.length > 1) {
         return problem(400, "Describe exactly one public list page.");
     }
 
     const cursor = cursors[0];
     const categorySlug = categories[0];
     const tagSlug = tags[0];
+    const locale = locales[0] === undefined ? undefined : docsLocales.canonical(locales[0]);
 
     if (!cursor) {
         return problem(400, "Name the public list page to read.");
+    }
+
+    if (locales.length === 1 && locale === undefined) {
+        return problem(400, "Name a supported Locale to read.");
     }
 
     if ((categories.length === 1 && !categorySlug) || (tags.length === 1 && !tagSlug)) {
@@ -55,13 +62,14 @@ export async function GET(request: Request) {
 
     try {
         const [page, settings] = await Promise.all([
-            postSummaries(database).list({ categoryId: category?.id, tagId: tag?.id, limit: 20, cursor }),
+            postSummaries(database).list({ categoryId: category?.id, tagId: tag?.id, locale, limit: 20, cursor }),
             publicSiteSettings()
         ]);
-        const path =
+        const unlocalizedPath =
             category ? `/category/${category.slug}`
             : tag ? `/tag/${tag.slug}`
             : "/";
+        const path = locale === undefined ? unlocalizedPath : localizedPath(locale, unlocalizedPath);
 
         return Response.json(
             publicPostListing(page, {
@@ -71,7 +79,8 @@ export async function GET(request: Request) {
                 tagSlug: tag?.slug,
                 permalink: settings.get("permalink.post"),
                 datePattern: settings.get("format.date"),
-                timePattern: settings.get("format.time")
+                timePattern: settings.get("format.time"),
+                locale
             }),
             { headers: { "cache-control": "no-store" } }
         );

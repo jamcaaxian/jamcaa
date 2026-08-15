@@ -3,16 +3,17 @@ import { renderRichTextToHtml, type RichTextDocument } from "@jamcaaxian/core/co
 export interface RichTextContentProps {
     document: RichTextDocument;
     mediaAddress(mediaId: string): string | undefined;
+    headingId?(heading: { level: number; text: string }): string | undefined;
     className?: string;
 }
 
-export function RichTextContent({ document, mediaAddress, className }: RichTextContentProps) {
+export function RichTextContent({ document, mediaAddress, headingId, className }: RichTextContentProps) {
     const classes = ["jamcaa-rich-text-content", className].filter(Boolean).join(" ");
 
     return (
         <div
             className={classes}
-            dangerouslySetInnerHTML={{ __html: renderRichTextToHtml(document, { mediaAddress }) }}
+            dangerouslySetInnerHTML={{ __html: renderRichTextToHtml(document, { mediaAddress, headingId }) }}
         />
     );
 }

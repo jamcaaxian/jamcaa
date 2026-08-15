@@ -22,6 +22,7 @@
         "./db": "./src/db/index.ts",
         "./db/schema": "./src/db/schema/index.ts",
         "./install": "./src/install/index.ts",
+        "./i18n": "./src/i18n/index.ts",
         "./media": "./src/media/index.ts",
         "./search": "./src/search/index.ts",
         "./settings": "./src/settings/index.ts",

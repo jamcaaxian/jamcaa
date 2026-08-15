@@ -198,6 +198,8 @@ describe("built-in Field contracts", () => {
     it("keeps the Revision v1 snapshot envelope stable", () => {
         const entry = {
             id: "entry-1",
+            locale: "en-US",
+            translationId: "entry-1",
             slug: "entry-one",
             status: "draft" as const,
             authorId: "author-1",
@@ -266,7 +268,7 @@ describe("built-in Search contracts", () => {
 
     it("keeps the complete Post FTS migration artifact stable", async () => {
         expect(await sha256(searchMigrationSql(post))).toBe(
-            "45af5c407574b20866100f2a2ffa3593dfefef6f4164f042521f15e321b96c9a"
+            "198e9c532a7d808be018f8309a92435b28afec9e66f9fbb16112b2ae3a36b188"
         );
     });
 });

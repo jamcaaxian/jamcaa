@@ -3,22 +3,25 @@
 import { revalidatePath } from "next/cache";
 import {
     createStorageConfiguration,
+    StorageConfigurationError,
     type StorageConditions,
     type StorageConfiguration,
     type StorageConfigurationChange
 } from "@jamcaaxian/core/media";
+import type { AdminCopy } from "@/content/admin-copy";
+import { adminMessages } from "@/content/admin-locale";
 import { mediaRuntime } from "@/lib/media";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 
 export type StorageFormState = { error?: string; saved?: boolean };
 
-async function configurationForManagement(): Promise<StorageConfiguration> {
+async function configurationForManagement(copy: AdminCopy): Promise<StorageConfiguration> {
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
 
     if (!(await may(actor, "settings", "manage"))) {
-        throw new Error("You do not have permission to change storage.");
+        throw new Error(copy.storage.errors.changeDenied);
     }
 
     const { database, bindings } = mediaRuntime();
@@ -27,15 +30,22 @@ async function configurationForManagement(): Promise<StorageConfiguration> {
 }
 
 async function apply(change: StorageConfigurationChange): Promise<StorageFormState> {
+    const { copy } = await adminMessages();
+
     try {
-        const configuration = await configurationForManagement();
+        const configuration = await configurationForManagement(copy);
 
         await configuration.apply(change);
         revalidatePath("/admin/storage");
 
         return { saved: true };
     } catch (error) {
-        return { error: error instanceof Error ? error.message : "Storage could not be changed." };
+        return {
+            error:
+                error instanceof StorageConfigurationError ? copy.storage.errors[error.code]
+                : error instanceof Error && error.message === copy.storage.errors.changeDenied ? error.message
+                : copy.storage.errors.changeFailed
+        };
     }
 }
 
@@ -135,7 +145,8 @@ export async function saveFallback(_previous: StorageFormState, formData: FormDa
 }
 
 export async function moveRule(formData: FormData): Promise<void> {
-    const configuration = await configurationForManagement();
+    const { copy } = await adminMessages();
+    const configuration = await configurationForManagement(copy);
     const snapshot = await configuration.inspect();
     const ids = snapshot.rules.filter(rule => !rule.isFallback).map(rule => rule.id);
     const id = text(formData, "id");

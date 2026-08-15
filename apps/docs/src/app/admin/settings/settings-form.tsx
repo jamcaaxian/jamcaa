@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { buildPermalink, checkPermalink } from "@jamcaaxian/core/content";
 import { checkPattern, describePattern } from "@jamcaaxian/core/dates";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -24,19 +25,39 @@ export interface SettingField {
 
 const SAMPLE_ENTRY = { slug: "hello-world", publishedAt: new Date(Date.UTC(2026, 7, 9)) };
 
-const GROUP_LABELS: Record<string, string> = { site: "Site", format: "Dates and times", permalink: "Addresses" };
-
 function groupOf(key: string) {
     return key.split(".")[0] ?? "other";
 }
 
-function objectionTo(field: SettingField, value: string) {
+function objectionTo(
+    field: SettingField,
+    value: string,
+    errors: ReturnType<typeof useAdminI18n>["copy"]["settings"]["errors"]
+) {
     if (field.preview === "moment") {
-        return checkPattern(value);
+        const problem = checkPattern(value);
+
+        return (
+            problem === undefined ? undefined
+            : value.trim() === "" ? errors.patternRequired
+            : errors.patternInvalid
+        );
     }
 
     if (field.preview === "address") {
-        return checkPermalink(value);
+        const problem = checkPermalink(value);
+
+        if (problem === undefined) return undefined;
+
+        const messages: Record<string, string> = {
+            "An address starts with a slash.": errors.addressStart,
+            "An address is made of non-empty path segments.": errors.addressSegments,
+            "An address pattern cannot contain a query string or fragment.": errors.addressQuery,
+            "A token has to occupy a complete path segment, such as /{year}/{slug}.": errors.addressTokenSegment,
+            "The address must include {slug}, or every entry would live at the same one.": errors.addressSlug
+        };
+
+        return messages[problem] ?? errors.addressUnknownToken;
     }
 
     return undefined;
@@ -55,10 +76,11 @@ function exampleFor(field: SettingField, value: string) {
 }
 
 function TextSetting({ field }: { field: SettingField }) {
+    const { copy } = useAdminI18n();
     const [value, setValue] = useState(String(field.value));
     // Checked before it is shown, so a bad pattern explains itself here rather than
     // silently dropping the example and waiting for the save to object.
-    const problem = objectionTo(field, value);
+    const problem = objectionTo(field, value, copy.settings.errors);
     const example = problem === undefined ? exampleFor(field, value) : undefined;
 
     return (
@@ -87,7 +109,8 @@ function TextSetting({ field }: { field: SettingField }) {
                 <FieldError errors={[{ message: problem }]} />
             : example !== undefined ?
                 <FieldDescription>
-                    Shows as <span className="text-foreground font-medium">{example}</span>
+                    {copy.settings.preview("")}
+                    <span className="text-foreground font-medium">{example}</span>
                 </FieldDescription>
             : field.description ?
                 <FieldDescription>{field.description}</FieldDescription>
@@ -156,6 +179,7 @@ function SettingControl({ field }: { field: SettingField }) {
 }
 
 export function SettingsForm({ fields, mayManage }: { fields: SettingField[]; mayManage: boolean }) {
+    const { copy } = useAdminI18n();
     const [state, action, pending] = useActionState<SettingsFormState, FormData>(saveSettings, {});
 
     const groups = [...new Set(fields.map(field => groupOf(field.key)))];
@@ -164,7 +188,9 @@ export function SettingsForm({ fields, mayManage }: { fields: SettingField[]; ma
         <form action={action} className="max-w-3xl space-y-8">
             {groups.map(group => (
                 <section key={group} className="space-y-4">
-                    <h2 className="text-sm font-semibold tracking-tight">{GROUP_LABELS[group] ?? group}</h2>
+                    <h2 className="text-sm font-semibold tracking-tight">
+                        {copy.settings.groups[group as keyof typeof copy.settings.groups] ?? group}
+                    </h2>
                     <FieldGroup>
                         {fields
                             .filter(field => groupOf(field.key) === group)
@@ -179,11 +205,11 @@ export function SettingsForm({ fields, mayManage }: { fields: SettingField[]; ma
                 <FieldError errors={[{ message: state.error }]} />
             :   null}
             {state.saved ?
-                <p className="text-muted-foreground text-sm">Saved.</p>
+                <p className="text-muted-foreground text-sm">{copy.common.saved}</p>
             :   null}
 
             <Button type="submit" disabled={pending || !mayManage} className="w-full sm:w-auto">
-                {pending ? "Saving…" : "Save settings"}
+                {pending ? copy.common.saving : copy.settings.save}
             </Button>
         </form>
     );

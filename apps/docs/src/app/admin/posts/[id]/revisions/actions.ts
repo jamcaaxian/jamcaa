@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
+import { adminMessages } from "@/content/admin-locale";
 import { restorePostRevision } from "@/content/post-writes";
 import { postRevisions, posts } from "@/content/store";
 import { may, mayTouch } from "@/lib/permissions";
@@ -15,6 +16,7 @@ export async function restoreRevision(
     _previous: RestoreRevisionState,
     formData: FormData
 ): Promise<RestoreRevisionState> {
+    const { copy } = await adminMessages();
     const entryId = String(formData.get("entryId") ?? "");
     const revisionId = String(formData.get("revisionId") ?? "");
     const session = await requireSession();
@@ -24,17 +26,17 @@ export async function restoreRevision(
     const entry = await posts(database).byId(entryId);
 
     if (entry === undefined || !(await mayTouch(actor, "post", "update", entry.authorId))) {
-        return { error: "That Revision is not available." };
+        return { error: copy.posts.errors.revisionUnavailable };
     }
 
     const source = await postRevisions(database).byId(entry.id, revisionId);
 
     if (source === undefined) {
-        return { error: "That Revision is not available." };
+        return { error: copy.posts.errors.revisionUnavailable };
     }
 
     if (!(await may(actor, "taxonomy", "read"))) {
-        return { error: "You do not have permission to assign taxonomy." };
+        return { error: copy.posts.errors.taxonomyDenied };
     }
 
     const mayPublish = await mayTouch(actor, "post", "publish", entry.authorId);
@@ -49,7 +51,7 @@ export async function restoreRevision(
             || source.snapshot.slug !== entry.slug
             || sourcePublishedAt !== currentPublishedAt)
     ) {
-        return { error: "You may update this Post, but not change whether it is published." };
+        return { error: copy.posts.errors.publishDenied };
     }
 
     try {
@@ -64,10 +66,12 @@ export async function restoreRevision(
         const message = error instanceof Error ? error.message : "";
 
         if (/category no longer exists|tag.*no longer exists/i.test(message)) {
-            return { error: message };
+            return {
+                error: /category/i.test(message) ? copy.posts.errors.categoryMissing : copy.posts.errors.tagMissing
+            };
         }
 
-        return { error: "That Revision could not be restored." };
+        return { error: copy.posts.errors.revisionRestoreFailed };
     }
 
     revalidatePath("/", "layout");

@@ -3,6 +3,8 @@ import { createAuth } from "@jamcaaxian/core/auth";
 import { richTextFromPlainText, type BlockDocument } from "@jamcaaxian/core/content";
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, expectTypeOf, it } from "vitest";
+import { pages } from "@/content/pages-store";
+import { publicPageLocaleAddresses, publicPostLocaleAddresses } from "@/content/public-site";
 import { postSummaries, postTagIds, posts, replacePostTags, writePostWithTags } from "@/content/store";
 import { taxonomy } from "@/content/taxonomy";
 
@@ -44,6 +46,7 @@ describe("the table a declaration produced", () => {
     beforeEach(async () => {
         await env.DB.exec("DELETE FROM _jamcaa_post_tag");
         await env.DB.exec("DELETE FROM post");
+        await env.DB.exec("DELETE FROM page");
         await env.DB.exec("DELETE FROM tag");
         await env.DB.exec("DELETE FROM category WHERE id <> 'jamcaa-default-category'");
         await env.DB.exec("DELETE FROM session");
@@ -69,9 +72,18 @@ describe("the table a declaration produced", () => {
             .run();
 
         await env.DB.prepare(
-            "INSERT INTO post (id, slug, author_id, category_id, title, body__value, body__plain) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO post (id, locale, translation_id, slug, author_id, category_id, title, body__value, body__plain) VALUES (?, 'en-US', ?, ?, ?, ?, ?, ?, ?)"
         )
-            .bind("legacy", "legacy", "migration-author", categoryId, "Legacy", JSON.stringify(legacy), "legacy prose")
+            .bind(
+                "legacy",
+                "legacy",
+                "legacy",
+                "migration-author",
+                categoryId,
+                "Legacy",
+                JSON.stringify(legacy),
+                "legacy prose"
+            )
             .run();
 
         const entry = await posts(database()).bySlug("legacy");
@@ -82,13 +94,18 @@ describe("the table a declaration produced", () => {
         });
     });
 
-    it("keeps one slug to one entry", async () => {
+    it("keeps one slug to one Entry per Locale", async () => {
         const authorId = await anAuthor();
         const entry = { slug: "taken", authorId, categoryId, title: "One", body: body() };
 
         await posts(database()).create(entry);
+        await expect(
+            posts(database()).create({ ...entry, locale: "zh-Hans-CN", title: "同一地址" })
+        ).resolves.toMatchObject({ locale: "zh-Hans-CN", slug: "taken" });
 
-        expect(await refusalFor(posts(database()).create(entry))).toMatch(/UNIQUE constraint failed: post\.slug/i);
+        expect(await refusalFor(posts(database()).create(entry))).toMatch(
+            /UNIQUE constraint failed: post\.locale, post\.slug/i
+        );
     });
 
     it("refuses an entry whose author does not exist", async () => {
@@ -220,10 +237,11 @@ describe("reading and writing entries", () => {
 
         await env.DB.prepare(
             `INSERT INTO post
-                (id, slug, author_id, category_id, status, created_at, updated_at, published_at, title, excerpt, body__value, body__plain)
-             VALUES (?, ?, ?, ?, 'published', ?, ?, ?, ?, NULL, ?, ?)`
+                (id, locale, translation_id, slug, author_id, category_id, status, created_at, updated_at, published_at, title, excerpt, body__value, body__plain)
+             VALUES (?, 'en-US', ?, ?, ?, ?, 'published', ?, ?, ?, ?, NULL, ?, ?)`
         )
             .bind(
+                "summary-a",
                 "summary-a",
                 "summary-a",
                 authorId,
@@ -238,10 +256,11 @@ describe("reading and writing entries", () => {
             .run();
         await env.DB.prepare(
             `INSERT INTO post
-                (id, slug, author_id, category_id, status, created_at, updated_at, published_at, title, excerpt, body__value, body__plain)
-             VALUES (?, ?, ?, ?, 'published', ?, ?, ?, ?, NULL, ?, ?)`
+                (id, locale, translation_id, slug, author_id, category_id, status, created_at, updated_at, published_at, title, excerpt, body__value, body__plain)
+             VALUES (?, 'en-US', ?, ?, ?, ?, 'published', ?, ?, ?, ?, NULL, ?, ?)`
         )
             .bind(
+                "summary-b",
                 "summary-b",
                 "summary-b",
                 authorId,
@@ -259,6 +278,99 @@ describe("reading and writing entries", () => {
 
         expect(page.summaries).toHaveLength(1);
         expect(page.summaries[0]?.id).toBe("summary-b");
+    });
+
+    it("partitions Entry reads, translations, and Summaries by Locale", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+        const english = await store.create({
+            slug: "localized",
+            authorId,
+            categoryId,
+            title: "English",
+            body: body("English"),
+            status: "published"
+        });
+        const chinese = await store.create({
+            slug: "localized",
+            locale: "zh-Hans-CN",
+            translationId: english.translationId,
+            authorId,
+            categoryId,
+            title: "中文",
+            body: body("中文"),
+            status: "published"
+        });
+
+        await expect(store.bySlug("localized")).resolves.toMatchObject({ id: english.id, locale: "en-US" });
+        await expect(store.bySlug("localized", "zh-Hans-CN")).resolves.toMatchObject({
+            id: chinese.id,
+            locale: "zh-Hans-CN"
+        });
+        await expect(store.translations(english.translationId)).resolves.toMatchObject([
+            { id: english.id, locale: "en-US" },
+            { id: chinese.id, locale: "zh-Hans-CN" }
+        ]);
+
+        const englishPage = await postSummaries(database()).list();
+        const chinesePage = await postSummaries(database()).list({ locale: "zh-Hans-CN" });
+
+        expect(englishPage.summaries.map(summary => summary.id)).toContain(english.id);
+        expect(englishPage.summaries.map(summary => summary.id)).not.toContain(chinese.id);
+        expect(chinesePage.summaries.map(summary => summary.id)).toContain(chinese.id);
+        expect(chinesePage.summaries.map(summary => summary.id)).not.toContain(english.id);
+    });
+
+    it("publishes alternate addresses only for published Translation Set variants", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+        const english = await store.create({
+            slug: "addressed",
+            authorId,
+            categoryId,
+            title: "Addressed",
+            body: body("English"),
+            status: "published"
+        });
+        const chinese = await store.create({
+            slug: "dizhi",
+            locale: "zh-Hans-CN",
+            translationId: english.translationId,
+            authorId,
+            categoryId,
+            title: "地址",
+            body: body("中文"),
+            status: "draft"
+        });
+        const pageStore = pages(database());
+        const englishPage = await pageStore.create({
+            title: "About",
+            address: "/about",
+            locale: "en-US",
+            status: "published",
+            body: { version: 1, blocks: [] }
+        });
+
+        expect(englishPage.status).toBe("created");
+
+        if (englishPage.status !== "created") {
+            throw new Error("Expected the English Page to be created.");
+        }
+
+        await pageStore.create({
+            title: "关于",
+            address: "/guanyu",
+            locale: "zh-Hans-CN",
+            translationId: englishPage.page.translationId,
+            status: "draft",
+            body: { version: 1, blocks: [] }
+        });
+
+        await expect(publicPostLocaleAddresses(english, database())).resolves.toEqual({ "en-US": "/en-us/addressed" });
+        await expect(publicPostLocaleAddresses(chinese, database())).resolves.toEqual({ "en-US": "/en-us/addressed" });
+        await expect(publicPageLocaleAddresses(englishPage.page, database())).resolves.toEqual({
+            "en-US": "/en-us/about"
+        });
     });
 
     it("narrows archives to direct Category ownership or Tag membership", async () => {
@@ -405,6 +517,21 @@ describe("reading and writing entries", () => {
 
     it("refuses an unreadable Entry Summary cursor", async () => {
         await expect(postSummaries(database()).list({ cursor: "not+a+cursor" })).rejects.toThrow(/cursor is invalid/i);
+    });
+
+    it("refuses an Entry Summary cursor from another Locale", async () => {
+        const authorId = await anAuthor();
+        const store = posts(database());
+
+        for (const slug of ["cursor-a", "cursor-b"]) {
+            await store.create({ slug, authorId, categoryId, title: slug, body: body(slug), status: "published" });
+        }
+
+        const first = await postSummaries(database()).list({ limit: 1 });
+
+        await expect(
+            postSummaries(database()).list({ locale: "zh-Hans-CN", limit: 1, cursor: first.nextCursor })
+        ).rejects.toThrow(/cursor is invalid/i);
     });
 
     it("cascades Tag membership when an Entry is removed", async () => {

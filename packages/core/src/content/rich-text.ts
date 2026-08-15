@@ -34,6 +34,7 @@ export interface RichTextDocument extends RichTextNode {
 
 export interface RichTextRenderOptions {
     mediaAddress?(mediaId: string): string | undefined;
+    headingId?(heading: { level: number; text: string }): string | undefined;
 }
 
 const BLOCK_NODES = new Set<RichTextNodeType>([
@@ -504,7 +505,13 @@ function renderNode(node: RichTextNode, options: RichTextRenderOptions): string 
 
     if (node.type === "doc") return content;
     if (node.type === "paragraph") return `<p>${content}</p>`;
-    if (node.type === "heading") return `<h${node.attrs?.level}>${content}</h${node.attrs?.level}>`;
+    if (node.type === "heading") {
+        const level = node.attrs?.level as number;
+        const id = options.headingId?.({ level, text: plainText(node).trim() });
+        const attribute = id ? ` id="${escapeHtml(id)}"` : "";
+
+        return `<h${level}${attribute}>${content}</h${level}>`;
+    }
     if (node.type === "bulletList") return `<ul>${content}</ul>`;
     if (node.type === "orderedList") {
         const start = node.attrs?.start;

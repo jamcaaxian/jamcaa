@@ -1,4 +1,5 @@
 import { blocks, defineCollection, text } from "@jamcaaxian/core/content";
+import { builtinBlockRegistry } from "@jamcaaxian/editor/blocks";
 
 export const post = defineCollection({
     name: "post",
@@ -7,7 +8,12 @@ export const post = defineCollection({
     fields: {
         title: text({ required: true }),
         excerpt: text({ description: "Shown in listings and search results." }),
-        body: blocks({ required: true, description: "A body composed of blocks. Rich text is one block among others." })
+        body: blocks({
+            required: true,
+            description: "A body composed of blocks. Rich text is one block among others.",
+            registry: builtinBlockRegistry,
+            searchVersion: 3
+        })
     },
     summary: { fields: ["title", "excerpt"] },
     search: { fields: ["title", "excerpt", "body"] }

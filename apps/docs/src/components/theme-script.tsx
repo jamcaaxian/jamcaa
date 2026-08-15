@@ -1,7 +1,7 @@
 // Runs before first paint so the page never renders in the wrong theme and then
 // corrects itself. That flash is the whole reason this is an inline script rather
 // than React state.
-const script = `(function () {
+export const themeScript = `(function () {
   try {
     var storageKey = "jamcaa-theme";
     var query = window.matchMedia("(prefers-color-scheme: dark)");
@@ -17,7 +17,3 @@ const script = `(function () {
     // Storage can be unavailable in private modes; the light default is fine.
   }
 })();`;
-
-export function ThemeScript() {
-    return <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: script }} />;
-}

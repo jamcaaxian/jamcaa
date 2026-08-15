@@ -15,10 +15,17 @@ import { requireSession } from "@/lib/session";
 import { DeletePostButton } from "../delete-post-button";
 import { PostForm } from "../post-form";
 import { Button } from "@/components/ui/button";
+import { localizedEditingFields } from "@/content/admin-content";
+import { adminMessages } from "@/content/admin-locale";
 
-export const metadata: Metadata = { title: "Edit post" };
+export async function generateMetadata(): Promise<Metadata> {
+    const { copy } = await adminMessages();
+
+    return { title: copy.posts.form.editTitle };
+}
 
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
+    const { locale, copy } = await adminMessages();
     const session = await requireSession();
     const actor = { id: session.user.id, role: session.user.role };
 
@@ -37,24 +44,24 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     }
 
     if (!(await mayTouch(actor, "post", "update", entry.authorId))) {
-        return <p className="text-muted-foreground text-sm">This post is not yours to edit.</p>;
+        return <p className="text-muted-foreground text-sm">{copy.posts.form.permissionUpdate}</p>;
     }
 
     const mayPublish = await mayTouch(actor, "post", "publish", entry.authorId);
     const selectedTagIds = await postTagIds(database, entry.id);
-    const fields = editingFields(post);
+    const fields = localizedEditingFields(editingFields(post), locale);
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                <h1 className="text-xl font-semibold tracking-tight">Edit post</h1>
+                <h1 className="text-xl font-semibold tracking-tight">{copy.posts.form.editTitle}</h1>
                 <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
                         nativeButton={false}
                         render={<Link href={`/admin/posts/${encodeURIComponent(entry.id)}/revisions`} />}
                     >
-                        Revisions
+                        {copy.posts.form.revisions}
                     </Button>
                     <Button
                         variant="outline"
@@ -67,7 +74,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
                             />
                         }
                     >
-                        Preview
+                        {copy.posts.form.preview}
                     </Button>
                     {(await mayTouch(actor, "post", "delete", entry.authorId)) ?
                         <DeletePostButton id={entry.id} title={entry.title} />

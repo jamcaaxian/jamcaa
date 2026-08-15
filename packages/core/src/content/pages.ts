@@ -1,12 +1,15 @@
 import { and, asc, eq } from "drizzle-orm";
 import type { Database } from "../db/client";
 import { page } from "../db/schema/pages";
+import { canonicalLocale, type LocaleCatalogue } from "../i18n";
 import { parseBlockDocument, type BlockDocument, type BlockRegistry } from "./blocks";
 
 export type PageStatus = "draft" | "published";
 
 export interface PageRecord {
     id: string;
+    locale: string;
+    translationId: string;
     title: string;
     address: string;
     body: BlockDocument;
@@ -53,6 +56,8 @@ function readPage(row: typeof page.$inferSelect): PageRecord {
 
     return {
         id: row.id,
+        locale: canonicalLocale(row.locale),
+        translationId: row.translationId ?? row.id,
         title: row.title,
         address: row.address,
         body: typeof parsed === "object" && parsed !== null ? (parsed as BlockDocument) : { version: 1, blocks: [] },
@@ -62,7 +67,24 @@ function readPage(row: typeof page.$inferSelect): PageRecord {
     };
 }
 
-export function pageStore(database: Database, registry: BlockRegistry) {
+export function pageStore(database: Database, registry: BlockRegistry, locales?: LocaleCatalogue) {
+    const defaultLocale = locales?.defaultLocale ?? "und";
+
+    function locale(value?: string): string {
+        const candidate = value?.trim() || defaultLocale;
+        const supported = locales?.canonical(candidate);
+
+        if (locales !== undefined) {
+            if (supported === undefined) {
+                throw new Error(`Locale "${candidate}" is not supported by this Site.`);
+            }
+
+            return supported;
+        }
+
+        return canonicalLocale(candidate);
+    }
+
     async function byId(id: string): Promise<PageRecord | undefined> {
         const [row] = await database.select().from(page).where(eq(page.id, id));
 
@@ -73,6 +95,7 @@ export function pageStore(database: Database, registry: BlockRegistry) {
         title: string,
         address: string,
         body: BlockDocument,
+        requestedLocale: string,
         exceptId?: string
     ): Promise<string | undefined> {
         const addressProblem = checkPageAddress(address);
@@ -91,7 +114,10 @@ export function pageStore(database: Database, registry: BlockRegistry) {
             return `The body has problems: ${parsed.errors.join(" ")}`;
         }
 
-        const [existing] = await database.select({ id: page.id }).from(page).where(eq(page.address, address));
+        const [existing] = await database
+            .select({ id: page.id })
+            .from(page)
+            .where(and(eq(page.locale, requestedLocale), eq(page.address, address)));
 
         if (existing !== undefined && existing.id !== exceptId) {
             return `A page at "${address}" already exists.`;
@@ -109,35 +135,57 @@ export function pageStore(database: Database, registry: BlockRegistry) {
 
         byId,
 
-        async byAddress(address: string): Promise<PageRecord | undefined> {
+        async byAddress(address: string, requestedLocale?: string): Promise<PageRecord | undefined> {
             const [row] = await database
                 .select()
                 .from(page)
-                .where(and(eq(page.address, address), eq(page.status, "published")));
+                .where(
+                    and(
+                        eq(page.locale, locale(requestedLocale)),
+                        eq(page.address, address),
+                        eq(page.status, "published")
+                    )
+                );
 
             return row === undefined ? undefined : readPage(row);
+        },
+
+        async translations(translationId: string): Promise<PageRecord[]> {
+            const rows = await database
+                .select()
+                .from(page)
+                .where(eq(page.translationId, translationId))
+                .orderBy(asc(page.locale));
+
+            return rows.map(readPage);
         },
 
         async create(input: {
             title: string;
             address: string;
             body: BlockDocument;
+            locale?: string;
+            translationId?: string;
             status?: PageStatus;
         }): Promise<PageResult> {
             const status = input.status ?? "draft";
-            const problem = await validate(input.title, input.address, input.body);
+            const requestedLocale = locale(input.locale);
+            const id = crypto.randomUUID();
+            const translationId = input.translationId?.trim() || id;
+            const problem = await validate(input.title, input.address, input.body, requestedLocale);
 
             if (problem !== undefined) {
                 return { status: "rejected", message: problem };
             }
 
-            const id = crypto.randomUUID();
             const now = Date.now();
 
             await database
                 .insert(page)
                 .values({
                     id,
+                    locale: requestedLocale,
+                    translationId,
                     title: input.title,
                     address: input.address,
                     body: JSON.stringify(input.body),
@@ -163,7 +211,7 @@ export function pageStore(database: Database, registry: BlockRegistry) {
             const title = writes.title ?? current.title;
             const address = writes.address ?? current.address;
             const body = writes.body ?? current.body;
-            const problem = await validate(title, address, body, id);
+            const problem = await validate(title, address, body, current.locale, id);
 
             if (problem !== undefined) {
                 return { status: "rejected", message: problem };

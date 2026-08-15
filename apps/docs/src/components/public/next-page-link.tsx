@@ -3,10 +3,12 @@ import type { FocusEventHandler } from "react";
 
 export function NextPageLink({
     href,
+    label = "Next page",
     onFocus,
     onBlur
 }: {
     href: string | null;
+    label?: string;
     onFocus?: FocusEventHandler<HTMLAnchorElement>;
     onBlur?: FocusEventHandler<HTMLAnchorElement>;
 }) {
@@ -22,7 +24,7 @@ export function NextPageLink({
             onBlur={onBlur}
             className="border-input bg-background hover:bg-accent inline-flex h-11 items-center rounded-lg border px-5 text-sm font-semibold"
         >
-            Next page
+            {label}
         </Link>
     );
 }

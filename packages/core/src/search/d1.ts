@@ -1,6 +1,7 @@
 import { getTableName } from "drizzle-orm";
 import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 import type { Database } from "../db/client";
+import { canonicalLocale, type LocaleCatalogue } from "../i18n";
 import { decodeSearchCursor, encodeSearchCursor, literalSearchQuery, searchLimit } from "./query";
 import { searchTableName } from "./migration";
 import type { SearchPage, SearchPort, SearchRequest } from "./port";
@@ -20,8 +21,9 @@ export function d1SearchAdapter(options: {
     database: Database;
     tableFor(collectionName: string): SQLiteTable | undefined;
     tagTableFor(collectionName: string): SQLiteTable | undefined;
+    locales?: LocaleCatalogue;
 }): SearchPort {
-    const { database, tableFor, tagTableFor } = options;
+    const { database, tableFor, tagTableFor, locales } = options;
 
     return {
         async search(request: SearchRequest): Promise<SearchPage> {
@@ -33,6 +35,23 @@ export function d1SearchAdapter(options: {
 
             const limit = searchLimit(request.limit);
             const cursor = decodeSearchCursor(request.cursor);
+            const locale =
+                request.locale === undefined ?
+                    locales?.defaultLocale
+                :   (locales?.canonical(request.locale) ?? canonicalLocale(request.locale));
+
+            if (
+                request.locale !== undefined
+                && locales !== undefined
+                && locales.canonical(request.locale) === undefined
+            ) {
+                throw new Error(`Locale "${request.locale}" is not supported by this Site.`);
+            }
+
+            if (cursor !== undefined && cursor.locale !== locale) {
+                throw new Error("The search cursor is invalid.");
+            }
+
             const entryTableDefinition = tableFor(request.collection.name);
 
             if (entryTableDefinition === undefined) {
@@ -44,6 +63,11 @@ export function d1SearchAdapter(options: {
             const entryTable = quoteIdentifier(getTableName(entryTableDefinition));
             const conditions = [`${ftsTable} MATCH ?`, `entry.status = 'published'`];
             const bindings: unknown[] = [query];
+
+            if (locale !== undefined) {
+                conditions.push(`${ftsTable}.locale = ?`, "entry.locale = ?");
+                bindings.push(locale, locale);
+            }
 
             if (request.filters?.categoryId !== undefined) {
                 conditions.push("entry.category_id = ?");
@@ -97,7 +121,11 @@ export function d1SearchAdapter(options: {
                 matches: pageRows.map(row => ({ entryId: row.entryId, excerpt: row.excerpt })),
                 nextCursor:
                     rows.results.length > limit && finalRow !== undefined ?
-                        encodeSearchCursor({ rank: finalRow.rank, rowId: finalRow.rowId })
+                        encodeSearchCursor({
+                            rank: finalRow.rank,
+                            rowId: finalRow.rowId,
+                            ...(locale === undefined ? {} : { locale })
+                        })
                     :   undefined
             };
         }

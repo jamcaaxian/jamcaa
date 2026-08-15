@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
 import { PostContent } from "@/components/public/post-content";
+import { adminMessages } from "@/content/admin-locale";
+import { docsLocales } from "@/content/locales";
 import { publicMoment } from "@/content/public-site";
 import { posts } from "@/content/store";
 import { mayTouch } from "@/lib/permissions";
@@ -10,16 +12,11 @@ import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-    title: "Post preview",
-    robots: { index: false, follow: false, noarchive: true, nocache: true }
-};
+export async function generateMetadata(): Promise<Metadata> {
+    const { copy } = await adminMessages();
 
-const statusLabels = {
-    draft: "Draft preview saved",
-    archived: "Archived preview saved",
-    published: "Published preview saved"
-} as const;
+    return { title: copy.posts.preview.title, robots: { index: false, follow: false, noarchive: true, nocache: true } };
+}
 
 export default async function PreviewPostPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -38,16 +35,18 @@ export default async function PreviewPostPage({ params }: { params: Promise<{ id
         notFound();
     }
 
-    const saved = await publicMoment(entry.updatedAt);
+    const { copy } = await adminMessages();
+    const locale = docsLocales.canonical(entry.locale) ?? docsLocales.defaultLocale;
+    const saved = await publicMoment(entry.updatedAt, locale);
 
     return (
         <PostContent
             post={entry}
             publishedLabel={saved.label}
-            statusLabel={statusLabels[entry.status]}
+            statusLabel={copy.posts.preview.status[entry.status]}
             statusMoment={entry.updatedAt}
             backAddress={`/admin/posts/${encodeURIComponent(entry.id)}`}
-            backLabel="Edit Post"
+            backLabel={copy.posts.preview.back}
         />
     );
 }

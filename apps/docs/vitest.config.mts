@@ -25,22 +25,28 @@ async function readDocsRecord(): Promise<Record<string, string>> {
 // migrations are: the core must not depend on any particular site. See docs/adr/0010.
 export default defineConfig({
     plugins: [
-        cloudflareTest(async () => ({
-            miniflare: {
-                compatibilityDate: "2026-08-08",
-                compatibilityFlags: ["nodejs_compat"],
-                d1Databases: ["DB"],
-                // The same bindings the deployed Worker has, so a test that asks
-                // whether storage is reachable is asking about something real.
-                r2Buckets: ["MEDIA_BUCKET"],
-                bindings: {
-                    TEST_MIGRATIONS: await readD1Migrations(path.resolve("migrations")),
-                    TEST_DOCS: await readDocsRecord(),
-                    BETTER_AUTH_SECRET: "test-only-secret-at-least-32-characters",
-                    BETTER_AUTH_URL: "http://localhost:2727"
+        cloudflareTest(async () => {
+            const migrations = await readD1Migrations(path.resolve("migrations"));
+
+            return {
+                miniflare: {
+                    compatibilityDate: "2026-08-08",
+                    compatibilityFlags: ["nodejs_compat"],
+                    d1Databases: ["DB", "UPGRADE_DB"],
+                    // The same bindings the deployed Worker has, so a test that asks
+                    // whether storage is reachable is asking about something real.
+                    r2Buckets: ["MEDIA_BUCKET"],
+                    bindings: {
+                        TEST_MIGRATIONS: migrations,
+                        TEST_PRE_LOCALE_MIGRATIONS: migrations.filter(migration => migration.name < "0015_"),
+                        TEST_LOCALE_MIGRATIONS: migrations.filter(migration => migration.name >= "0015_"),
+                        TEST_DOCS: await readDocsRecord(),
+                        BETTER_AUTH_SECRET: "test-only-secret-at-least-32-characters",
+                        BETTER_AUTH_URL: "http://localhost:2727"
+                    }
                 }
-            }
-        }))
+            };
+        })
     ],
     resolve: { alias: { "@": path.resolve("src") } },
     test: {

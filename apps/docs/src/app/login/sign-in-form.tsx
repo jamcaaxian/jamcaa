@@ -4,9 +4,12 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import type { AdminCopy } from "@/content/admin-copy";
 import { signIn, type SignInState } from "./actions";
 
-export function SignInForm({ next }: { next: string }) {
+type SignInFormCopy = Pick<AdminCopy["auth"]["login"], "email" | "password" | "submit" | "submitting">;
+
+export function SignInForm({ next, copy }: { next: string; copy: SignInFormCopy }) {
     const [state, action, pending] = useActionState<SignInState, FormData>(signIn, {});
 
     return (
@@ -14,7 +17,7 @@ export function SignInForm({ next }: { next: string }) {
             <input type="hidden" name="next" value={next} />
             <FieldGroup>
                 <Field>
-                    <FieldLabel htmlFor="email">Email</FieldLabel>
+                    <FieldLabel htmlFor="email">{copy.email}</FieldLabel>
                     <Input
                         id="email"
                         name="email"
@@ -26,7 +29,7 @@ export function SignInForm({ next }: { next: string }) {
                 </Field>
 
                 <Field>
-                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <FieldLabel htmlFor="password">{copy.password}</FieldLabel>
                     <Input id="password" name="password" type="password" autoComplete="current-password" required />
                 </Field>
 
@@ -35,7 +38,7 @@ export function SignInForm({ next }: { next: string }) {
                 :   null}
 
                 <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-                    {pending ? "Signing in…" : "Sign in"}
+                    {pending ? copy.submitting : copy.submit}
                 </Button>
             </FieldGroup>
         </form>

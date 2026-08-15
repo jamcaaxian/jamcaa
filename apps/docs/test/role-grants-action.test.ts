@@ -19,8 +19,8 @@ vi.mock("@jamcaaxian/core/auth", async importOriginal => ({
 vi.mock("@/lib/permissions", () => ({ may: mocked.may }));
 vi.mock("@/lib/session", () => ({ requireSession: mocked.requireSession }));
 
-import { RoleGrantError } from "@jamcaaxian/core/auth";
 import { saveRoleGrants } from "@/app/admin/roles/actions";
+import { RoleGrantError } from "@jamcaaxian/core/auth";
 
 describe("saving system Role grants", () => {
     beforeEach(() => {
@@ -63,7 +63,7 @@ describe("saving system Role grants", () => {
         formData.append("grant.post", "destroy");
 
         await expect(saveRoleGrants({}, formData)).resolves.toEqual({
-            error: "Unknown capability action: post:destroy"
+            error: "Those Role capabilities could not be saved."
         });
     });
 

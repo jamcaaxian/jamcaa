@@ -12,28 +12,28 @@ import {
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { deleteMedia } from "./actions";
 
 export function DeleteMediaButton({ id, filename }: { id: string; filename: string }) {
+    const { copy } = useAdminI18n();
+
     return (
         <AlertDialog>
             <AlertDialogTrigger
                 render={
                     <Button variant="ghost" size="sm" className="text-destructive -mr-2 text-xs sm:mr-0">
-                        Delete
+                        {copy.common.delete}
                     </Button>
                 }
             />
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Delete “{filename}”?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        The file goes from storage for good. Anywhere it has been placed in a post will be left pointing
-                        at nothing.
-                    </AlertDialogDescription>
+                    <AlertDialogTitle>{copy.media.deleteTitle(filename)}</AlertDialogTitle>
+                    <AlertDialogDescription>{copy.media.deleteDescription}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>Keep it</AlertDialogCancel>
+                    <AlertDialogCancel>{copy.common.keep}</AlertDialogCancel>
                     <form action={deleteMedia} className="w-full sm:w-auto">
                         <input type="hidden" name="id" value={id} />
                         <AlertDialogAction
@@ -41,7 +41,7 @@ export function DeleteMediaButton({ id, filename }: { id: string; filename: stri
                             render={<button type="submit" />}
                             className="bg-destructive hover:bg-destructive/90 text-white"
                         >
-                            Delete
+                            {copy.common.delete}
                         </AlertDialogAction>
                     </form>
                 </AlertDialogFooter>

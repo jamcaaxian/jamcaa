@@ -14,6 +14,10 @@ export type EntryStatus = (typeof entryStatuses)[number];
 export function systemColumns() {
     return {
         id: text("id").primaryKey(),
+        /** Canonical BCP 47 Locale; `und` keeps non-localised Sites compatible. */
+        locale: text("locale").notNull().default("und"),
+        /** Stable identity shared by all translations of one Entry. */
+        translationId: text("translation_id"),
         slug: text("slug").notNull(),
         status: text("status", { enum: entryStatuses }).notNull().default("draft"),
         authorId: text("author_id")
@@ -36,6 +40,8 @@ export const systemFieldNames = Object.keys(systemColumns());
 
 export interface SystemFields {
     id: string;
+    locale: string;
+    translationId: string;
     slug: string;
     status: EntryStatus;
     authorId: string;

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { ManagedBucket } from "@jamcaaxian/core/media";
+import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { SheetClose, SheetFooter } from "@/components/ui/sheet";
 import { createBucket, saveBucket, type StorageFormState } from "./actions";
 
 export function BucketForm({ bucket }: { bucket?: ManagedBucket }) {
+    const { copy } = useAdminI18n();
     const isNew = bucket === undefined;
     const [state, action, pending] = useActionState<StorageFormState, FormData>(isNew ? createBucket : saveBucket, {});
 
@@ -22,21 +24,21 @@ export function BucketForm({ bucket }: { bucket?: ManagedBucket }) {
                 <FieldGroup>
                     {isNew ?
                         <Field>
-                            <FieldLabel htmlFor="bucket-id">Bucket ID</FieldLabel>
+                            <FieldLabel htmlFor="bucket-id">{copy.storage.buckets.id}</FieldLabel>
                             <Input id="bucket-id" name="id" placeholder="archive" required />
-                            <FieldDescription>
-                                Stable and lowercase. Media and rules keep this ID, so it cannot be renamed later.
-                            </FieldDescription>
+                            <FieldDescription>{copy.storage.buckets.idDescription}</FieldDescription>
                         </Field>
                     :   null}
 
                     <Field>
-                        <FieldLabel htmlFor={`bucket-${bucket?.id ?? "new"}-label`}>Name</FieldLabel>
+                        <FieldLabel htmlFor={`bucket-${bucket?.id ?? "new"}-label`}>
+                            {copy.storage.buckets.name}
+                        </FieldLabel>
                         <Input
                             id={`bucket-${bucket?.id ?? "new"}-label`}
                             name="label"
                             defaultValue={bucket?.label}
-                            placeholder="Site media"
+                            placeholder={copy.storage.buckets.namePlaceholder}
                             required
                         />
                     </Field>
@@ -44,40 +46,35 @@ export function BucketForm({ bucket }: { bucket?: ManagedBucket }) {
                     {isNew ?
                         <>
                             <Field>
-                                <FieldLabel htmlFor="bucket-binding">R2 binding</FieldLabel>
+                                <FieldLabel htmlFor="bucket-binding">{copy.storage.buckets.binding}</FieldLabel>
                                 <Input id="bucket-binding" name="binding" placeholder="ARCHIVE_BUCKET" required />
-                                <FieldDescription>
-                                    The binding must already exist in <code>wrangler.jsonc</code> and this deployment.
-                                </FieldDescription>
+                                <FieldDescription>{copy.storage.buckets.bindingDescription}</FieldDescription>
                             </Field>
 
                             <Field>
-                                <FieldLabel htmlFor="bucket-name">Cloudflare bucket name</FieldLabel>
+                                <FieldLabel htmlFor="bucket-name">{copy.storage.buckets.cloudflareName}</FieldLabel>
                                 <Input id="bucket-name" name="bucketName" placeholder="my-site-archive" />
-                                <FieldDescription>
-                                    Required later if the browser will upload directly with a signed address.
-                                </FieldDescription>
+                                <FieldDescription>{copy.storage.buckets.cloudflareDescription}</FieldDescription>
                             </Field>
                         </>
                     :   <Field>
-                            <FieldLabel>Location</FieldLabel>
+                            <FieldLabel>{copy.storage.buckets.location}</FieldLabel>
                             <div className="bg-muted rounded-lg px-3 py-2 text-sm wrap-anywhere">
                                 <span className="font-mono wrap-anywhere">
-                                    {bucket.binding ?? bucket.endpoint ?? "Not configured"}
+                                    {bucket.binding ?? bucket.endpoint ?? copy.storage.buckets.notConfigured}
                                 </span>
                                 {bucket.bucketName ?
                                     <span className="text-muted-foreground"> / {bucket.bucketName}</span>
                                 :   null}
                             </div>
-                            <FieldDescription>
-                                Deployment bindings and physical bucket names stay in code so existing media cannot be
-                                disconnected accidentally.
-                            </FieldDescription>
+                            <FieldDescription>{copy.storage.buckets.locationDescription}</FieldDescription>
                         </Field>
                     }
 
                     <Field>
-                        <FieldLabel htmlFor={`bucket-${bucket?.id ?? "new"}-public-url`}>Public address</FieldLabel>
+                        <FieldLabel htmlFor={`bucket-${bucket?.id ?? "new"}-public-url`}>
+                            {copy.storage.buckets.publicAddress}
+                        </FieldLabel>
                         <Input
                             id={`bucket-${bucket?.id ?? "new"}-public-url`}
                             name="publicUrl"
@@ -85,15 +82,13 @@ export function BucketForm({ bucket }: { bucket?: ManagedBucket }) {
                             defaultValue={bucket?.publicUrl ?? ""}
                             placeholder="https://media.example.com"
                         />
-                        <FieldDescription>
-                            Optional. Without one, jamcaa securely streams the file through its own media route.
-                        </FieldDescription>
+                        <FieldDescription>{copy.storage.buckets.publicDescription}</FieldDescription>
                     </Field>
 
                     {state.error ?
                         <FieldError errors={[{ message: state.error }]} />
                     : state.saved ?
-                        <p className="text-muted-foreground text-sm">Saved.</p>
+                        <p className="text-muted-foreground text-sm">{copy.common.saved}</p>
                     :   null}
                 </FieldGroup>
             </div>
@@ -101,13 +96,13 @@ export function BucketForm({ bucket }: { bucket?: ManagedBucket }) {
             <SheetFooter className="border-t">
                 <Button type="submit" disabled={pending} className="w-full sm:w-auto">
                     {pending ?
-                        "Saving…"
+                        copy.common.saving
                     : isNew ?
-                        "Add bucket"
-                    :   "Save bucket"}
+                        copy.storage.buckets.addSubmit
+                    :   copy.storage.buckets.saveSubmit}
                 </Button>
                 <SheetClose render={<Button type="button" variant="outline" className="w-full sm:w-auto" />}>
-                    Close
+                    {copy.storage.close}
                 </SheetClose>
             </SheetFooter>
         </form>
