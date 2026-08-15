@@ -5,7 +5,7 @@ import { resolveUiLocale, UI_LOCALE_COOKIE } from "@/content/ui-locale";
 const APPLICATION_PREFIXES = new Set(["_next", "admin", "api", "login", "media", "preview", "setup"]);
 const PUBLIC_ROOT_FILES = new Set(["favicon.svg", "robots.txt", "sitemap.xml"]);
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname;
     const firstSegment = pathname.replace(/^\/+/, "").split("/")[0] ?? "";
     const routedLocale = docsLocales.fromUrlKey(firstSegment);
