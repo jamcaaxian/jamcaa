@@ -96,7 +96,7 @@ Create these resources in the target Cloudflare account, then keep their identif
 | D1 database | `jamcaa-docs-tag-cache` | `wrangler.jsonc` → `d1_databases[NEXT_TAG_CACHE_D1]`                       |
 | R2 bucket   | `jamcaa-docs-inc-cache` | `wrangler.jsonc` → `r2_buckets[NEXT_INC_CACHE_R2_BUCKET]`                  |
 | R2 bucket   | `jamcaa-docs-media`     | `wrangler.jsonc` → `r2_buckets[MEDIA_BUCKET]` and `src/content/storage.ts` |
-| Worker      | `jamcaa-docs`           | created by `pnpm deploy`                                                   |
+| Worker      | `jamcaa-docs`           | created by `pnpm exec opennextjs-cloudflare deploy`                        |
 | Worker      | `jamcaa-docs-counters`  | `wrangler.counters.jsonc`                                                  |
 
 After creating the two D1 databases, copy their `database_id` values from the dashboard into `wrangler.jsonc`.
@@ -119,8 +119,9 @@ Add GitHub Secrets when CI should deploy automatically: `CLOUDFLARE_API_TOKEN` a
 The Site expects the D1, R2, Durable Object, service, and image bindings declared in `wrangler.jsonc`. After those resources and secrets exist in the target Cloudflare account:
 
 ```bash
+pnpm exec opennextjs-cloudflare build
 pnpm db:migrate:remote
-pnpm run deploy
+pnpm exec opennextjs-cloudflare deploy
 ```
 
 Deploy the counters Worker alongside it:
@@ -131,8 +132,8 @@ pnpm exec wrangler deploy --config wrangler.counters.jsonc
 
 Use `pnpm run upload` instead when the deployment artifact should be uploaded without immediately deploying it.
 
-On every push to `develop`, the deploy workflow verifies the repository, applies pending Docs D1 migrations, then deploys both Workers automatically once the Cloudflare secrets are configured.
+On every push to `develop`, the deploy workflow verifies and builds the Site first. Only after that build succeeds does it apply pending Docs D1 migrations, deploy the already-built Site, and deploy the counters Worker. This keeps a failed application build from advancing the production schema.
 
-After the first deploy: run `pnpm db:docs:migrate:remote` to publish the documentation, and open `/setup` on the deployed address to create its administrator. Manual deployments must apply `pnpm db:migrate:remote` before publishing a Worker that depends on a new schema.
+After the first deploy: run `pnpm db:docs:migrate:remote` to publish the documentation, and open `/setup` on the deployed address to create its administrator. Manual deployments must successfully run `pnpm exec opennextjs-cloudflare build`, then apply `pnpm db:migrate:remote`, then run `pnpm exec opennextjs-cloudflare deploy`. Use Linux or WSL for production builds because OpenNext is not fully compatible with Windows and its Windows bundle can exceed the free-plan Worker size even when the Linux CI bundle remains under the limit.
 
 View counts appear once the counters Worker is deployed; local `wrangler dev` does not start it, and the admin list simply omits the Views column until the `COUNTERS` service binding resolves.

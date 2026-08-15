@@ -9,6 +9,7 @@ on:
     push:
         branches: [develop]
         paths:
+            - ".github/workflows/deploy-docs.yml"
             - "apps/docs/**"
             - "packages/**"
             - ".changeset/**"
@@ -44,13 +45,17 @@ jobs:
                   pnpm lint
                   pnpm typecheck
 
+            - name: Build the docs Site
+              if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+              run: pnpm --filter @jamcaaxian/docs exec opennextjs-cloudflare build
+
             - name: Apply docs database migrations
               if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
               run: pnpm --filter @jamcaaxian/docs run db:migrate:remote
 
             - name: Deploy the docs Site
               if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
-              run: pnpm --filter @jamcaaxian/docs run deploy
+              run: pnpm --filter @jamcaaxian/docs exec opennextjs-cloudflare deploy
 
             - name: Deploy the counters Worker
               if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
