@@ -1,5 +1,18 @@
 # @jamcaaxian/editor
 
+## 0.3.0
+
+### Minor Changes
+
+- f0aa084: Add canonical Locale and Translation Set support across Entries, Pages, public addresses, summaries, former addresses, feeds, and Search.
+
+    Add composable Block declarations and browser Editing Controls with validated attributes, reader-facing Search projections, and reusable Block document editing.
+
+### Patch Changes
+
+- Updated dependencies [f0aa084]
+    - @jamcaaxian/core@0.5.0
+
 ## 0.2.1
 
 ### Patch Changes
