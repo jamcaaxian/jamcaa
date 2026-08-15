@@ -1,5 +1,11 @@
 # @jamcaaxian/core
 
+## 0.5.1
+
+### Patch Changes
+
+- 5740426: Add an explicit `console:access` capability and install upgrade grants for authoring system Roles.
+
 ## 0.5.0
 
 ### Minor Changes
