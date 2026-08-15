@@ -6,7 +6,7 @@ import { publicCopy } from "@/content/public-copy";
 
 export const metadata: Metadata = {
     title: "Jamcaa Docs",
-    description: "Choose a language for the Jamcaa documentation.",
+    description: "选择 Jamcaa 文档的阅读语言。Choose your preferred language for Jamcaa Docs.",
     alternates: { canonical: "/", languages: localeAlternates("/", true) }
 };
 
@@ -30,14 +30,13 @@ export default function LanguageChooser() {
                     </span>
                     <p className="text-primary mb-3 flex items-center justify-center gap-2 text-sm font-semibold">
                         <Languages className="size-4" />
-                        Jamcaa Documentation
+                        Jamcaa 文档 · Jamcaa Documentation
                     </p>
                     <h1 className="text-4xl leading-[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-6xl">
-                        Choose your language.
+                        选择阅读语言
                     </h1>
                     <p className="text-muted-foreground mt-5 text-lg leading-8 text-pretty">
-                        选择你的语言。Each language is an independent, canonical content variant powered by the same
-                        Jamcaa Site.
+                        简体中文优先维护，英文内容按同一信息架构进行本地化。Choose the language you prefer to read.
                     </p>
                 </header>
 
@@ -51,8 +50,7 @@ export default function LanguageChooser() {
                         >
                             <div className="flex items-start justify-between gap-5">
                                 <div>
-                                    <p className="font-mono text-xs text-muted-foreground">{language.locale}</p>
-                                    <h2 className="mt-3 text-2xl font-semibold tracking-tight">{language.label}</h2>
+                                    <h2 className="text-2xl font-semibold tracking-tight">{language.label}</h2>
                                     <p className="text-muted-foreground mt-2 leading-7">{language.detail}</p>
                                 </div>
                                 <span className="bg-secondary group-hover:bg-primary group-hover:text-primary-foreground grid size-10 shrink-0 place-items-center rounded-full transition-colors duration-200">

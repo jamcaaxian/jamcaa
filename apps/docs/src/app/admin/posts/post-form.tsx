@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { localizedBuiltinBlocks } from "@/content/admin-content";
+import { localizedSiteBlocks } from "@/content/admin-content";
 import { setAdminCrumb } from "@/lib/admin-crumb";
 import { useAdminI18n } from "@/components/admin/admin-i18n";
 import { savePost, type PostFormState } from "./actions";
@@ -57,7 +57,7 @@ export function PostForm({
     );
     const richTextFields = fields.filter(field => field.kind === "richText" || field.kind === "blocks");
     const fieldValues = post?.fields ?? {};
-    const blockDefinitions = localizedBuiltinBlocks(locale);
+    const blockDefinitions = localizedSiteBlocks(locale);
     const allStatuses = [
         { value: "draft", label: copy.common.status.draft },
         { value: "published", label: copy.common.status.published },

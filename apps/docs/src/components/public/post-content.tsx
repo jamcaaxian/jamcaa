@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BuiltinBlockView } from "@jamcaaxian/editor/blocks";
 import type { BlockDocument } from "@jamcaaxian/core/content";
+import { visibleSiteDocument } from "@/content/site-blocks";
 
 export interface PublicPost {
     title: string;
@@ -26,6 +27,7 @@ export function PostContent({
     backLabel?: string;
 }) {
     const displayedAt = statusMoment ?? post.publishedAt ?? post.createdAt;
+    const document = visibleSiteDocument(post.body);
 
     return (
         <main id="main-content" className="mx-auto min-h-dvh max-w-3xl px-4 py-12 sm:px-6 sm:py-20">
@@ -51,7 +53,7 @@ export function PostContent({
                     </p>
                 </header>
                 <div>
-                    {post.body.blocks.map(block => (
+                    {document.blocks.map(block => (
                         <BuiltinBlockView
                             key={block.id}
                             block={block}

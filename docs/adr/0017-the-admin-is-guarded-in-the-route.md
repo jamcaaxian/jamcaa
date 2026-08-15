@@ -1,6 +1,6 @@
 # The admin is guarded in the route, not at the edge
 
-Access to `/admin` is decided by the admin layout, which validates the session against the database on every request. There is no proxy in front of it.
+Access to `/admin` is decided by the admin layout, which validates the session and the explicit `console:access` capability against the database on every request. There is no proxy in front of it.
 
 The obvious design was a proxy that redirects anyone without a session cookie before the route runs, with the route validating for real behind it — cheap rejection at the edge, authority in the route. That is what Better Auth recommends for Next, and it was built and working in development. **It cannot be deployed.**
 
@@ -16,7 +16,7 @@ Next 16 renamed middleware to proxy and made it Node-runtime only; declaring `ru
 
 ## Consequences
 
-**Nothing about who can reach the admin changes.** The proxy was never a security boundary: `getSessionCookie` reads a cookie without verifying it, so anyone could forge their way past it and be turned away by the route regardless. Removing it removes an optimisation, not a control.
+**Nothing about the authority boundary changes.** The proxy was never a security boundary: `getSessionCookie` reads a cookie without verifying it, so anyone could forge their way past it and be turned away by the route regardless. The route validates both identity and Console access. Removing the proxy removes an optimisation, not a control.
 
 **Adding a route under `/admin` is not enough to protect it.** Protection is inherited from the layout's session check, so a route group that opts out of that layout opts out of authentication. This was true with the proxy too, and is now the only thing that is true.
 

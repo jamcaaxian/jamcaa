@@ -1,9 +1,9 @@
 import { pageStore } from "@jamcaaxian/core/content";
-import { builtinBlockRegistry } from "@jamcaaxian/editor/blocks";
 import type { Database } from "@jamcaaxian/core/db";
 import { docsLocales } from "./locales";
+import { siteBlockRegistry } from "./site-blocks";
 
-/** The page store for this Site, wired to the built-in Block registry. */
+/** The page store for this Site, wired to its complete Block registry. */
 export function pages(database: Database) {
-    return pageStore(database, builtinBlockRegistry, docsLocales);
+    return pageStore(database, siteBlockRegistry, docsLocales);
 }

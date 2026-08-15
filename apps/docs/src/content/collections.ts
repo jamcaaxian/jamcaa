@@ -1,5 +1,5 @@
 import { blocks, defineCollection, text } from "@jamcaaxian/core/content";
-import { builtinBlockRegistry } from "@jamcaaxian/editor/blocks";
+import { siteBlockRegistry } from "./site-blocks";
 
 export const post = defineCollection({
     name: "post",
@@ -11,7 +11,7 @@ export const post = defineCollection({
         body: blocks({
             required: true,
             description: "A body composed of blocks. Rich text is one block among others.",
-            registry: builtinBlockRegistry,
+            registry: siteBlockRegistry,
             searchVersion: 3
         })
     },

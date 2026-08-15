@@ -20,7 +20,7 @@ function JamcaaMark() {
     );
 }
 
-export function DocsSiteHeader({ locale }: { locale: DocsLocale }) {
+export function DocsSiteHeader({ locale, showConsole }: { locale: DocsLocale; showConsole: boolean }) {
     const pathname = usePathname();
     const messages = publicCopy(locale);
     const items = docsTopNavigation(locale);
@@ -67,13 +67,15 @@ export function DocsSiteHeader({ locale }: { locale: DocsLocale }) {
                     </Link>
                     <LocaleMenu locale={locale} label={messages.switchLanguage} />
                     <ThemeToggle labels={messages.theme} />
-                    <Link
-                        href="/admin"
-                        className="border-border bg-background hover:bg-muted focus-visible:ring-ring ml-1 hidden h-8 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium outline-none transition-[background-color,transform] focus-visible:ring-3 active:scale-[0.97] sm:inline-flex"
-                    >
-                        {messages.dashboard}
-                        <ArrowUpRight className="size-4" />
-                    </Link>
+                    {showConsole ?
+                        <Link
+                            href="/admin"
+                            className="border-border bg-background hover:bg-muted focus-visible:ring-ring ml-1 hidden h-8 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium outline-none transition-[background-color,transform] focus-visible:ring-3 active:scale-[0.97] sm:inline-flex"
+                        >
+                            {messages.dashboard}
+                            <ArrowUpRight className="size-4" />
+                        </Link>
+                    :   null}
 
                     <Sheet>
                         <SheetTrigger
@@ -118,12 +120,14 @@ export function DocsSiteHeader({ locale }: { locale: DocsLocale }) {
                             </nav>
                             <div className="mt-auto grid gap-2 border-t p-4">
                                 <LocaleMenu locale={locale} label={messages.switchLanguage} fullWidth />
-                                <SheetClose render={<Link href="/admin" />} nativeButton={false}>
-                                    <span className="bg-primary text-primary-foreground flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold">
-                                        {messages.dashboard}
-                                        <ArrowUpRight className="size-4" />
-                                    </span>
-                                </SheetClose>
+                                {showConsole ?
+                                    <SheetClose render={<Link href="/admin" />} nativeButton={false}>
+                                        <span className="bg-primary text-primary-foreground flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold">
+                                            {messages.dashboard}
+                                            <ArrowUpRight className="size-4" />
+                                        </span>
+                                    </SheetClose>
+                                :   null}
                             </div>
                         </SheetContent>
                     </Sheet>

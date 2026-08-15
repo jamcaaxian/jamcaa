@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { expect, it } from "vitest";
 import { blockPlainText } from "@jamcaaxian/core/content";
-import { builtinBlockRegistry } from "@jamcaaxian/editor/blocks";
+import { siteBlockRegistry } from "../src/content/site-blocks";
 import { docsSeedPosts, productHomePages } from "./migrate-docs-content";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -68,7 +68,7 @@ it("writes the repository docs migration SQL", async () => {
         ...posts.map(post => {
             const id = postId(`${post.locale}:${post.slug}`);
             const bodyValue = JSON.stringify(post.body);
-            const bodyPlain = blockPlainText(post.body, builtinBlockRegistry);
+            const bodyPlain = blockPlainText(post.body, siteBlockRegistry);
 
             return (
                 `INSERT INTO post (id, slug, locale, translation_id, status, author_id, category_id, created_at, updated_at, published_at, title, excerpt, "body__value", "body__plain") `

@@ -2,6 +2,7 @@ import { env } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createDatabase, type Database } from "@jamcaaxian/core/db";
 import {
+    blockPlainText,
     blocksToRichText,
     entryStore,
     entrySummaryReader,
@@ -12,7 +13,8 @@ import { d1SearchAdapter } from "@jamcaaxian/core/search";
 import { post } from "@/content/collections";
 import { contentModel, postTable } from "@/content/schema";
 import { jsonFeed } from "@/content/feed";
-import { docSourcesFromRecord, migrateDocsContent } from "../scripts/migrate-docs-content";
+import { siteBlockRegistry } from "@/content/site-blocks";
+import { docSourcesFromRecord, migrateDocsContent, productPosts } from "../scripts/migrate-docs-content";
 
 function database(): Database {
     return createDatabase(env.DB);
@@ -119,4 +121,20 @@ describe("repository docs migration", () => {
         expect(feed.items.map(item => item.title)).toContain("jamcaa");
         expect(feed.items).toHaveLength(sourceCount);
     }, 30_000);
+});
+
+describe("product documentation seed", () => {
+    it("publishes revised bilingual content with per-document sidebar options", () => {
+        const posts = productPosts();
+        const chineseOverview = posts.find(post => post.locale === "zh-Hans-CN" && post.slug === "docs");
+
+        expect(posts).toHaveLength(16);
+        expect(chineseOverview?.title).toBe("文档概览");
+        expect(chineseOverview?.body.blocks[0]).toMatchObject({
+            type: "docs.sidebar",
+            props: { multiLevel: true, autoCollapse: true }
+        });
+        expect(blockPlainText(chineseOverview!.body, siteBlockRegistry)).toContain("什么情况下适合使用 Jamcaa");
+        expect(blockPlainText(chineseOverview!.body, siteBlockRegistry)).not.toContain("autoCollapse");
+    });
 });

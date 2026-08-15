@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
 import { parseBlockDocument, type BlockDocument, type PageStatus } from "@jamcaaxian/core/content";
-import { builtinBlockRegistry } from "@jamcaaxian/editor/blocks";
 import type { AdminCopy } from "@/content/admin-copy";
 import { adminMessages } from "@/content/admin-locale";
 import { pages } from "@/content/pages-store";
+import { siteBlockRegistry } from "@/content/site-blocks";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 
@@ -38,7 +38,7 @@ function readBody(formData: FormData, copy: AdminCopy): BlockDocument {
 
     try {
         const parsed = JSON.parse(raw) as unknown;
-        const checked = parseBlockDocument(parsed, builtinBlockRegistry);
+        const checked = parseBlockDocument(parsed, siteBlockRegistry);
 
         if (!checked.ok) {
             throw new PageInputError(copy.pages.errors.bodyInvalid);

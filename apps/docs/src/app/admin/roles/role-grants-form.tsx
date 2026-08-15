@@ -80,8 +80,9 @@ export function RoleGrantsForm({ model, mayManage }: { model: SystemRoleGrantMod
                                 {actions.map(capability => {
                                     const recoveryGrant =
                                         selectedRole.name === "admin"
-                                        && resource === "role"
-                                        && (capability === "read" || capability === "manage");
+                                        && ((resource === "console" && capability === "access")
+                                            || (resource === "role"
+                                                && (capability === "read" || capability === "manage")));
                                     const checked =
                                         recoveryGrant || selectedRole.grants[resource]?.includes(capability) === true;
                                     const id = `${selectedRole.name}-${resource}-${capability}`;

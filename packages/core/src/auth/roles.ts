@@ -28,6 +28,7 @@ export const systemRoles: SystemRole[] = [
         label: "Editor",
         description: "Publishes and manages content from any author.",
         grants: {
+            console: ["access"],
             post: [
                 "create",
                 "read",
@@ -49,6 +50,7 @@ export const systemRoles: SystemRole[] = [
         label: "Author",
         description: "Publishes and manages their own content.",
         grants: {
+            console: ["access"],
             post: ["create", "read", "update-own", "delete-own", "publish-own"],
             media: ["upload", "read", "delete-own"],
             taxonomy: ["read"],
@@ -60,6 +62,7 @@ export const systemRoles: SystemRole[] = [
         label: "Contributor",
         description: "Writes their own content but cannot publish it.",
         grants: {
+            console: ["access"],
             post: ["create", "read", "update-own", "delete-own"],
             media: ["upload", "read"],
             taxonomy: ["read"],

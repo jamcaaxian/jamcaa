@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
 import { ensureInstalled } from "@jamcaaxian/core/install";
+import { redirect } from "next/navigation";
 import { AdminBreadcrumb } from "@/components/admin/admin-breadcrumb";
 import { AdminI18nProvider } from "@/components/admin/admin-i18n";
 import { AdminLocaleMenu } from "@/components/admin/admin-locale-menu";
@@ -12,7 +13,9 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { adminCopy } from "@/content/admin-copy";
 import { adminLocale } from "@/content/admin-locale";
 import { installPlan } from "@/content/install";
+import { localizedPath } from "@/content/locales";
 import { siteSettings } from "@/content/settings";
+import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 import { getSettings } from "@jamcaaxian/core/settings";
 
@@ -21,7 +24,7 @@ import { getSettings } from "@jamcaaxian/core/settings";
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-    const { user } = await requireSession();
+    const session = await requireSession();
     const locale = await adminLocale();
     const copy = adminCopy(locale);
 
@@ -32,6 +35,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     const database = createDatabase(env.DB);
 
     await ensureInstalled(database, installPlan);
+
+    const actor = { id: session.user.id, role: session.user.role };
+
+    if (!(await may(actor, "console", "access"))) {
+        redirect(localizedPath(locale));
+    }
 
     const settings = await getSettings(database, siteSettings);
 
@@ -49,7 +58,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                         <div className="ml-auto flex items-center gap-1">
                             <AdminLocaleMenu />
                             <ThemeToggle labels={copy.shell.theme} />
-                            <UserMenu user={user} />
+                            <UserMenu user={session.user} />
                         </div>
                     </header>
 

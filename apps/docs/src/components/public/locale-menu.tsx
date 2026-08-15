@@ -50,7 +50,6 @@ export function LocaleMenu({
                         nativeButton={false}
                     >
                         <span className="min-w-0 flex-1">{definition.label}</span>
-                        <span className="text-muted-foreground font-mono text-xs">{definition.tag}</span>
                         {definition.tag === locale ?
                             <Check className="size-4" />
                         :   null}

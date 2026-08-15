@@ -91,6 +91,16 @@ describe("authorization from database-defined roles", () => {
         expect(roles.subscriber?.authorize({ user: ["list"] }).success).toBe(false);
     });
 
+    it("requires an explicit capability to enter the Console", async () => {
+        const roles = await seededRoles();
+
+        expect(roles.admin?.authorize({ console: ["access"] }).success).toBe(true);
+        expect(roles.editor?.authorize({ console: ["access"] }).success).toBe(true);
+        expect(roles.author?.authorize({ console: ["access"] }).success).toBe(true);
+        expect(roles.contributor?.authorize({ console: ["access"] }).success).toBe(true);
+        expect(roles.subscriber?.authorize({ console: ["access"] }).success).toBe(false);
+    });
+
     it("reflects a grant added in the database without redeploying", async () => {
         const before = await seededRoles();
         expect(before.contributor?.authorize({ post: ["publish-own"] }).success).toBe(false);
@@ -221,6 +231,15 @@ describe("system role grant editor", () => {
 
     it("keeps the administrator's Role recovery capabilities even when omitted", async () => {
         await replaceSystemRoleGrants(database(), coreCapabilities, "admin", { post: ["read"] });
+
+        const grants = await loadRoleGrants(database());
+        expect(grants.admin).toEqual({ console: ["access"], post: ["read"], role: ["manage", "read"] });
+    });
+
+    it("only adds administrator recovery capabilities declared by the Site", async () => {
+        const catalogue = { post: ["read"], role: ["read", "manage"] } as const;
+
+        await replaceSystemRoleGrants(database(), catalogue, "admin", { post: ["read"] });
 
         const grants = await loadRoleGrants(database());
         expect(grants.admin).toEqual({ post: ["read"], role: ["manage", "read"] });

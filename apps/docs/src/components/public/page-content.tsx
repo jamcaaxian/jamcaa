@@ -1,8 +1,11 @@
 import { BuiltinBlockView } from "@jamcaaxian/editor/blocks";
 import type { BlockDocument } from "@jamcaaxian/core/content";
+import { visibleSiteDocument } from "@/content/site-blocks";
 
 /** Renders a Page body as its sequence of Blocks. */
 export function PageContent({ title, body }: { title: string; body: BlockDocument }) {
+    const document = visibleSiteDocument(body);
+
     return (
         <main id="main-content" className="mx-auto min-h-dvh max-w-3xl px-4 py-12 sm:px-6 sm:py-20">
             <article>
@@ -12,7 +15,7 @@ export function PageContent({ title, body }: { title: string; body: BlockDocumen
                     </h1>
                 </header>
                 <div>
-                    {body.blocks.map(block => (
+                    {document.blocks.map(block => (
                         <BuiltinBlockView key={block.id} block={block} />
                     ))}
                 </div>

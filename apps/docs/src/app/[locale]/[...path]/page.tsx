@@ -17,6 +17,8 @@ import {
     publicPostLocaleAddresses,
     publishedPostAt
 } from "@/content/public-site";
+import { currentConsoleActor } from "@/lib/console-access";
+import { may, mayTouch } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -136,10 +138,13 @@ export default async function LocalizedPublicEntry({
     ]);
 
     if (page !== undefined) {
-        const [updated, addresses] = await Promise.all([
+        const [updated, addresses, actor] = await Promise.all([
             publicMoment(page.updatedAt, context.locale),
-            publicPageLocaleAddresses(page)
+            publicPageLocaleAddresses(page),
+            currentConsoleActor()
         ]);
+        const editAddress = actor && (await may(actor, "page", "update")) ? `/admin/pages/${page.id}` : undefined;
+        const currentAddress = addresses[context.locale] ?? localizedPath(context.locale, page.address);
 
         return (
             <>
@@ -148,6 +153,8 @@ export default async function LocalizedPublicEntry({
                     post={{ title: page.title, excerpt: null, body: page.body, updatedAt: page.updatedAt }}
                     locale={context.locale}
                     updatedLabel={updated.label}
+                    currentAddress={currentAddress}
+                    editAddress={editAddress}
                 />
             </>
         );
@@ -209,11 +216,17 @@ export default async function LocalizedPublicEntry({
 
     countView(resolution.entry.id);
 
-    const [updated, addresses] = await Promise.all([
+    const [updated, addresses, actor] = await Promise.all([
         publicMoment(resolution.entry.updatedAt, context.locale),
-        publicPostLocaleAddresses(resolution.entry)
+        publicPostLocaleAddresses(resolution.entry),
+        currentConsoleActor()
     ]);
     const adjacent = adjacentDocs(resolution.entry.slug, context.locale);
+    const editAddress =
+        actor && (await mayTouch(actor, "post", "update", resolution.entry.authorId)) ?
+            `/admin/posts/${resolution.entry.id}`
+        :   undefined;
+    const currentAddress = addresses[context.locale] ?? localizedPath(context.locale, `/${parameters.path.join("/")}`);
 
     return (
         <>
@@ -222,10 +235,12 @@ export default async function LocalizedPublicEntry({
                 post={resolution.entry}
                 locale={context.locale}
                 updatedLabel={updated.label}
+                currentAddress={currentAddress}
                 previous={
                     adjacent.previous ? { title: adjacent.previous.label, address: adjacent.previous.href } : undefined
                 }
                 next={adjacent.next ? { title: adjacent.next.label, address: adjacent.next.href } : undefined}
+                editAddress={editAddress}
             />
         </>
     );

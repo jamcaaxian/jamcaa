@@ -367,6 +367,7 @@ const english = {
             subscriber: "Reads content and takes part in discussion."
         },
         resources: {
+            console: "Console",
             comment: "Comments",
             media: "Media",
             page: "Pages",
@@ -378,6 +379,7 @@ const english = {
             user: "Users"
         },
         actions: {
+            "access": "Access",
             "create": "Create",
             "read": "Read",
             "list": "List",
@@ -917,6 +919,7 @@ const simplifiedChinese = {
             subscriber: "可阅读内容并参与讨论。"
         },
         resources: {
+            console: "控制台",
             comment: "评论",
             media: "媒体",
             page: "页面",
@@ -928,6 +931,7 @@ const simplifiedChinese = {
             user: "用户"
         },
         actions: {
+            "access": "访问",
             "create": "创建",
             "read": "读取",
             "list": "列出",

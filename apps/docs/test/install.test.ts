@@ -118,6 +118,21 @@ describe("bringing a site up to date", () => {
         expect(grants.results.map(grant => grant.action)).toEqual([...coreCapabilities.page].sort());
     });
 
+    it("adds Console access to existing authoring Roles when upgrading from version 4", async () => {
+        await ensureInstalled(database(), installPlan);
+        await env.DB.exec("DELETE FROM role_capability WHERE resource = 'console'");
+        await env.DB.prepare("UPDATE setting SET value = '4' WHERE key = 'platform.installedVersion'").run();
+        forgetCachedSettings();
+
+        await ensureInstalled(database(), installPlan);
+
+        const grants = await env.DB.prepare(
+            "SELECT role_name AS roleName FROM role_capability WHERE resource = 'console' AND action = 'access' ORDER BY role_name"
+        ).all<{ roleName: string }>();
+
+        expect(grants.results.map(grant => grant.roleName)).toEqual(["admin", "author", "contributor", "editor"]);
+    });
+
     it("records what it has run so the next visit is free", async () => {
         await ensureInstalled(database(), installPlan);
         forgetCachedSettings();

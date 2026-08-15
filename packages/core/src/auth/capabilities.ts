@@ -6,6 +6,7 @@
  * `-any` covers everyone's. A capability that omits the suffix is not scoped.
  */
 export const coreCapabilities = {
+    console: ["access"],
     post: ["create", "read", "update-own", "delete-own", "publish-own", "update-any", "delete-any", "publish-any"],
     media: ["upload", "read", "delete-own", "delete-any"],
     comment: ["create", "moderate", "delete-any"],

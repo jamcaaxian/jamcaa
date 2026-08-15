@@ -6,6 +6,7 @@ import {
     createBlockViewRegistry,
     type BlockViewProps
 } from "@jamcaaxian/editor/blocks";
+import { visibleSiteDocument } from "@/content/site-blocks";
 
 function FeatureView({ block }: BlockViewProps) {
     const { eyebrow, title, description, href } = block.props as {
@@ -82,7 +83,7 @@ const registry = createBlockViewRegistry([
 export function DocsHomeBlocks({ document }: { document: BlockDocument }) {
     return (
         <BlockDocumentView
-            document={document}
+            document={visibleSiteDocument(document)}
             registry={registry}
             className="docs-home-blocks mt-12"
             mediaAddress={mediaId => `/media/${encodeURIComponent(mediaId)}`}

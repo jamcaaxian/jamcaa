@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { localizedBuiltinBlocks } from "@/content/admin-content";
+import { localizedSiteBlocks } from "@/content/admin-content";
 import type { PageFormState } from "./actions";
 
 function newBlock(type: string, definitions: ReadonlyMap<string, BlockDefinition>): BlockInstance {
@@ -193,7 +193,7 @@ export function PageEditor({
     const [address, setAddress] = useState(initial.address);
     const [status, setStatus] = useState(initial.status);
     const [blocks, setBlocks] = useState<BlockInstance[]>(initial.blocks);
-    const definitions = localizedBuiltinBlocks(locale);
+    const definitions = localizedSiteBlocks(locale);
     const definitionsByName = new Map(definitions.map(definition => [definition.name, definition]));
     const insertable = definitions.filter(block => block.name !== "builtin.richText");
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -326,14 +326,7 @@ export function PageEditor({
                                             definition !== undefined && propEntries.length > 0 ?
                                                 <div className="grid gap-3 sm:grid-cols-2">
                                                     {propEntries.map(([propName, declaration]) => (
-                                                        <div
-                                                            key={propName}
-                                                            className={
-                                                                declaration.kind === "flag" ?
-                                                                    "flex items-center"
-                                                                :   "space-y-1.5"
-                                                            }
-                                                        >
+                                                        <div key={propName} className="space-y-1.5">
                                                             {declaration.kind !== "flag" ?
                                                                 <Label className="text-xs">{declaration.label}</Label>
                                                             :   null}
@@ -345,6 +338,11 @@ export function PageEditor({
                                                                     patchBlock(block.id, propName, value)
                                                                 }
                                                             />
+                                                            {declaration.description ?
+                                                                <p className="text-muted-foreground text-xs leading-5">
+                                                                    {declaration.description}
+                                                                </p>
+                                                            :   null}
                                                         </div>
                                                     ))}
                                                 </div>

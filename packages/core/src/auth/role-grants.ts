@@ -5,7 +5,7 @@ import { assertGrantsAreDeclared, type CapabilityCatalogue, type CapabilityGrant
 import { forgetCachedRoleGrants } from "./role-cache";
 import { loadRoleGrants } from "./roles";
 
-const ADMIN_RECOVERY_ACTIONS = ["read", "manage"];
+const ADMIN_RECOVERY_GRANTS: CapabilityGrants = { console: ["access"], role: ["read", "manage"] };
 const GRANT_INSERT_BATCH_SIZE = 30;
 
 export class RoleGrantError extends Error {
@@ -36,8 +36,24 @@ function normalizeGrants(grants: CapabilityGrants): CapabilityGrants {
     );
 }
 
-function withAdministratorRecoveryGrants(grants: CapabilityGrants): CapabilityGrants {
-    return normalizeGrants({ ...grants, role: [...(grants.role ?? []), ...ADMIN_RECOVERY_ACTIONS] });
+function withAdministratorRecoveryGrants(catalogue: CapabilityCatalogue, grants: CapabilityGrants): CapabilityGrants {
+    const recovered: CapabilityGrants = { ...grants };
+
+    for (const [resource, actions] of Object.entries(ADMIN_RECOVERY_GRANTS)) {
+        const declared = catalogue[resource];
+
+        if (declared === undefined) {
+            continue;
+        }
+
+        const applicable = actions.filter(action => declared.includes(action));
+
+        if (applicable.length > 0) {
+            recovered[resource] = [...(recovered[resource] ?? []), ...applicable];
+        }
+    }
+
+    return normalizeGrants(recovered);
 }
 
 export async function inspectSystemRoleGrants(
@@ -81,7 +97,8 @@ export async function replaceSystemRoleGrants(
         throw new RoleGrantError(`Only an existing system Role can be re-granted: ${roleName}`);
     }
 
-    const normalized = roleName === "admin" ? withAdministratorRecoveryGrants(grants) : normalizeGrants(grants);
+    const normalized =
+        roleName === "admin" ? withAdministratorRecoveryGrants(catalogue, grants) : normalizeGrants(grants);
     try {
         assertGrantsAreDeclared(catalogue, normalized);
     } catch (error) {

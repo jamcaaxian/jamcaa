@@ -1,6 +1,6 @@
 import type { BlockDefinition, EditingField } from "@jamcaaxian/core/content";
-import { builtinBlocks } from "@jamcaaxian/editor/blocks";
 import type { DocsLocale } from "./locales";
+import { siteBlockDefinitions } from "./site-blocks";
 
 const fieldCopy = {
     "en-US": {
@@ -48,7 +48,16 @@ const blockCopy = {
             props: { value: "Value", label: "Label", detail: "Detail" }
         },
         "builtin.divider": { label: "Divider", props: {} },
-        "builtin.spacer": { label: "Spacer", props: { size: "Size" } }
+        "builtin.spacer": { label: "Spacer", props: { size: "Size" } },
+        "docs.sidebar": {
+            label: "Documentation sidebar",
+            description: "Controls this document's public navigation and is not rendered in the body.",
+            props: { multiLevel: "Multi-level menu", autoCollapse: "Automatically collapse other sections" },
+            propDescriptions: {
+                multiLevel: "Groups related documents into collapsible sections.",
+                autoCollapse: "Keeps only one sibling section open at a time."
+            }
+        }
     },
     "zh-Hans-CN": {
         "builtin.heading": { label: "标题", description: "章节标题。", props: { text: "文字", level: "级别" } },
@@ -78,7 +87,16 @@ const blockCopy = {
             props: { value: "数值", label: "名称", detail: "详情" }
         },
         "builtin.divider": { label: "分隔线", props: {} },
-        "builtin.spacer": { label: "留白", props: { size: "尺寸" } }
+        "builtin.spacer": { label: "留白", props: { size: "尺寸" } },
+        "docs.sidebar": {
+            label: "文档侧栏",
+            description: "控制当前文档的公开导航，不会显示在正文中。",
+            props: { multiLevel: "启用多级菜单", autoCollapse: "自动收起其他目录" },
+            propDescriptions: {
+                multiLevel: "按内容关系分组，并允许读者展开或收起子目录。",
+                autoCollapse: "展开一个目录时自动收起同级的其他目录。"
+            }
+        }
     }
 } as const;
 
@@ -92,13 +110,18 @@ export function localizedEditingFields(fields: readonly EditingField[], locale: 
     });
 }
 
-export function localizedBuiltinBlocks(locale: DocsLocale): BlockDefinition[] {
+export function localizedSiteBlocks(locale: DocsLocale): BlockDefinition[] {
     const copy = blockCopy[locale] as Record<
         string,
-        { label: string; description?: string; props: Record<string, string> }
+        {
+            label: string;
+            description?: string;
+            props: Record<string, string>;
+            propDescriptions?: Record<string, string>;
+        }
     >;
 
-    return Object.values(builtinBlocks).map(definition => {
+    return siteBlockDefinitions.map(definition => {
         const localized = copy[definition.name];
 
         if (localized === undefined) {
@@ -112,7 +135,13 @@ export function localizedBuiltinBlocks(locale: DocsLocale): BlockDefinition[] {
             props: Object.fromEntries(
                 Object.entries(definition.props).map(([name, declaration]) => [
                     name,
-                    { ...declaration, label: localized.props[name] ?? declaration.label }
+                    {
+                        ...declaration,
+                        label: localized.props[name] ?? declaration.label,
+                        ...(localized.propDescriptions?.[name] === undefined ?
+                            {}
+                        :   { description: localized.propDescriptions[name] })
+                    }
                 ])
             )
         };

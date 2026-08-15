@@ -3,7 +3,7 @@ import type { DocsLocale } from "@/content/locales";
 import { localizedPath } from "@/content/locales";
 import { publicCopy } from "@/content/public-copy";
 
-export function DocsSiteFooter({ locale }: { locale: DocsLocale }) {
+export function DocsSiteFooter({ locale, showConsole }: { locale: DocsLocale; showConsole: boolean }) {
     const messages = publicCopy(locale);
 
     return (
@@ -20,9 +20,11 @@ export function DocsSiteFooter({ locale }: { locale: DocsLocale }) {
                     <Link className="hover:text-foreground" href={localizedPath(locale, "/feed.json")}>
                         JSON Feed
                     </Link>
-                    <Link className="hover:text-foreground" href="/admin">
-                        {messages.dashboard}
-                    </Link>
+                    {showConsole ?
+                        <Link className="hover:text-foreground" href="/admin">
+                            {messages.dashboard}
+                        </Link>
+                    :   null}
                 </nav>
             </div>
         </footer>

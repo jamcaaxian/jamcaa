@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, ListTree } from "lucide-react";
 import { BlockDocumentView } from "@jamcaaxian/editor/blocks";
 import type { BlockDocument } from "@jamcaaxian/core/content";
 import { documentOutline, headingIdFactory } from "@/content/document-outline";
-import { docsSidebarNavigation } from "@/content/docs-navigation";
 import type { DocsLocale } from "@/content/locales";
 import { publicCopy } from "@/content/public-copy";
+import { docsDocumentPresentation } from "@/content/site-blocks";
+import { DocsSidebar } from "./docs-sidebar";
 
 export interface DocsArticlePost {
     title: string;
@@ -23,45 +24,58 @@ export function DocsArticle({
     post,
     locale,
     updatedLabel,
+    currentAddress,
     previous,
-    next
+    next,
+    editAddress
 }: {
     post: DocsArticlePost;
     locale: DocsLocale;
     updatedLabel: string;
+    currentAddress: string;
     previous?: DocsArticleNavigation;
     next?: DocsArticleNavigation;
+    editAddress?: string;
 }) {
     const messages = publicCopy(locale);
-    const outline = documentOutline(post.body).filter(heading => heading.level >= 2 && heading.level <= 3);
+    const presentation = docsDocumentPresentation(post.body);
+    const outline = documentOutline(presentation.document).filter(heading => heading.level >= 2 && heading.level <= 3);
     const idForHeading = headingIdFactory();
-    const sidebar = docsSidebarNavigation(locale);
 
     return (
         <main id="main-content" className="mx-auto w-full max-w-384 px-4 sm:px-6 lg:px-8">
             <div className="grid min-h-[calc(100dvh-3.5rem)] grid-cols-1 xl:grid-cols-[14rem_minmax(0,52rem)_14rem] xl:gap-10">
                 <aside className="border-border/70 hidden border-r py-10 pr-6 xl:block">
-                    <nav aria-label={messages.docs} className="sticky top-24 space-y-8 text-sm">
-                        {sidebar.map(section => (
-                            <div key={section.label} className="space-y-2">
-                                <p className="text-foreground font-semibold">{section.label}</p>
-                                {section.items.map(item => (
-                                    <Link
-                                        key={item.href}
-                                        className="text-muted-foreground hover:text-foreground block py-1"
-                                        href={item.href}
-                                    >
-                                        {item.label}
-                                    </Link>
-                                ))}
-                            </div>
-                        ))}
-                    </nav>
+                    <div className="sticky top-24">
+                        <DocsSidebar
+                            key={`desktop:${currentAddress}`}
+                            locale={locale}
+                            currentAddress={currentAddress}
+                            options={presentation.sidebar}
+                            ariaLabel={messages.docsNavigation}
+                        />
+                    </div>
                 </aside>
 
                 <article className="min-w-0 py-10 sm:py-16 xl:py-20">
+                    <details className="border-border/70 bg-card/60 mb-8 rounded-2xl border px-4 py-3 xl:hidden">
+                        <summary className="focus-visible:ring-ring flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-lg text-sm font-semibold outline-none focus-visible:ring-3 [&::-webkit-details-marker]:hidden">
+                            <ListTree className="text-primary size-4" />
+                            {messages.docsNavigation}
+                        </summary>
+                        <div className="mt-3 border-t pt-3">
+                            <DocsSidebar
+                                key={`mobile:${currentAddress}`}
+                                locale={locale}
+                                currentAddress={currentAddress}
+                                options={presentation.sidebar}
+                                ariaLabel={messages.docsNavigation}
+                            />
+                        </div>
+                    </details>
+
                     <header className="border-border/70 border-b pb-10">
-                        <p className="text-primary mb-4 text-sm font-semibold tracking-wide">Jamcaa Docs</p>
+                        <p className="text-primary mb-4 text-sm font-semibold tracking-wide">{messages.productName}</p>
                         <h1 className="max-w-3xl text-4xl leading-[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-5xl">
                             {post.title}
                         </h1>
@@ -76,7 +90,7 @@ export function DocsArticle({
                     </header>
 
                     <BlockDocumentView
-                        document={post.body}
+                        document={presentation.document}
                         headingId={idForHeading}
                         mediaAddress={mediaId => `/media/${encodeURIComponent(mediaId)}`}
                         className="docs-article-content mt-10"
@@ -134,13 +148,15 @@ export function DocsArticle({
                                 </ol>
                             </nav>
                         )}
-                        <Link
-                            href="/admin/posts"
-                            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm"
-                        >
-                            {messages.editPage}
-                            <ExternalLink className="size-3.5" />
-                        </Link>
+                        {editAddress ?
+                            <Link
+                                href={editAddress}
+                                className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm"
+                            >
+                                {messages.editPage}
+                                <ExternalLink className="size-3.5" />
+                            </Link>
+                        :   null}
                     </div>
                 </aside>
             </div>
