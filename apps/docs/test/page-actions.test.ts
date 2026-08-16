@@ -27,23 +27,28 @@ const copy = {
 const mocked = vi.hoisted(() => ({
     adminMessages: vi.fn(),
     byId: vi.fn(),
+    create: vi.fn(),
     createDatabase: vi.fn(),
     getCloudflareContext: vi.fn(),
     may: vi.fn(),
+    redirect: vi.fn(),
     requireSession: vi.fn(),
     revalidatePath: vi.fn(),
     update: vi.fn()
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: mocked.revalidatePath }));
+vi.mock("next/navigation", () => ({ redirect: mocked.redirect }));
 vi.mock("@opennextjs/cloudflare", () => ({ getCloudflareContext: mocked.getCloudflareContext }));
 vi.mock("@jamcaaxian/core", () => ({ createDatabase: mocked.createDatabase }));
 vi.mock("@/content/admin-locale", () => ({ adminMessages: mocked.adminMessages }));
-vi.mock("@/content/pages-store", () => ({ pages: () => ({ byId: mocked.byId, update: mocked.update }) }));
+vi.mock("@/content/pages-store", () => ({
+    pages: () => ({ byId: mocked.byId, create: mocked.create, update: mocked.update })
+}));
 vi.mock("@/lib/permissions", () => ({ may: mocked.may }));
 vi.mock("@/lib/session", () => ({ requireSession: mocked.requireSession }));
 
-import { updatePage } from "@/app/admin/pages/actions";
+import { createPage, updatePage } from "@/app/admin/pages/actions";
 
 function pageForm(status: "draft" | "published") {
     const formData = new FormData();
@@ -63,7 +68,21 @@ describe("updating a Page", () => {
         mocked.getCloudflareContext.mockReturnValue({ env: { DB: "binding" } });
         mocked.createDatabase.mockReturnValue("database");
         mocked.requireSession.mockResolvedValue({ user: { id: "editor-1", role: "editor" } });
+        mocked.create.mockResolvedValue({ status: "created", page: { id: "page-2", status: "draft" } });
         mocked.update.mockResolvedValue({ status: "updated", page: { id: "page-1", status: "draft" } });
+        mocked.redirect.mockImplementation(() => {
+            throw new Error("redirect");
+        });
+    });
+
+    it("moves a newly created Page into its editing workspace", async () => {
+        mocked.may.mockResolvedValue(true);
+
+        await expect(createPage({}, pageForm("draft"))).rejects.toThrow("redirect");
+
+        expect(mocked.redirect).toHaveBeenCalledWith("/admin/pages/page-2");
+        expect(mocked.revalidatePath).toHaveBeenCalledWith("/admin/pages");
+        expect(mocked.revalidatePath).toHaveBeenCalledWith("/", "layout");
     });
 
     it("requires publish capability to take a published Page offline", async () => {

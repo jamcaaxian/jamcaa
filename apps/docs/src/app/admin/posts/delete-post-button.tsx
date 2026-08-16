@@ -22,7 +22,7 @@ export function DeletePostButton({ id, title }: { id: string; title: string }) {
         <AlertDialog>
             <AlertDialogTrigger
                 render={
-                    <Button variant="ghost" className="text-destructive">
+                    <Button type="button" variant="ghost" className="text-destructive">
                         {copy.common.delete}
                     </Button>
                 }

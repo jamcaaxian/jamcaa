@@ -41,10 +41,15 @@ function SheetContent({
     children,
     side = "right",
     showCloseButton = true,
+    portalProps,
     ...props
-}: SheetPrimitive.Popup.Props & { side?: "top" | "right" | "bottom" | "left"; showCloseButton?: boolean }) {
+}: SheetPrimitive.Popup.Props & {
+    side?: "top" | "right" | "bottom" | "left";
+    showCloseButton?: boolean;
+    portalProps?: SheetPrimitive.Portal.Props;
+}) {
     return (
-        <SheetPortal>
+        <SheetPortal {...portalProps}>
             <SheetOverlay />
             <SheetPrimitive.Popup
                 data-slot="sheet-content"

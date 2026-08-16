@@ -22,6 +22,13 @@ export interface BlockDocumentEditorMessages {
     unknown: string;
 }
 
+export interface BlockChoiceOption {
+    value: string;
+    label: string;
+}
+
+export type BlockChoiceOptions = Readonly<Record<string, Readonly<Record<string, readonly BlockChoiceOption[]>>>>;
+
 const defaultMessages: BlockDocumentEditorMessages = {
     addBlock: "Add a block",
     moveUp: "Move up",
@@ -51,38 +58,47 @@ function createBlock(definition: BlockDefinition): BlockInstance {
     return { id: crypto.randomUUID(), type: definition.name, props: initialProps(definition) };
 }
 
+export function blockPropInputId(editorName: string, blockId: string, propName: string): string {
+    return `${editorName}-${blockId}-${propName}`;
+}
+
 function textAreaAttribute(name: string, declaration: BlockPropDeclaration): boolean {
     return declaration.kind === "text" && ["body", "caption", "code", "description", "detail", "text"].includes(name);
 }
 
-function BlockPropField({
+export function BlockPropEditor({
     editorName,
     block,
-    name,
+    propName,
     declaration,
     media,
     richTextMessages,
+    richTextClassName,
+    choiceOptions,
     onChange
 }: {
     editorName: string;
     block: BlockInstance;
-    name: string;
+    propName: string;
     declaration: BlockPropDeclaration;
     media?: RichTextMediaAdapter;
     richTextMessages?: Partial<RichTextEditorMessages>;
+    richTextClassName?: string;
+    choiceOptions?: readonly BlockChoiceOption[];
     onChange(value: unknown): void;
 }) {
-    const value = block.props[name];
-    const inputId = `${editorName}-${block.id}-${name}`;
+    const value = block.props[propName];
+    const inputId = blockPropInputId(editorName, block.id, propName);
 
     if (declaration.kind === "richText") {
         return (
             <RichTextEditor
-                name={`${editorName}--${block.id}--${name}`}
+                name={`${editorName}--${block.id}--${propName}`}
                 label={declaration.label}
                 defaultValue={value as RichTextDocument | undefined}
                 media={media}
                 messages={richTextMessages}
+                className={richTextClassName}
                 onChange={onChange}
             />
         );
@@ -95,11 +111,14 @@ function BlockPropField({
                 type="checkbox"
                 checked={Boolean(value)}
                 onChange={event => onChange(event.currentTarget.checked)}
+                className="jamcaa-block-prop-editor__flag"
             />
         );
     }
 
     if (declaration.kind === "choice") {
+        const labels = new Map(choiceOptions?.map(option => [option.value, option.label]));
+
         return (
             <select
                 id={inputId}
@@ -109,20 +128,40 @@ function BlockPropField({
             >
                 {declaration.choices?.map(choice => (
                     <option key={choice} value={choice}>
-                        {choice}
+                        {labels.get(choice) ?? choice}
                     </option>
                 ))}
             </select>
         );
     }
 
-    if (textAreaAttribute(name, declaration)) {
+    if (declaration.kind === "color") {
+        return (
+            <div className="jamcaa-block-prop-editor__color">
+                <input
+                    id={inputId}
+                    type="color"
+                    value={String(value ?? "#3388FF")}
+                    onChange={event => onChange(event.currentTarget.value)}
+                    className="jamcaa-block-prop-editor__swatch"
+                    aria-label={declaration.label}
+                />
+                <input
+                    className="jamcaa-editing-control"
+                    value={String(value ?? "")}
+                    onChange={event => onChange(event.currentTarget.value)}
+                />
+            </div>
+        );
+    }
+
+    if (textAreaAttribute(propName, declaration)) {
         return (
             <textarea
                 id={inputId}
                 className="jamcaa-editing-control jamcaa-editing-control--multiline"
                 value={String(value ?? "")}
-                rows={name === "code" ? 10 : 4}
+                rows={propName === "code" ? 10 : 4}
                 onChange={event => onChange(event.currentTarget.value)}
             />
         );
@@ -132,12 +171,7 @@ function BlockPropField({
         <input
             id={inputId}
             className="jamcaa-editing-control"
-            type={
-                declaration.kind === "number" ? "number"
-                : declaration.kind === "color" ?
-                    "color"
-                :   "text"
-            }
+            type={declaration.kind === "number" ? "number" : "text"}
             value={String(value ?? "")}
             onChange={event =>
                 onChange(declaration.kind === "number" ? Number(event.currentTarget.value) : event.currentTarget.value)
@@ -146,49 +180,36 @@ function BlockPropField({
     );
 }
 
-export interface BlockDocumentEditorProps {
-    name: string;
-    label: string;
-    defaultValue?: BlockDocument;
-    definitions: readonly BlockDefinition[];
-    media?: RichTextMediaAdapter;
-    richTextMessages?: Partial<RichTextEditorMessages>;
-    messages?: Partial<BlockDocumentEditorMessages>;
-    onChange?: (document: BlockDocument) => void;
-}
-
-export function BlockDocumentEditor({
-    name,
-    label,
+export function useBlockDocumentEditor({
     defaultValue,
     definitions,
-    media,
-    richTextMessages,
-    messages,
     onChange
-}: BlockDocumentEditorProps) {
-    const copy = { ...defaultMessages, ...messages };
+}: {
+    defaultValue?: BlockDocument;
+    definitions: readonly BlockDefinition[];
+    onChange?: (document: BlockDocument) => void;
+}) {
     const definitionsByName = useMemo(
         () => new Map(definitions.map(definition => [definition.name, definition])),
         [definitions]
     );
     const [document, setDocument] = useState<BlockDocument>(defaultValue ?? { version: 1, blocks: [] });
 
-    function update(blocks: BlockInstance[]) {
+    function replaceBlocks(blocks: BlockInstance[]) {
         const next: BlockDocument = { version: 1, blocks };
         setDocument(next);
         onChange?.(next);
     }
 
-    function patch(id: string, prop: string, value: unknown) {
-        update(
+    function patchBlock(id: string, propName: string, value: unknown) {
+        replaceBlocks(
             document.blocks.map(block =>
-                block.id === id ? { ...block, props: { ...block.props, [prop]: value } } : block
+                block.id === id ? { ...block, props: { ...block.props, [propName]: value } } : block
             )
         );
     }
 
-    function move(index: number, offset: -1 | 1) {
+    function moveBlock(index: number, offset: -1 | 1) {
         const target = index + offset;
 
         if (target < 0 || target >= document.blocks.length) {
@@ -200,9 +221,54 @@ export function BlockDocumentEditor({
 
         if (block !== undefined) {
             blocks.splice(target, 0, block);
-            update(blocks);
+            replaceBlocks(blocks);
         }
     }
+
+    function removeBlock(id: string) {
+        replaceBlocks(document.blocks.filter(block => block.id !== id));
+    }
+
+    function addBlock(type: string) {
+        const definition = definitionsByName.get(type);
+
+        if (definition !== undefined) {
+            replaceBlocks([...document.blocks, createBlock(definition)]);
+        }
+    }
+
+    return { document, definitionsByName, replaceBlocks, patchBlock, moveBlock, removeBlock, addBlock };
+}
+
+export interface BlockDocumentEditorProps {
+    name: string;
+    label: string;
+    defaultValue?: BlockDocument;
+    definitions: readonly BlockDefinition[];
+    choices?: BlockChoiceOptions;
+    media?: RichTextMediaAdapter;
+    richTextMessages?: Partial<RichTextEditorMessages>;
+    messages?: Partial<BlockDocumentEditorMessages>;
+    onChange?: (document: BlockDocument) => void;
+}
+
+export function BlockDocumentEditor({
+    name,
+    label,
+    defaultValue,
+    definitions,
+    choices,
+    media,
+    richTextMessages,
+    messages,
+    onChange
+}: BlockDocumentEditorProps) {
+    const copy = { ...defaultMessages, ...messages };
+    const { document, definitionsByName, patchBlock, moveBlock, removeBlock, addBlock } = useBlockDocumentEditor({
+        defaultValue,
+        definitions,
+        onChange
+    });
 
     return (
         <div className="jamcaa-block-editor" id={`${name}-editor`} aria-label={label}>
@@ -221,20 +287,21 @@ export function BlockDocumentEditor({
                                         <code>{block.type}</code>
                                     </div>
                                     <div className="jamcaa-block-editor__actions">
-                                        <button type="button" onClick={() => move(index, -1)} disabled={index === 0}>
+                                        <button
+                                            type="button"
+                                            onClick={() => moveBlock(index, -1)}
+                                            disabled={index === 0}
+                                        >
                                             {copy.moveUp}
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => move(index, 1)}
+                                            onClick={() => moveBlock(index, 1)}
                                             disabled={index === document.blocks.length - 1}
                                         >
                                             {copy.moveDown}
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => update(document.blocks.filter(item => item.id !== block.id))}
-                                        >
+                                        <button type="button" onClick={() => removeBlock(block.id)}>
                                             {copy.remove}
                                         </button>
                                     </div>
@@ -252,14 +319,15 @@ export function BlockDocumentEditor({
                                                 >
                                                     {declaration.label}
                                                 </label>
-                                                <BlockPropField
+                                                <BlockPropEditor
                                                     editorName={name}
                                                     block={block}
-                                                    name={propName}
+                                                    propName={propName}
                                                     declaration={declaration}
                                                     media={media}
                                                     richTextMessages={richTextMessages}
-                                                    onChange={value => patch(block.id, propName, value)}
+                                                    choiceOptions={choices?.[block.type]?.[propName]}
+                                                    onChange={value => patchBlock(block.id, propName, value)}
                                                 />
                                                 {declaration.description ?
                                                     <p className="jamcaa-editing-field__description">
@@ -281,11 +349,7 @@ export function BlockDocumentEditor({
                     className="jamcaa-editing-control"
                     value=""
                     onChange={event => {
-                        const definition = definitionsByName.get(event.currentTarget.value);
-
-                        if (definition !== undefined) {
-                            update([...document.blocks, createBlock(definition)]);
-                        }
+                        addBlock(event.currentTarget.value);
                     }}
                 >
                     <option value="">{copy.addBlock}</option>

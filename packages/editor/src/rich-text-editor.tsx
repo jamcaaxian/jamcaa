@@ -7,13 +7,18 @@ import StarterKit from "@tiptap/starter-kit";
 import {
     Bold,
     Code,
+    Heading1,
     Heading2,
+    Heading3,
     Italic,
     Link as LinkIcon,
     List,
     ListOrdered,
+    Minus,
+    Pilcrow,
     Quote,
     Redo2,
+    SquareCode,
     Strikethrough,
     Undo2,
     Unlink
@@ -210,7 +215,11 @@ export function RichTextEditor({
             italic: context.editor?.isActive("italic") ?? false,
             strike: context.editor?.isActive("strike") ?? false,
             code: context.editor?.isActive("code") ?? false,
-            heading: context.editor?.isActive("heading", { level: 2 }) ?? false,
+            paragraph: context.editor?.isActive("paragraph") ?? false,
+            heading1: context.editor?.isActive("heading", { level: 1 }) ?? false,
+            heading2: context.editor?.isActive("heading", { level: 2 }) ?? false,
+            heading3: context.editor?.isActive("heading", { level: 3 }) ?? false,
+            codeBlock: context.editor?.isActive("codeBlock") ?? false,
             bulletList: context.editor?.isActive("bulletList") ?? false,
             orderedList: context.editor?.isActive("orderedList") ?? false,
             blockquote: context.editor?.isActive("blockquote") ?? false,
@@ -234,7 +243,11 @@ export function RichTextEditor({
         italic: false,
         strike: false,
         code: false,
-        heading: false,
+        paragraph: false,
+        heading1: false,
+        heading2: false,
+        heading3: false,
+        codeBlock: false,
         bulletList: false,
         orderedList: false,
         blockquote: false,
@@ -283,12 +296,36 @@ export function RichTextEditor({
                 <span className="jamcaa-rich-text-editor__separator" role="separator" />
                 <div className="jamcaa-rich-text-editor__toolbar-group">
                     <ToolbarButton
-                        label={copy.heading}
-                        active={toolbar.heading}
+                        label={copy.paragraph}
+                        active={toolbar.paragraph}
+                        onClick={() => editor?.chain().focus().setParagraph().run()}
+                    >
+                        <Pilcrow />
+                    </ToolbarButton>
+                    <ToolbarButton
+                        label={copy.heading1}
+                        active={toolbar.heading1}
+                        onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+                    >
+                        <Heading1 />
+                    </ToolbarButton>
+                    <ToolbarButton
+                        label={copy.heading2}
+                        active={toolbar.heading2}
                         onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
                     >
                         <Heading2 />
                     </ToolbarButton>
+                    <ToolbarButton
+                        label={copy.heading3}
+                        active={toolbar.heading3}
+                        onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+                    >
+                        <Heading3 />
+                    </ToolbarButton>
+                </div>
+                <span className="jamcaa-rich-text-editor__separator" role="separator" />
+                <div className="jamcaa-rich-text-editor__toolbar-group">
                     <ToolbarButton
                         label={copy.bold}
                         active={toolbar.bold}
@@ -317,6 +354,13 @@ export function RichTextEditor({
                     >
                         <Code />
                     </ToolbarButton>
+                    <ToolbarButton
+                        label={copy.codeBlock}
+                        active={toolbar.codeBlock}
+                        onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
+                    >
+                        <SquareCode />
+                    </ToolbarButton>
                 </div>
                 <span className="jamcaa-rich-text-editor__separator" role="separator" />
                 <div className="jamcaa-rich-text-editor__toolbar-group">
@@ -340,6 +384,12 @@ export function RichTextEditor({
                         onClick={() => editor?.chain().focus().toggleBlockquote().run()}
                     >
                         <Quote />
+                    </ToolbarButton>
+                    <ToolbarButton
+                        label={copy.divider}
+                        onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+                    >
+                        <Minus />
                     </ToolbarButton>
                     <ToolbarButton label={copy.link} active={toolbar.link} onClick={editLink}>
                         <LinkIcon />

@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-import { Button } from "@/components/ui/button";
 import { adminMessages } from "@/content/admin-locale";
 import { docsLocales, localizedPath } from "@/content/locales";
 import { pages } from "@/content/pages-store";
@@ -42,24 +39,18 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     const publicAddress = pageLocale === undefined ? page.address : localizedPath(pageLocale, page.address);
 
     return (
-        <div className="space-y-8">
-            <AdminPageHeader title={copy.pages.form.editTitle}>
-                <Button variant="outline" size="sm" nativeButton={false} render={<Link href={publicAddress} />}>
-                    {copy.pages.form.viewOnSite}
-                </Button>
-            </AdminPageHeader>
-            <PageEditor
-                action={action}
-                initial={{
-                    id: page.id,
-                    title: page.title,
-                    address: page.address,
-                    status: page.status,
-                    blocks: page.body.blocks
-                }}
-                mayPublish={mayPublish}
-                submitLabel={copy.pages.form.save}
-            />
-        </div>
+        <PageEditor
+            action={action}
+            initial={{
+                id: page.id,
+                title: page.title,
+                address: page.address,
+                status: page.status,
+                blocks: page.body.blocks
+            }}
+            mayPublish={mayPublish}
+            submitLabel={copy.pages.form.save}
+            viewHref={publicAddress}
+        />
     );
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
 import { parseBlockDocument, type BlockDocument, type PageStatus } from "@jamcaaxian/core/content";
@@ -91,6 +92,7 @@ export async function createPage(_previous: PageFormState, formData: FormData): 
 
     const title = String(formData.get("title") ?? "");
     const address = String(formData.get("address") ?? "");
+    let pageId: string;
 
     try {
         const body = readBody(formData, copy);
@@ -100,14 +102,15 @@ export async function createPage(_previous: PageFormState, formData: FormData): 
         if (result.status === "rejected") {
             return { error: pageStoreProblem(result.message, copy) };
         }
+
+        pageId = result.page.id;
     } catch (error) {
         return { error: error instanceof PageInputError ? error.message : copy.pages.errors.createFailed };
     }
 
     revalidatePath("/admin/pages");
     revalidatePath("/", "layout");
-
-    return { saved: true };
+    redirect(`/admin/pages/${encodeURIComponent(pageId)}`);
 }
 
 export async function updatePage(id: string, _previous: PageFormState, formData: FormData): Promise<PageFormState> {

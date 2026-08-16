@@ -1,6 +1,11 @@
 export { builtinBlockRegistry, builtinBlocks } from "./builtin";
 export {
+    BlockPropEditor,
     BlockDocumentEditor,
+    blockPropInputId,
+    useBlockDocumentEditor,
+    type BlockChoiceOption,
+    type BlockChoiceOptions,
     type BlockDocumentEditorMessages,
     type BlockDocumentEditorProps
 } from "./block-document-editor";

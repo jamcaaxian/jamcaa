@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createDatabase } from "@jamcaaxian/core";
@@ -12,9 +11,7 @@ import { posts, postTagIds } from "@/content/store";
 import { taxonomy } from "@/content/taxonomy";
 import { mayTouch } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
-import { DeletePostButton } from "../delete-post-button";
 import { PostForm } from "../post-form";
-import { Button } from "@/components/ui/button";
 import { localizedEditingFields } from "@/content/admin-content";
 import { adminMessages } from "@/content/admin-locale";
 
@@ -47,62 +44,32 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
         return <p className="text-muted-foreground text-sm">{copy.posts.form.permissionUpdate}</p>;
     }
 
-    const mayPublish = await mayTouch(actor, "post", "publish", entry.authorId);
-    const selectedTagIds = await postTagIds(database, entry.id);
+    const [mayPublish, mayDelete, selectedTagIds] = await Promise.all([
+        mayTouch(actor, "post", "publish", entry.authorId),
+        mayTouch(actor, "post", "delete", entry.authorId),
+        postTagIds(database, entry.id)
+    ]);
     const fields = localizedEditingFields(editingFields(post), locale);
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                <h1 className="text-xl font-semibold tracking-tight">{copy.posts.form.editTitle}</h1>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        nativeButton={false}
-                        render={<Link href={`/admin/posts/${encodeURIComponent(entry.id)}/revisions`} />}
-                    >
-                        {copy.posts.form.revisions}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        nativeButton={false}
-                        render={
-                            <Link
-                                href={`/preview/posts/${encodeURIComponent(entry.id)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            />
-                        }
-                    >
-                        {copy.posts.form.preview}
-                    </Button>
-                    {(await mayTouch(actor, "post", "delete", entry.authorId)) ?
-                        <DeletePostButton id={entry.id} title={entry.title} />
-                    :   null}
-                </div>
-            </div>
-
-            <PostForm
-                fields={fields}
-                titleFieldName={post.titleField}
-                post={{
-                    id: entry.id,
-                    slug: entry.slug,
-                    status: entry.status,
-                    categoryId: entry.categoryId,
-                    fields: Object.fromEntries(
-                        fields.map(field => [
-                            field.name,
-                            entry[field.name as keyof typeof entry] as EditingControlValue
-                        ])
-                    )
-                }}
-                mayPublish={mayPublish}
-                address={{ pattern: settings.get("permalink.post"), mayChooseSlug: mayPublish }}
-                categories={categories}
-                tags={tags}
-                selectedTagIds={selectedTagIds}
-            />
-        </div>
+        <PostForm
+            fields={fields}
+            titleFieldName={post.titleField}
+            post={{
+                id: entry.id,
+                slug: entry.slug,
+                status: entry.status,
+                categoryId: entry.categoryId,
+                fields: Object.fromEntries(
+                    fields.map(field => [field.name, entry[field.name as keyof typeof entry] as EditingControlValue])
+                )
+            }}
+            mayPublish={mayPublish}
+            mayDelete={mayDelete}
+            address={{ pattern: settings.get("permalink.post"), mayChooseSlug: mayPublish }}
+            categories={categories}
+            tags={tags}
+            selectedTagIds={selectedTagIds}
+        />
     );
 }

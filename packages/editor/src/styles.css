@@ -47,6 +47,36 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--jamcaa-editor-ring, var(--ring, #2563eb)) 20%, transparent);
 }
 
+.jamcaa-block-prop-editor__flag {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+    accent-color: var(--jamcaa-editor-primary, var(--primary, #2563eb));
+}
+
+.jamcaa-block-prop-editor__color {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.jamcaa-block-prop-editor__swatch {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--jamcaa-editor-border, var(--border, light-dark(#d4d4d8, #3f3f46)));
+    border-radius: var(--jamcaa-editor-radius, var(--radius, 0.5rem));
+    padding: 0.25rem;
+    background: transparent;
+    cursor: pointer;
+}
+
+.jamcaa-block-prop-editor__swatch:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--jamcaa-editor-ring, var(--ring, #2563eb)) 45%, transparent);
+    outline-offset: 1px;
+}
+
 .jamcaa-rich-text-editor {
     color-scheme: light dark;
     overflow: hidden;
@@ -143,6 +173,7 @@
 }
 
 .jamcaa-rich-text-editor__content {
+    position: relative;
     min-height: 20rem;
     padding: 1rem 1.25rem;
     font-size: 1rem;
@@ -157,6 +188,49 @@
     padding: 1rem 1.25rem;
     color: var(--jamcaa-editor-muted-foreground, var(--muted-foreground, light-dark(#71717a, #a1a1aa)));
     pointer-events: none;
+}
+
+.jamcaa-rich-text-editor--immersive {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.jamcaa-rich-text-editor--immersive .jamcaa-rich-text-editor__toolbar {
+    top: var(--jamcaa-editor-sticky-offset, 0);
+    z-index: 20;
+    min-height: 3rem;
+    border-top: 1px solid color-mix(in srgb, var(--jamcaa-editor-border, var(--border, #d4d4d8)) 58%, transparent);
+    border-bottom-color: color-mix(in srgb, var(--jamcaa-editor-border, var(--border, #d4d4d8)) 72%, transparent);
+    padding: 0.5rem clamp(2.75rem, 7.5vw, 8rem);
+    background: color-mix(
+        in srgb,
+        var(--jamcaa-editor-background, var(--background, light-dark(#fff, #18181b))) 88%,
+        transparent
+    );
+    box-shadow: 0 1px 0 color-mix(in srgb, white 38%, transparent) inset;
+    backdrop-filter: blur(20px) saturate(150%);
+}
+
+.jamcaa-rich-text-editor--immersive .jamcaa-rich-text-editor__content {
+    min-height: 40dvh;
+    padding: clamp(1.75rem, 4vw, 3rem) clamp(2.75rem, 7.5vw, 8rem) 4rem;
+    font-size: clamp(1rem, 0.4vw + 0.94rem, 1.125rem);
+    line-height: 1.85;
+}
+
+.jamcaa-rich-text-editor--immersive
+    .jamcaa-rich-text-editor__content:has(> p:only-child > br.ProseMirror-trailingBreak)::before {
+    padding: clamp(1.75rem, 4vw, 3rem) clamp(2.75rem, 7.5vw, 8rem);
+}
+
+.jamcaa-rich-text-editor--immersive .jamcaa-rich-text-editor__content > * {
+    max-width: none;
+}
+
+.jamcaa-rich-text-editor--immersive .jamcaa-rich-text-editor__content p {
+    text-wrap: pretty;
 }
 
 .jamcaa-rich-text-content {
@@ -218,6 +292,13 @@
     border-left: 2px solid var(--jamcaa-editor-border, var(--border, light-dark(#d4d4d8, #3f3f46)));
     padding-left: 1rem;
     color: var(--jamcaa-editor-muted-foreground, var(--muted-foreground, light-dark(#71717a, #a1a1aa)));
+}
+
+.jamcaa-rich-text-editor__content hr,
+.jamcaa-rich-text-content hr {
+    margin-block: 2rem;
+    border: 0;
+    border-top: 1px solid var(--jamcaa-editor-border, var(--border, light-dark(#d4d4d8, #3f3f46)));
 }
 
 .jamcaa-rich-text-editor__content code,
@@ -583,12 +664,33 @@
 }
 
 @media (max-width: 39.99rem) {
+    .jamcaa-rich-text-editor--immersive .jamcaa-rich-text-editor__toolbar {
+        padding-inline: 0.75rem;
+    }
+
+    .jamcaa-rich-text-editor--immersive .jamcaa-rich-text-editor__content {
+        min-height: 32dvh;
+        padding: 1.5rem 1rem 3rem;
+    }
+
+    .jamcaa-rich-text-editor--immersive
+        .jamcaa-rich-text-editor__content:has(> p:only-child > br.ProseMirror-trailingBreak)::before {
+        padding: 1.5rem 1rem;
+    }
+
     .jamcaa-rich-text-editor__content {
         padding-inline: 0.75rem;
     }
 
     .jamcaa-rich-text-editor__content:has(> p:only-child > br.ProseMirror-trailingBreak)::before {
         padding-inline: 0.75rem;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .jamcaa-rich-text-editor--immersive .jamcaa-rich-text-editor__toolbar {
+        background: var(--jamcaa-editor-background, var(--background, light-dark(#fff, #18181b)));
+        backdrop-filter: none;
     }
 }
 

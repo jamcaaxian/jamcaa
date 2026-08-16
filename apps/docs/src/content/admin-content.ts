@@ -1,4 +1,5 @@
 import type { BlockDefinition, EditingField } from "@jamcaaxian/core/content";
+import type { BlockChoiceOptions } from "@jamcaaxian/editor/blocks";
 import type { DocsLocale } from "./locales";
 import { siteBlockDefinitions } from "./site-blocks";
 
@@ -14,6 +15,43 @@ const fieldCopy = {
         body: { label: "正文", description: "由 Blocks 组合而成；富文本只是其中一种 Block。" }
     }
 } as const;
+
+const blockChoiceCopy: Record<DocsLocale, BlockChoiceOptions> = {
+    "en-US": {
+        "builtin.button": {
+            variant: [
+                { value: "primary", label: "Primary" },
+                { value: "secondary", label: "Secondary" },
+                { value: "tertiary", label: "Tertiary" }
+            ]
+        },
+        "builtin.callout": {
+            tone: [
+                { value: "note", label: "Note" },
+                { value: "tip", label: "Tip" },
+                { value: "warning", label: "Warning" },
+                { value: "important", label: "Important" }
+            ]
+        }
+    },
+    "zh-Hans-CN": {
+        "builtin.button": {
+            variant: [
+                { value: "primary", label: "主要" },
+                { value: "secondary", label: "次要" },
+                { value: "tertiary", label: "弱化" }
+            ]
+        },
+        "builtin.callout": {
+            tone: [
+                { value: "note", label: "备注" },
+                { value: "tip", label: "提示" },
+                { value: "warning", label: "警告" },
+                { value: "important", label: "重要" }
+            ]
+        }
+    }
+};
 
 const blockCopy = {
     "en-US": {
@@ -146,4 +184,8 @@ export function localizedSiteBlocks(locale: DocsLocale): BlockDefinition[] {
             )
         };
     });
+}
+
+export function localizedSiteBlockChoices(locale: DocsLocale): BlockChoiceOptions {
+    return blockChoiceCopy[locale];
 }

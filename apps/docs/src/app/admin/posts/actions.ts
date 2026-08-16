@@ -13,7 +13,7 @@ import { may, mayTouch, type Actor } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
 import { readPostSubmission } from "./post-submission";
 
-export type PostFormState = { error?: string };
+export type PostFormState = { error?: string; saved?: boolean };
 
 async function workspace() {
     const session = await requireSession();
@@ -74,7 +74,7 @@ export async function savePost(_previous: PostFormState, formData: FormData): Pr
         return { error: copy.posts.errors.publishDenied };
     }
 
-    await commitPostState({
+    const stored = await commitPostState({
         database,
         actorId: actor.id,
         mayPublish,
@@ -82,7 +82,12 @@ export async function savePost(_previous: PostFormState, formData: FormData): Pr
     });
 
     revalidatePath("/", "layout");
-    redirect("/admin/posts");
+
+    if (existing === undefined) {
+        redirect(`/admin/posts/${encodeURIComponent(stored.id)}`);
+    }
+
+    return { saved: true };
 }
 
 export async function deletePost(formData: FormData): Promise<void> {

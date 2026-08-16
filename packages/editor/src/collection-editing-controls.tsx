@@ -2,7 +2,11 @@
 
 import { useState, type ReactNode } from "react";
 import type { BlockDefinition, BlockDocument, EditingField, RichTextDocument } from "@jamcaaxian/core/content";
-import { BlockDocumentEditor, type BlockDocumentEditorMessages } from "./blocks/block-document-editor";
+import {
+    BlockDocumentEditor,
+    type BlockChoiceOptions,
+    type BlockDocumentEditorMessages
+} from "./blocks/block-document-editor";
 import {
     defaultCollectionEditingControlMessages,
     type CollectionEditingControlMessages,
@@ -27,6 +31,7 @@ export interface CollectionEditingControlsProps {
     richText?: { media?: RichTextMediaAdapter; messages?: Partial<RichTextEditorMessages> };
     blocks?: {
         definitions: readonly BlockDefinition[];
+        choices?: BlockChoiceOptions;
         media?: RichTextMediaAdapter;
         messages?: Partial<BlockDocumentEditorMessages>;
         richTextMessages?: Partial<RichTextEditorMessages>;
@@ -288,6 +293,7 @@ function BlocksControl({ context }: { context: EditingControlContext }) {
             label={field.label}
             defaultValue={value as BlockDocument | undefined}
             definitions={blocks.definitions}
+            choices={blocks.choices}
             media={blocks.media}
             messages={blocks.messages}
             richTextMessages={blocks.richTextMessages}

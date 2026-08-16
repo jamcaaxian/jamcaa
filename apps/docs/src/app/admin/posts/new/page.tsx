@@ -38,17 +38,14 @@ export default async function NewPostPage() {
     ]);
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-xl font-semibold tracking-tight">{copy.posts.form.newTitle}</h1>
-            <PostForm
-                fields={localizedEditingFields(editingFields(post), locale)}
-                titleFieldName={post.titleField}
-                mayPublish={mayPublish}
-                address={{ pattern: settings.get("permalink.post"), mayChooseSlug: mayPublish }}
-                categories={categories}
-                tags={tags}
-                selectedTagIds={[]}
-            />
-        </div>
+        <PostForm
+            fields={localizedEditingFields(editingFields(post), locale)}
+            titleFieldName={post.titleField}
+            mayPublish={mayPublish}
+            address={{ pattern: settings.get("permalink.post"), mayChooseSlug: mayPublish }}
+            categories={categories}
+            tags={tags}
+            selectedTagIds={[]}
+        />
     );
 }

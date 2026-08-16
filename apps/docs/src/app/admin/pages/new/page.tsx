@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { emptyRichText } from "@jamcaaxian/core/content";
 import { adminMessages } from "@/content/admin-locale";
 import { may } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
@@ -24,14 +24,16 @@ export default async function NewPage() {
     const mayPublish = await may(actor, "page", "publish");
 
     return (
-        <div className="space-y-8">
-            <AdminPageHeader title={copy.pages.form.newTitle} description={copy.pages.form.newDescription} />
-            <PageEditor
-                action={createPage}
-                initial={{ title: "", address: "/", status: "draft", blocks: [] }}
-                mayPublish={mayPublish}
-                submitLabel={copy.pages.form.create}
-            />
-        </div>
+        <PageEditor
+            action={createPage}
+            initial={{
+                title: "",
+                address: "/",
+                status: "draft",
+                blocks: [{ id: "body", type: "builtin.richText", props: { document: emptyRichText() } }]
+            }}
+            mayPublish={mayPublish}
+            submitLabel={copy.pages.form.create}
+        />
     );
 }

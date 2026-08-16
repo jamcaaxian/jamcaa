@@ -4,10 +4,16 @@ export interface RichTextEditorMessages {
     undo: string;
     redo: string;
     heading: string;
+    paragraph: string;
+    heading1: string;
+    heading2: string;
+    heading3: string;
     bold: string;
     italic: string;
     strike: string;
     inlineCode: string;
+    codeBlock: string;
+    divider: string;
     bulletList: string;
     numberedList: string;
     quote: string;
@@ -51,10 +57,16 @@ export const defaultRichTextEditorMessages: RichTextEditorMessages = {
     undo: "Undo",
     redo: "Redo",
     heading: "Heading",
+    paragraph: "Paragraph",
+    heading1: "Heading 1",
+    heading2: "Heading 2",
+    heading3: "Heading 3",
     bold: "Bold",
     italic: "Italic",
     strike: "Strike",
     inlineCode: "Inline code",
+    codeBlock: "Code block",
+    divider: "Divider",
     bulletList: "Bullet list",
     numberedList: "Numbered list",
     quote: "Quote",
