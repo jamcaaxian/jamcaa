@@ -1,5 +1,11 @@
 # @jamcaaxian/editor
 
+## 0.4.0
+
+### Minor Changes
+
+- b439879: Expose composable Block document state and attribute Editing Controls, including Site-provided labels for declared choice values.
+
 ## 0.3.1
 
 ### Patch Changes
